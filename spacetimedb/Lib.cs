@@ -1608,6 +1608,11 @@ public static partial class Module
             {
                 damage = ApplyFragile(damage, target.FragileStacks);
             }
+
+            if (attacker.Faction == Team.Enemies)
+            {
+                damage = ScaleEnemyOutgoingDamage(damage);
+            }
         }
 
         var hp = Math.Max(0, target.Hp - damage);

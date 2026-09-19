@@ -8,6 +8,8 @@ public static partial class Module
     public const uint SessionId = 1;
     public const uint MaxPartySize = 3;
     public const int EnemyScalePartyBaseline = 3;
+    /// Every enemy hit deals this fraction of computed damage (1/3).
+    public const int EnemyOutgoingDamageDivisor = 3;
     public const uint MaxEnemySlots = 4;
     public const uint MaxStageCount = 10;
     public const uint RestStopEvery = 3;
@@ -473,6 +475,21 @@ public static partial class Module
         var p = Math.Max(1, playerCount);
         var scaled = baseline * (p / (double)EnemyScalePartyBaseline);
         return Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero));
+    }
+
+    /// Final enemy-outgoing damage. Connected hits that would round to 0 still chip for 1.
+    public static int ScaleEnemyOutgoingDamage(int damage)
+    {
+        if (damage <= 0)
+        {
+            return 0;
+        }
+
+        var scaled = (int)Math.Round(
+            damage / (double)EnemyOutgoingDamageDivisor,
+            MidpointRounding.AwayFromZero
+        );
+        return Math.Max(1, scaled);
     }
 
     /// Each kill grants `25 * stage` EXP to every living party member.
