@@ -27,7 +27,6 @@ public class TurnOrderListView : MonoBehaviour
     readonly Dictionary<ulong, Row> _rows = new Dictionary<ulong, Row>();
     readonly List<ulong> _scratch = new List<ulong>();
 
-    uint _round;
     uint _stage;
     bool _wasBattle;
     bool _pending;
@@ -90,8 +89,19 @@ public class TurnOrderListView : MonoBehaviour
     public void Render(GameSession session)
     {
         _pending = true;
-        if (session == null || session.Phase != BattlePhase.InBattle)
+        var inBattle = session != null && session.Phase == BattlePhase.InBattle;
+        if (!inBattle)
         {
+            ApplyQueued();
+            return;
+        }
+
+        // Create() leaves the panel inactive. LateUpdate does not run on inactive
+        // objects, so the deferred apply would never enable it. Wake it here;
+        // once live, later updates still coalesce in LateUpdate for the slide.
+        if (!gameObject.activeSelf)
+        {
+            gameObject.SetActive(true);
             ApplyQueued();
         }
     }
@@ -120,12 +130,11 @@ public class TurnOrderListView : MonoBehaviour
         }
 
         gameObject.SetActive(true);
-        var snap =
-            !_wasBattle
-            || session.Round != _round
-            || session.StageNumber != _stage;
+        // Snap only on stage boundaries. A new combat round still rotates DisplayPos
+        // (finished actor to the bottom); treating Round as a snap made player wraps
+        // teleport because players are often last in the speed queue.
+        var snap = !_wasBattle || session.StageNumber != _stage;
         _wasBattle = true;
-        _round = session.Round;
         _stage = session.StageNumber;
 
         var living = new HashSet<ulong>();
@@ -278,7 +287,6 @@ public class TurnOrderListView : MonoBehaviour
         }
 
         _rows.Clear();
-        _round = 0;
         _stage = 0;
         _pending = false;
     }
