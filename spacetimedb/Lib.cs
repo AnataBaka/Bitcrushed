@@ -95,7 +95,7 @@ public static partial class Module
         var stats = RollStats(rng, playerClass);
         var className = ClassName(playerClass);
         var name = PartyName(slot);
-        var maxHp = ClassMaxHp(playerClass, CheatCharacterLevel);
+        var maxHp = ClassMaxHp(playerClass, 1);
         var maxMana = ClassMaxMana(playerClass);
 
         var entity = ctx.Db.Entity.Insert(
@@ -138,7 +138,7 @@ public static partial class Module
                 Class = playerClass,
                 EntityId = entity.EntityId,
                 Ready = false,
-                CharacterLevel = CheatCharacterLevel,
+                CharacterLevel = 1,
                 Xp = 0,
                 UnspentStatPoints = 0,
             }

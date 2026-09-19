@@ -14,7 +14,6 @@ public static partial class Module
 
     public const int BagCapacity = 12;
     public const int FocusManaGain = 20;
-    /// Temporary starting level (also used by the Esc-menu cheat).
     public const uint CheatCharacterLevel = 999;
     public const int ManaRegenPerTurn = 2;
 

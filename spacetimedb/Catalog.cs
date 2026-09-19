@@ -441,8 +441,7 @@ public static partial class Module
         GiveToBag(ctx, owner, RequireItem(ctx, "Health Potion").Id, 3);
         GiveToBag(ctx, owner, RequireItem(ctx, "Mana Potion").Id, 2);
 
-        // Temporary: everyone joins at max level with the full skill list.
-        GrantUnlockedSkills(ctx, entity.EntityId, playerClass, CheatCharacterLevel);
+        GrantUnlockedSkills(ctx, entity.EntityId, playerClass, 1);
         RecomputeStats(ctx, owner);
     }
 
