@@ -13,7 +13,7 @@ namespace SpacetimeDB.Types
         None,
         Sword,
         Staff,
-        Dagger,
+        Katana,
         Bow,
     }
 }

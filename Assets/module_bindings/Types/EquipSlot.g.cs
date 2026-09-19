@@ -12,9 +12,7 @@ namespace SpacetimeDB.Types
     {
         Bag,
         Weapon,
-        Helmet,
-        Chestplate,
-        Leggings,
-        Boots,
+        Amulet,
+        Inventory,
     }
 }

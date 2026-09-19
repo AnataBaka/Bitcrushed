@@ -11,7 +11,7 @@ namespace SpacetimeDB.Types
     public enum ItemKind
     {
         Weapon,
-        Armor,
+        Amulet,
         Consumable,
     }
 }

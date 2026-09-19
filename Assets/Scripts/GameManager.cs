@@ -10,12 +10,13 @@ using UnityEngine;
 public class GameManager : MonoBehaviour
 {
     public const uint SessionId = 1;
+    public const int InventoryCapacity = 9;
 
     [SerializeField]
     string serverUrl = "https://maincloud.spacetimedb.com";
 
     [SerializeField]
-    string databaseName = "hophacks-party-vp2";
+    string databaseName = "hophacks-party-vp";
 
     // Tokens are namespaced per server+database so switching between the local
     // server and Maincloud never reuses a token signed by the wrong key (which
@@ -316,6 +317,57 @@ public class GameManager : MonoBehaviour
         return Conn.Db.PlayerItem.Owner.Filter(LocalIdentity).OrderBy(i => i.Id).ToList();
     }
 
+    public static PlayerItem InventoryAt(uint slotIndex)
+    {
+        foreach (var item in OwnedItems())
+        {
+            if (item.EquippedSlot == EquipSlot.Inventory && item.InventoryIndex == slotIndex)
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    public static bool EquipmentChangesAllowed()
+    {
+        var session = Session();
+        var me = LocalEntity();
+        return session != null
+            && (session.Phase == BattlePhase.Waiting || session.Phase == BattlePhase.RestStop)
+            && (me == null || me.Alive);
+    }
+
+    /// Display-only mirror of the server class-weapon map for greying Equip.
+    public static bool CanEquipDef(ItemDef def)
+    {
+        if (def == null)
+        {
+            return false;
+        }
+
+        if (def.Kind == ItemKind.Amulet)
+        {
+            return true;
+        }
+
+        var player = LocalPlayer();
+        return def.Kind == ItemKind.Weapon
+            && player != null
+            && def.WeaponType == ClassWeaponType(player.Class);
+    }
+
+    public static WeaponType ClassWeaponType(PlayerClass playerClass) =>
+        playerClass switch
+        {
+            PlayerClass.Knight => WeaponType.Sword,
+            PlayerClass.Mage => WeaponType.Staff,
+            PlayerClass.Ninja => WeaponType.Katana,
+            PlayerClass.Archer => WeaponType.Bow,
+            _ => WeaponType.None,
+        };
+
     public static PlayerItem EquippedIn(EquipSlot slot) =>
         EquippedIn(LocalIdentity, slot);
 
@@ -349,7 +401,7 @@ public class GameManager : MonoBehaviour
     {
         var item = EquippedIn(owner, slot);
         var def = item == null ? null : ItemDefOf(item);
-        return def == null ? "—" : def.Name;
+        return def == null ? "EMPTY" : def.Name;
     }
 
     public static List<PlayerItem> ItemsOf(Identity owner)
@@ -535,7 +587,9 @@ public class GameManager : MonoBehaviour
 
     public static void UseItem(ulong playerItemId) => Conn?.Reducers.UseItem(playerItemId);
 
-    public static void EquipItem(ulong playerItemId) => Conn?.Reducers.EquipItem(playerItemId);
+    public static void EquipItem(uint slotIndex) => Conn?.Reducers.EquipItem(slotIndex);
+
+    public static void DropItem(uint slotIndex) => Conn?.Reducers.DropItem(slotIndex);
 
     public static void UnequipItem(ulong playerItemId) => Conn?.Reducers.UnequipItem(playerItemId);
 
