@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using SpacetimeDB.Types;
 using UnityEngine;
 using UnityEngine.UI;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 /// Draws the battle from table state and forwards clicks to reducers.
 /// Holds no rules: it never computes damage, legality or turn order.
@@ -31,6 +34,7 @@ public class BattleHud : MonoBehaviour
     RectTransform _overlay;
     Text _overlayText;
     Text _connectionLabel;
+    StatPopupView _popup;
 
     readonly Dictionary<ulong, EntityView> _views = new Dictionary<ulong, EntityView>();
     readonly List<ulong> _stale = new List<ulong>();
@@ -51,7 +55,8 @@ public class BattleHud : MonoBehaviour
         EquipmentPanelView equipment,
         RectTransform overlay,
         Text overlayText,
-        Text connectionLabel
+        Text connectionLabel,
+        StatPopupView popup
     )
     {
         _field = field;
@@ -61,6 +66,7 @@ public class BattleHud : MonoBehaviour
         _overlay = overlay;
         _overlayText = overlayText;
         _connectionLabel = connectionLabel;
+        _popup = popup;
 
         _menu.OnJoin = GameManager.JoinGame;
         _menu.OnReady = HandleReadyClicked;
@@ -102,6 +108,8 @@ public class BattleHud : MonoBehaviour
         {
             StartCoroutine(PlayHit(_pendingHits.Dequeue()));
         }
+
+        HandleInspectDismiss();
     }
 
     void Refresh()
@@ -129,6 +137,7 @@ public class BattleHud : MonoBehaviour
         SyncTeam(GameManager.TeamMembers(Team.Players), PlayerSlots, PlayerCardSize, true, me);
         SyncTeam(GameManager.TeamMembers(Team.Enemies), EnemySlots, EnemyCardSize, false, me);
         PruneMissing();
+        _popup?.Refresh();
 
         _log.SetLines(GameManager.LogLines(60));
         _menu.Render(session, me, myTurn, _targeting);
@@ -143,6 +152,8 @@ public class BattleHud : MonoBehaviour
         _overlay.gameObject.SetActive(finished);
         if (finished)
         {
+            _popup?.Close();
+            _overlay.SetAsLastSibling();
             _overlayText.text =
                 session.Phase == BattlePhase.Victory ? "LEVEL COMPLETE" : "DEFEAT";
             _overlayText.color =
@@ -192,7 +203,7 @@ public class BattleHud : MonoBehaviour
 
             var targetable = _targeting && myTurn && entity.Faction == Team.Enemies && entity.Alive;
             var isLocal = me != null && me.EntityId == entity.EntityId;
-            view.Bind(entity, activeId == entity.EntityId, isLocal, targetable, HandleTargetClicked);
+            view.Bind(entity, activeId == entity.EntityId, isLocal, targetable, HandleEntityClicked);
 
             var occupant = GameManager.FindPlayer(entity.EntityId);
             view.SetReadyBanner(
@@ -206,17 +217,16 @@ public class BattleHud : MonoBehaviour
 
     void PruneMissing()
     {
-        if (AnimationsPending())
-        {
-            return;
-        }
-
         _stale.Clear();
 
         foreach (var pair in _views)
         {
             var entity = GameManager.FindEntity(pair.Key);
-            if (entity == null || !entity.Alive)
+            if (entity == null)
+            {
+                _stale.Add(pair.Key);
+            }
+            else if (!entity.Alive && !AnimationsPending())
             {
                 _stale.Add(pair.Key);
             }
@@ -248,6 +258,7 @@ public class BattleHud : MonoBehaviour
 
     void HandleAttackSelected(uint skillDefId)
     {
+        _popup?.Close();
         if (skillDefId == 0)
         {
             _pendingSkillId = 0;
@@ -271,23 +282,83 @@ public class BattleHud : MonoBehaviour
         Refresh();
     }
 
-    void HandleTargetClicked(ulong entityId)
+    void HandleEntityClicked(ulong entityId)
     {
-        if (!_targeting || !GameManager.IsLocalTurn())
+        var entity = GameManager.FindEntity(entityId);
+        if (entity == null || !entity.Alive)
         {
             return;
         }
 
-        var skillDefId = _pendingSkillId;
-        ClearTargeting();
-
-        if (skillDefId == 0)
+        if (_targeting)
         {
-            GameManager.Attack(entityId);
+            if (!GameManager.IsLocalTurn() || entity.Faction != Team.Enemies)
+            {
+                return;
+            }
+
+            var skillDefId = _pendingSkillId;
+            ClearTargeting();
+
+            if (skillDefId == 0)
+            {
+                GameManager.Attack(entityId);
+                return;
+            }
+
+            GameManager.CastSkill(skillDefId, entityId);
             return;
         }
 
-        GameManager.CastSkill(skillDefId, entityId);
+        _popup?.Open(entityId, PointerScreenPoint());
+    }
+
+    void HandleInspectDismiss()
+    {
+        if (_popup == null || !_popup.IsOpen || !PointerPressedThisFrame())
+        {
+            return;
+        }
+
+        var screen = PointerScreenPoint();
+        if (_popup.ContainsScreenPoint(screen) || PointerOverEntity(screen))
+        {
+            return;
+        }
+
+        _popup.Close();
+    }
+
+    bool PointerOverEntity(Vector2 screen)
+    {
+        foreach (var pair in _views)
+        {
+            if (pair.Value != null && pair.Value.Rect != null
+                && RectTransformUtility.RectangleContainsScreenPoint(pair.Value.Rect, screen, null))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static Vector2 PointerScreenPoint()
+    {
+#if ENABLE_INPUT_SYSTEM
+        return Mouse.current == null ? (Vector2)Input.mousePosition : Mouse.current.position.ReadValue();
+#else
+        return Input.mousePosition;
+#endif
+    }
+
+    static bool PointerPressedThisFrame()
+    {
+#if ENABLE_INPUT_SYSTEM
+        return Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
+#else
+        return Input.GetMouseButtonDown(0);
+#endif
     }
 
     void ClearTargeting()

@@ -51,6 +51,79 @@ public static class PlaceholderArt
 
     public static Sprite Solid(Color color) => Shape(ShapeKind.Rect, color, 8, 8);
 
+    /// 9-slice rounded panel so popups can be any size without stretching corners.
+    public static Sprite RoundedSlice(Color color, int size = 64, int radius = 14)
+    {
+        var key = $"round:{ColorUtility.ToHtmlStringRGBA(color)}:{size}:{radius}";
+        if (Cache.TryGetValue(key, out var cached))
+        {
+            return cached;
+        }
+
+        var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp,
+        };
+
+        var pixels = new Color32[size * size];
+        var outline = new Color(color.r * 0.45f, color.g * 0.45f, color.b * 0.45f, 1f);
+
+        for (var y = 0; y < size; y++)
+        {
+            for (var x = 0; x < size; x++)
+            {
+                var dist = RoundedRectDistance(x + 0.5f, y + 0.5f, size, radius);
+                if (dist > 1.2f)
+                {
+                    pixels[y * size + x] = new Color32(0, 0, 0, 0);
+                }
+                else if (dist > 0f)
+                {
+                    pixels[y * size + x] = (Color32)outline;
+                }
+                else
+                {
+                    pixels[y * size + x] = (Color32)color;
+                }
+            }
+        }
+
+        texture.SetPixels32(pixels);
+        texture.Apply();
+
+        var border = radius + 2f;
+        var sprite = Sprite.Create(
+            texture,
+            new Rect(0, 0, size, size),
+            new Vector2(0.5f, 0.5f),
+            100f,
+            0,
+            SpriteMeshType.FullRect,
+            new Vector4(border, border, border, border)
+        );
+        Cache[key] = sprite;
+        return sprite;
+    }
+
+    static float RoundedRectDistance(float x, float y, int size, int radius)
+    {
+        var min = radius + 1f;
+        var max = size - radius - 1f;
+        var cx = Mathf.Clamp(x, min, max);
+        var cy = Mathf.Clamp(y, min, max);
+        if (x >= min && x <= max || y >= min && y <= max)
+        {
+            var insideX = x >= 1f && x <= size - 1f;
+            var insideY = y >= 1f && y <= size - 1f;
+            return insideX && insideY ? -1f : 1f;
+        }
+
+        var dx = x - cx;
+        var dy = y - cy;
+        return Mathf.Sqrt((dx * dx) + (dy * dy)) - radius;
+    }
+
     /// Full-screen backdrop tint. Generated so the project still needs no art files.
     public static Sprite VerticalGradient(Color top, Color bottom, int height = 256)
     {
@@ -223,6 +296,25 @@ public static class PlaceholderArt
 
     public static Color EnemyColor(uint slot) =>
         slot == 0 ? new Color(0.44f, 0.56f, 0.28f) : new Color(0.50f, 0.34f, 0.26f);
+
+    public static (ShapeKind Shape, Color Color) EnemyVisual(string kind)
+    {
+        switch (kind)
+        {
+            case "Goblin":
+                return (ShapeKind.Mound, new Color(0.44f, 0.56f, 0.28f));
+            case "Troll":
+                return (ShapeKind.Rect, new Color(0.50f, 0.34f, 0.26f));
+            case "Shade":
+                return (ShapeKind.Diamond, new Color(0.42f, 0.28f, 0.62f));
+            case "Wolf":
+                return (ShapeKind.Triangle, new Color(0.62f, 0.62f, 0.66f));
+            case "Skeleton":
+                return (ShapeKind.Circle, new Color(0.86f, 0.82f, 0.70f));
+            default:
+                return (ShapeKind.Mound, new Color(0.50f, 0.34f, 0.26f));
+        }
+    }
 }
 
 /// Small helpers for hand-building uGUI hierarchies from code.
@@ -261,6 +353,17 @@ public static class UiFactory
         image.sprite = PlaceholderArt.Solid(Color.white);
         image.color = color;
         image.type = Image.Type.Sliced;
+        return image;
+    }
+
+    public static Image RoundedPanel(Transform parent, string name, Color color)
+    {
+        var rt = NewRect(parent, name);
+        var image = rt.gameObject.AddComponent<Image>();
+        image.sprite = PlaceholderArt.RoundedSlice(Color.white);
+        image.color = color;
+        image.type = Image.Type.Sliced;
+        image.pixelsPerUnitMultiplier = 1.15f;
         return image;
     }
 

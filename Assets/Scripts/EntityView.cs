@@ -25,6 +25,8 @@ public class EntityView : MonoBehaviour
 
     Action<ulong> _onClick;
 
+    public RectTransform Rect => _root;
+
     Vector2 _home;
     bool _lunging;
     Coroutine _hit;
@@ -236,9 +238,11 @@ public class EntityView : MonoBehaviour
 
         var isEnemy = entity.Faction == SpacetimeDB.Types.Team.Enemies;
         var color = isEnemy
-            ? PlaceholderArt.EnemyColor(entity.Slot)
+            ? PlaceholderArt.EnemyVisual(entity.ClassName).Color
             : PlaceholderArt.ClassColor(entity.ClassName);
-        var shape = isEnemy ? ShapeKind.Mound : PlaceholderArt.ClassShape(entity.ClassName);
+        var shape = isEnemy
+            ? PlaceholderArt.EnemyVisual(entity.ClassName).Shape
+            : PlaceholderArt.ClassShape(entity.ClassName);
 
         _shape.sprite = PlaceholderArt.Shape(shape, color);
         _shape.color = Color.white;
@@ -272,7 +276,7 @@ public class EntityView : MonoBehaviour
             _card.color = new Color(0f, 0f, 0f, 0f);
         }
 
-        _button.interactable = targetable;
+        _button.interactable = entity.Alive;
     }
 
     /// Driven from Player.Ready + lobby phase, never from local click state.

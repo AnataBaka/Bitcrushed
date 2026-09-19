@@ -100,9 +100,10 @@ public class BattleBootstrap : MonoBehaviour
         menuRect.offsetMax = new Vector2(-10f, -10f);
 
         var overlay = BuildOverlay(canvas, out var overlayText);
+        var popup = StatPopupView.Create(canvas);
 
         var hud = gameObject.AddComponent<BattleHud>();
-        hud.Init(field, log, menu, equipment, overlay, overlayText, connectionLabel);
+        hud.Init(field, log, menu, equipment, overlay, overlayText, connectionLabel, popup);
     }
 
     static void EnsureEventSystem()

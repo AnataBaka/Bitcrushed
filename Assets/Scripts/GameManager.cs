@@ -289,7 +289,37 @@ public class GameManager : MonoBehaviour
     }
 
     public static PlayerItem EquippedIn(EquipSlot slot) =>
-        OwnedItems().FirstOrDefault(i => i.EquippedSlot == slot);
+        EquippedIn(LocalIdentity, slot);
+
+    public static PlayerItem EquippedIn(Identity owner, EquipSlot slot)
+    {
+        foreach (var item in ItemsOf(owner))
+        {
+            if (item.EquippedSlot == slot)
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    public static string EquippedName(Identity owner, EquipSlot slot)
+    {
+        var item = EquippedIn(owner, slot);
+        var def = item == null ? null : ItemDefOf(item);
+        return def == null ? "—" : def.Name;
+    }
+
+    public static List<PlayerItem> ItemsOf(Identity owner)
+    {
+        if (Conn == null)
+        {
+            return new List<PlayerItem>();
+        }
+
+        return Conn.Db.PlayerItem.Owner.Filter(owner).OrderBy(i => i.Id).ToList();
+    }
 
     public static List<PlayerItem> BagItems() =>
         OwnedItems().Where(i => i.EquippedSlot == EquipSlot.Bag).ToList();
