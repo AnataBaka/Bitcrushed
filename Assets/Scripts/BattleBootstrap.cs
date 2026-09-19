@@ -116,6 +116,7 @@ public class BattleBootstrap : MonoBehaviour
 
         var overlay = BuildOverlay(canvas, out var overlayText, out var overlaySubtext, out var resetButton);
         var popup = StatPopupView.Create(canvas);
+        var turnStrip = TurnOrderStripView.Create(field);
 
         var hud = gameObject.AddComponent<BattleHud>();
         hud.Init(
@@ -129,7 +130,8 @@ public class BattleBootstrap : MonoBehaviour
             resetButton,
             connectionLabel,
             stageLabel,
-            popup
+            popup,
+            turnStrip
         );
     }
 
