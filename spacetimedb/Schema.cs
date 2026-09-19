@@ -127,6 +127,9 @@ public static partial class Module
         public PlayerClass Class;
         [Unique]
         public ulong EntityId;
+        /// Lobby ready-up. Appended with a default so existing rows migrate.
+        [Default(false)]
+        public bool Ready;
     }
 
     /// Every combatant, player or enemy, lives here so turn order and damage
