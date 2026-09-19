@@ -4,6 +4,7 @@ using UnityEngine;
 public static class KnightSpriteLibrary
 {
     public const string ClassName = "Knight";
+    public const int CanvasSize = 128;
 
     public static Sprite[] Idle { get; private set; }
     public static Sprite[] Run { get; private set; }
