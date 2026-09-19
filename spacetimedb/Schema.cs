@@ -223,6 +223,7 @@ public static partial class Module
         public uint ItemDefId;
         public uint Quantity;
         public EquipSlot EquippedSlot;
+        public uint HealthPips;
     }
 
     [SpacetimeDB.Table(Accessor = "Enemy", Public = true)]

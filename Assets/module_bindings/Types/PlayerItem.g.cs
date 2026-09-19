@@ -23,13 +23,16 @@ namespace SpacetimeDB.Types
         public uint Quantity;
         [DataMember(Name = "equipped_slot")]
         public EquipSlot EquippedSlot;
+        [DataMember(Name = "health_pips")]
+        public uint HealthPips;
 
         public PlayerItem(
             uint Id,
             SpacetimeDB.Identity Owner,
             uint ItemDefId,
             uint Quantity,
-            EquipSlot EquippedSlot
+            EquipSlot EquippedSlot,
+            uint HealthPips
         )
         {
             this.Id = Id;
@@ -37,6 +40,7 @@ namespace SpacetimeDB.Types
             this.ItemDefId = ItemDefId;
             this.Quantity = Quantity;
             this.EquippedSlot = EquippedSlot;
+            this.HealthPips = HealthPips;
         }
 
         public PlayerItem()

@@ -14,7 +14,9 @@ public class CombatView : MonoBehaviour
     const int BagRows = 3;
     const int BagCapacity = BagColumns * BagRows;
     const float OrbScale = 0.72f;
-    const string HealthPotionName = "Health Potion";
+    const int BattleLogMax = 12;
+    const float GearCell = 68f;
+    const float GearGap = 8f;
 
     [SerializeField] Sprite playerSprite;
     [SerializeField] Sprite enemySprite;
@@ -36,11 +38,26 @@ public class CombatView : MonoBehaviour
     float _hudHpShown = 1f;
     float _hudMpShown = 1f;
     Transform _turnRow;
-    Transform _equipRow;
+    Transform _armorCol;
+    Transform _weaponSlot;
     Transform _bagGrid;
+    Transform _statRow;
+    Transform _statPlusRow;
+    RectTransform _hudRoot;
+    GameObject _logPanel;
+    Text _logText;
+    Button _logToggle;
+    Text _logToggleLabel;
     Text _hudHpText;
     Text _hudMpText;
+    Text _hudXpText;
     Text _hudPotText;
+    Text _statPointsText;
+    Image _hudXpFill;
+    float _hudXpAmount = 0f;
+    float _hudXpShown = 0f;
+    readonly List<string> _battleLog = new();
+    bool _logOpen = true;
     bool _menuOpen;
     bool _itemsMenu;
     bool _canAct;
@@ -288,6 +305,12 @@ public class CombatView : MonoBehaviour
     void CreateHud()
     {
         EnsureEventSystem();
+        var existingHud = GameObject.Find("CombatHud");
+        if (existingHud != null)
+        {
+            DestroyImmediate(existingHud);
+        }
+
         var canvasGo = new GameObject("CombatHud");
         var canvas = canvasGo.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -298,16 +321,73 @@ public class CombatView : MonoBehaviour
         scaler.matchWidthOrHeight = 0.5f;
         canvasGo.AddComponent<GraphicRaycaster>();
 
-        var hud = Panel(canvasGo.transform, "LocalHud", new Vector2(0.30f, 0.02f), new Vector2(0.66f, 0.155f), new Color(0.08f, 0.09f, 0.16f, 0.92f));
+        var hud = Panel(canvasGo.transform, "LocalHud", new Vector2(0.30f, 0.02f), new Vector2(0.66f, 0.175f), new Color(0.08f, 0.09f, 0.16f, 0.92f));
         hud.GetComponent<Outline>().effectColor = new Color(0.95f, 0.78f, 0.28f, 0.45f);
-        _hudName = Label(hud.transform, "Name", "Ready", 22, TextAnchor.MiddleLeft, new Vector2(0.04f, 0.58f), new Vector2(0.62f, 0.95f));
-        _hudPotText = Label(hud.transform, "Pots", "Pots x1", 18, TextAnchor.MiddleRight, new Vector2(0.5f, 0.58f), new Vector2(0.96f, 0.95f));
-        _hudHpFill = Bar(hud.transform, "Hp", new Vector2(0.04f, 0.32f), new Vector2(0.96f, 0.55f), new Color(0.86f, 0.22f, 0.28f));
-        _hudMpFill = Bar(hud.transform, "Mp", new Vector2(0.04f, 0.08f), new Vector2(0.96f, 0.3f), new Color(0.28f, 0.58f, 1f));
+        _hudRoot = hud.GetComponent<RectTransform>();
+        var hudLayout = hud.AddComponent<VerticalLayoutGroup>();
+        hudLayout.padding = new RectOffset(12, 12, 8, 8);
+        hudLayout.spacing = 5f;
+        hudLayout.childAlignment = TextAnchor.UpperCenter;
+        hudLayout.childControlWidth = true;
+        hudLayout.childControlHeight = true;
+        hudLayout.childForceExpandWidth = true;
+        hudLayout.childForceExpandHeight = false;
+
+        var header = new GameObject("Header", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+        header.transform.SetParent(hud.transform, false);
+        header.GetComponent<LayoutElement>().preferredHeight = 26f;
+        header.GetComponent<LayoutElement>().flexibleHeight = 0f;
+        var headerLayout = header.GetComponent<HorizontalLayoutGroup>();
+        headerLayout.spacing = 8f;
+        headerLayout.childAlignment = TextAnchor.MiddleLeft;
+        headerLayout.childControlWidth = true;
+        headerLayout.childControlHeight = true;
+        headerLayout.childForceExpandHeight = true;
+        headerLayout.childForceExpandWidth = false;
+
+        _hudName = Label(header.transform, "Name", "Ready", 20, TextAnchor.MiddleLeft, Vector2.zero, Vector2.one);
+        _hudName.horizontalOverflow = HorizontalWrapMode.Overflow;
+        _hudName.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
+        _hudPotText = Label(header.transform, "Pots", "Pots x1", 16, TextAnchor.MiddleRight, Vector2.zero, Vector2.one);
+        var potLe = _hudPotText.gameObject.AddComponent<LayoutElement>();
+        potLe.preferredWidth = 88f;
+        potLe.flexibleWidth = 0f;
+        _logToggle = CreateButton(header.transform, "Hide", ToggleBattleLog);
+        var logLe = _logToggle.GetComponent<LayoutElement>();
+        logLe.preferredWidth = 72f;
+        logLe.preferredHeight = 24f;
+        logLe.flexibleWidth = 0f;
+        logLe.minWidth = 72f;
+        _logToggleLabel = _logToggle.GetComponentInChildren<Text>();
+        if (_logToggleLabel != null)
+        {
+            _logToggleLabel.fontSize = 16;
+            _logToggleLabel.horizontalOverflow = HorizontalWrapMode.Overflow;
+            _logToggleLabel.verticalOverflow = VerticalWrapMode.Overflow;
+            _logToggleLabel.text = "Hide";
+        }
+
+        _hudHpFill = Bar(hud.transform, "Hp", Vector2.zero, Vector2.one, new Color(0.86f, 0.22f, 0.28f));
+        _hudHpFill.transform.parent.gameObject.AddComponent<LayoutElement>().preferredHeight = 26f;
+        _hudMpFill = Bar(hud.transform, "Mp", Vector2.zero, Vector2.one, new Color(0.28f, 0.58f, 1f));
+        _hudMpFill.transform.parent.gameObject.AddComponent<LayoutElement>().preferredHeight = 26f;
         _hudHpText = Label(_hudHpFill.transform.parent, "HpText", "HP", 20, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
         _hudMpText = Label(_hudMpFill.transform.parent, "MpText", "MP", 20, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
+        _hudXpFill = Bar(hud.transform, "Xp", Vector2.zero, Vector2.one, new Color(0.95f, 0.78f, 0.28f));
+        _hudXpFill.transform.parent.gameObject.AddComponent<LayoutElement>().preferredHeight = 22f;
+        _hudXpText = Label(_hudXpFill.transform.parent, "XpText", "XP", 18, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
 
-        var turnHud = Panel(canvasGo.transform, "TurnHud", new Vector2(0.012f, 0.45f), new Vector2(0.155f, 0.985f), new Color(0.08f, 0.09f, 0.16f, 0.9f));
+        _logPanel = Panel(hud.transform, "BattleLog", Vector2.zero, Vector2.one, new Color(0.05f, 0.06f, 0.1f, 0.92f));
+        var logPanelLe = _logPanel.AddComponent<LayoutElement>();
+        logPanelLe.preferredHeight = 168f;
+        logPanelLe.flexibleHeight = 1f;
+        _logText = Label(_logPanel.transform, "LogText", "Combat log", 15, TextAnchor.UpperLeft, new Vector2(0.03f, 0.04f), new Vector2(0.97f, 0.96f));
+        _logText.horizontalOverflow = HorizontalWrapMode.Wrap;
+        _logText.verticalOverflow = VerticalWrapMode.Overflow;
+        _logText.color = new Color(0.95f, 0.9f, 0.75f);
+        ApplyLogVisibility();
+
+        var turnHud = Panel(canvasGo.transform, "TurnHud", new Vector2(0.012f, 0.47f), new Vector2(0.155f, 0.985f), new Color(0.08f, 0.09f, 0.16f, 0.9f));
         turnHud.GetComponent<Outline>().effectColor = new Color(0.95f, 0.78f, 0.28f, 0.35f);
         var turnTitle = Label(turnHud.transform, "TurnTitle", "TURN", 16, TextAnchor.MiddleCenter, new Vector2(0.04f, 0.92f), new Vector2(0.96f, 0.995f));
         turnTitle.color = new Color(0.95f, 0.82f, 0.4f);
@@ -361,43 +441,88 @@ public class CombatView : MonoBehaviour
 
     void CreateInventoryPanel(Transform canvas)
     {
-        var inv = Panel(canvas, "InventoryHud", new Vector2(0.012f, 0.015f), new Vector2(0.275f, 0.43f), new Color(0.08f, 0.09f, 0.16f, 0.92f));
+        var inv = Panel(canvas, "InventoryHud", new Vector2(0.012f, 0.016f), new Vector2(0.272f, 0.445f), new Color(0.08f, 0.09f, 0.16f, 0.92f));
         inv.GetComponent<Outline>().effectColor = new Color(0.95f, 0.78f, 0.28f, 0.45f);
-        var gearTitle = Label(inv.transform, "GearTitle", "GEAR", 16, TextAnchor.MiddleLeft, new Vector2(0.05f, 0.9f), new Vector2(0.95f, 0.99f));
+        var gearTitle = Label(inv.transform, "GearTitle", "GEAR", 16, TextAnchor.MiddleCenter, new Vector2(0.04f, 0.91f), new Vector2(0.96f, 0.99f));
         gearTitle.color = new Color(0.95f, 0.82f, 0.4f);
 
-        var equip = new GameObject("EquipRow", typeof(RectTransform), typeof(GridLayoutGroup));
-        equip.transform.SetParent(inv.transform, false);
-        var equipRect = equip.GetComponent<RectTransform>();
-        equipRect.anchorMin = new Vector2(0.05f, 0.58f);
-        equipRect.anchorMax = new Vector2(0.95f, 0.89f);
-        equipRect.offsetMin = Vector2.zero;
-        equipRect.offsetMax = Vector2.zero;
-        var equipGrid = equip.GetComponent<GridLayoutGroup>();
-        equipGrid.cellSize = new Vector2(112f, 48f);
-        equipGrid.spacing = new Vector2(8f, 6f);
-        equipGrid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        equipGrid.constraintCount = 2;
-        equipGrid.childAlignment = TextAnchor.MiddleLeft;
-        _equipRow = equip.transform;
+        var armor = new GameObject("ArmorCol", typeof(RectTransform), typeof(GridLayoutGroup));
+        armor.transform.SetParent(inv.transform, false);
+        var armorRect = armor.GetComponent<RectTransform>();
+        armorRect.anchorMin = new Vector2(0.045f, 0.24f);
+        armorRect.anchorMax = new Vector2(0.27f, 0.90f);
+        armorRect.offsetMin = Vector2.zero;
+        armorRect.offsetMax = Vector2.zero;
+        var armorGrid = armor.GetComponent<GridLayoutGroup>();
+        armorGrid.cellSize = new Vector2(GearCell, GearCell);
+        armorGrid.spacing = new Vector2(0f, GearGap);
+        armorGrid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        armorGrid.constraintCount = 1;
+        armorGrid.childAlignment = TextAnchor.UpperCenter;
+        _armorCol = armor.transform;
 
-        var bagTitle = Label(inv.transform, "BagTitle", "BAG", 16, TextAnchor.MiddleLeft, new Vector2(0.05f, 0.5f), new Vector2(0.95f, 0.58f));
-        bagTitle.color = new Color(0.95f, 0.82f, 0.4f);
+        var weapon = new GameObject("WeaponSlot", typeof(RectTransform), typeof(GridLayoutGroup));
+        weapon.transform.SetParent(inv.transform, false);
+        var weaponRect = weapon.GetComponent<RectTransform>();
+        weaponRect.anchorMin = new Vector2(0.045f, 0.035f);
+        weaponRect.anchorMax = new Vector2(0.27f, 0.20f);
+        weaponRect.offsetMin = Vector2.zero;
+        weaponRect.offsetMax = Vector2.zero;
+        var weaponGrid = weapon.GetComponent<GridLayoutGroup>();
+        weaponGrid.cellSize = new Vector2(GearCell, GearCell);
+        weaponGrid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        weaponGrid.constraintCount = 1;
+        weaponGrid.childAlignment = TextAnchor.LowerCenter;
+        _weaponSlot = weapon.transform;
 
         var bag = new GameObject("BagGrid", typeof(RectTransform), typeof(GridLayoutGroup));
         bag.transform.SetParent(inv.transform, false);
         var bagRect = bag.GetComponent<RectTransform>();
-        bagRect.anchorMin = new Vector2(0.05f, 0.04f);
-        bagRect.anchorMax = new Vector2(0.95f, 0.5f);
+        bagRect.anchorMin = new Vector2(0.30f, 0.42f);
+        bagRect.anchorMax = new Vector2(0.97f, 0.90f);
         bagRect.offsetMin = Vector2.zero;
         bagRect.offsetMax = Vector2.zero;
         var bagGrid = bag.GetComponent<GridLayoutGroup>();
-        bagGrid.cellSize = new Vector2(64f, 52f);
-        bagGrid.spacing = new Vector2(6f, 6f);
+        bagGrid.cellSize = new Vector2(GearCell, GearCell);
+        bagGrid.spacing = new Vector2(GearGap, GearGap);
         bagGrid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
         bagGrid.constraintCount = BagColumns;
         bagGrid.childAlignment = TextAnchor.UpperLeft;
         _bagGrid = bag.transform;
+
+        var stats = new GameObject("StatRow", typeof(RectTransform), typeof(GridLayoutGroup));
+        stats.transform.SetParent(inv.transform, false);
+        var statsRect = stats.GetComponent<RectTransform>();
+        statsRect.anchorMin = new Vector2(0.30f, 0.24f);
+        statsRect.anchorMax = new Vector2(0.97f, 0.40f);
+        statsRect.offsetMin = Vector2.zero;
+        statsRect.offsetMax = Vector2.zero;
+        var statsGrid = stats.GetComponent<GridLayoutGroup>();
+        statsGrid.cellSize = new Vector2(GearCell, 48f);
+        statsGrid.spacing = new Vector2(GearGap, GearGap);
+        statsGrid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        statsGrid.constraintCount = 4;
+        statsGrid.childAlignment = TextAnchor.MiddleCenter;
+        _statRow = stats.transform;
+
+        var plus = new GameObject("StatPlusRow", typeof(RectTransform), typeof(GridLayoutGroup));
+        plus.transform.SetParent(inv.transform, false);
+        var plusRect = plus.GetComponent<RectTransform>();
+        plusRect.anchorMin = new Vector2(0.30f, 0.12f);
+        plusRect.anchorMax = new Vector2(0.97f, 0.23f);
+        plusRect.offsetMin = Vector2.zero;
+        plusRect.offsetMax = Vector2.zero;
+        var plusGrid = plus.GetComponent<GridLayoutGroup>();
+        plusGrid.cellSize = new Vector2(32f, 32f);
+        plusGrid.spacing = new Vector2(44f, 0f);
+        plusGrid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        plusGrid.constraintCount = 4;
+        plusGrid.childAlignment = TextAnchor.MiddleLeft;
+        plusGrid.padding = new RectOffset(18, 0, 0, 0);
+        _statPlusRow = plus.transform;
+
+        _statPointsText = Label(inv.transform, "StatPoints", "Available stat points: 0", 14, TextAnchor.MiddleLeft, new Vector2(0.30f, 0.02f), new Vector2(0.97f, 0.11f));
+        _statPointsText.color = new Color(0.95f, 0.82f, 0.4f);
     }
 
     GameObject Panel(Transform parent, string name, Vector2 min, Vector2 max, Color color)
@@ -547,6 +672,8 @@ public class CombatView : MonoBehaviour
             _toast.text = row.Message;
         }
 
+        AppendBattleLog(row.Message);
+
         if ((row.ActionType == CombatActionType.Attack || row.ActionType == CombatActionType.Spell)
             && (row.ActorKind != row.TargetKind || row.ActorId != row.TargetId))
         {
@@ -656,6 +783,7 @@ public class CombatView : MonoBehaviour
         RefreshHud(local);
         RebuildTurnStrip(session);
         RebuildInventory(local);
+        RebuildStats(local);
 
         var canAct = local != null
             && local.Alive
@@ -666,8 +794,12 @@ public class CombatView : MonoBehaviour
             && session.ActiveCombatantId == local.Slot;
         _canAct = canAct;
 
-        SetButtons(canAct);
+        SetButtons(canAct, local);
         if (!canAct)
+        {
+            CloseMenu();
+        }
+        else if (!HasWeapon(local) && _menuOpen && !_itemsMenu)
         {
             CloseMenu();
         }
@@ -689,18 +821,29 @@ public class CombatView : MonoBehaviour
             _hudName.text = "Connecting...";
             _hudHpText.text = "HP";
             _hudMpText.text = "MP";
+            if (_hudXpText != null)
+            {
+                _hudXpText.text = "XP";
+            }
             _hudPotText.text = "Pots x0";
             _hudHpAmount = 0f;
             _hudMpAmount = 0f;
+            _hudXpAmount = 0f;
             return;
         }
 
-        _hudName.text = $"{local.Name}   {local.Class.ToString().ToUpperInvariant()}";
+        _hudName.text = $"{local.Name}: {local.Class}";
         _hudHpText.text = $"HP  {local.CurrHealth} / {local.MaxHealth}";
         _hudMpText.text = $"MP  {local.CurrMana} / {local.MaxMana}";
-        _hudPotText.text = $"Pots x{HealthPotionCount(local)}";
+        var xpNeed = XpToNextLevel(local.Level);
+        if (_hudXpText != null)
+        {
+            _hudXpText.text = $"Lv {local.Level}   XP  {local.Xp} / {xpNeed}";
+        }
+        _hudPotText.text = $"Pots x{PotionCount(local)}";
         _hudHpAmount = local.MaxHealth == 0 ? 0f : (float)local.CurrHealth / local.MaxHealth;
         _hudMpAmount = local.MaxMana == 0 ? 0f : (float)local.CurrMana / local.MaxMana;
+        _hudXpAmount = xpNeed == 0 ? 0f : (float)local.Xp / xpNeed;
     }
 
     void BindPlayer(SlotView slot, Player player, Player local, GameSession session)
@@ -721,7 +864,7 @@ public class CombatView : MonoBehaviour
             && session.Phase == GamePhase.Combat
             && session.ActiveKind == CombatantKind.Player
             && session.ActiveCombatantId == player.Slot;
-        slot.NameLabel.text = $"{player.Name}{you}\n{player.Class}";
+        slot.NameLabel.text = $"{player.Name}: {player.Class}{you}";
         slot.IsTurn = isTurn;
         slot.Orb.color = !player.Alive
             ? new Color(0.35f, 0.35f, 0.35f)
@@ -767,8 +910,10 @@ public class CombatView : MonoBehaviour
     {
         _hudHpShown = Mathf.MoveTowards(_hudHpShown, _hudHpAmount, Time.deltaTime * 2.4f);
         _hudMpShown = Mathf.MoveTowards(_hudMpShown, _hudMpAmount, Time.deltaTime * 2.4f);
+        _hudXpShown = Mathf.MoveTowards(_hudXpShown, _hudXpAmount, Time.deltaTime * 2.4f);
         SetHudFill(_hudHpFill, _hudHpShown);
         SetHudFill(_hudMpFill, _hudMpShown);
+        SetHudFill(_hudXpFill, _hudXpShown);
         SmoothSlotBars(_players);
         SmoothSlotBars(_enemies);
         foreach (var slot in _players)
@@ -888,20 +1033,32 @@ public class CombatView : MonoBehaviour
         _ => Color.white,
     };
 
-    void SetButtons(bool enabled)
+    void SetButtons(bool enabled, Player local)
     {
         if (_attacks == null)
         {
             return;
         }
 
-        _attacks.interactable = enabled;
+        var armed = HasWeapon(local);
+        _attacks.interactable = enabled && armed;
         _focus.interactable = enabled;
         _items.interactable = enabled;
     }
 
     void ToggleAttacksMenu()
     {
+        if (!HasWeapon(GameManager.Instance?.GetLocalPlayer()))
+        {
+            if (_toast != null)
+            {
+                _toast.text = "Equip a weapon to attack.";
+            }
+
+            AppendBattleLog("Equip a weapon to attack.");
+            return;
+        }
+
         if (_menuOpen && !_itemsMenu)
         {
             CloseMenu();
@@ -947,9 +1104,23 @@ public class CombatView : MonoBehaviour
 
         if (_itemsMenu)
         {
-            var count = HealthPotionCount(GameManager.Instance?.GetLocalPlayer());
-            var drink = CreateButton(_menu.transform, count == 0 ? "No health pots" : $"Drink Health Pot  x{count}", DrinkHealthPot);
-            drink.interactable = count > 0;
+            var potions = PotionItems(GameManager.Instance?.GetLocalPlayer());
+            if (potions.Count == 0)
+            {
+                var empty = CreateButton(_menu.transform, "No potions", CloseMenu);
+                empty.interactable = false;
+                CreateButton(_menu.transform, "Back", CloseMenu);
+                return;
+            }
+
+            foreach (var potion in potions)
+            {
+                var captured = potion;
+                var def = ItemDefOf(captured);
+                var name = def == null ? "Potion" : def.Name;
+                CreateButton(_menu.transform, $"{name}  x{captured.Quantity}", () => DrinkPotion(captured.Id));
+            }
+
             CreateButton(_menu.transform, "Back", CloseMenu);
             return;
         }
@@ -988,32 +1159,32 @@ public class CombatView : MonoBehaviour
         GameManager.Instance?.SubmitAction(CombatActionType.Defend);
     }
 
-    void DrinkHealthPot()
+    void DrinkPotion(uint itemId)
     {
-        var potion = FindHealthPotion(GameManager.Instance?.GetLocalPlayer());
-        if (potion == null || GameManager.Instance == null)
+        if (itemId == 0 || GameManager.Instance == null)
         {
             return;
         }
 
-        GameManager.Instance.SubmitAction(CombatActionType.Item, 0, 0, potion.Id);
+        GameManager.Instance.SubmitAction(CombatActionType.Item, 0, 0, itemId);
         CloseMenu();
     }
 
     void RebuildInventory(Player local)
     {
-        ClearChildren(_equipRow);
+        ClearChildren(_armorCol);
+        ClearChildren(_weaponSlot);
         ClearChildren(_bagGrid);
-        if (_equipRow == null || _bagGrid == null)
+        if (_armorCol == null || _weaponSlot == null || _bagGrid == null)
         {
             return;
         }
 
-        CreateInvSlot(_equipRow, "Helm", FindEquipped(local, EquipSlot.Helmet), true);
-        CreateInvSlot(_equipRow, "Chest", FindEquipped(local, EquipSlot.Chestplate), true);
-        CreateInvSlot(_equipRow, "Legs", FindEquipped(local, EquipSlot.Leggings), true);
-        CreateInvSlot(_equipRow, "Boots", FindEquipped(local, EquipSlot.Boots), true);
-        CreateInvSlot(_equipRow, "Weapon", FindEquipped(local, EquipSlot.Weapon), true);
+        CreateInvSlot(_armorCol, "Helm", FindEquipped(local, EquipSlot.Helmet), true);
+        CreateInvSlot(_armorCol, "Chest", FindEquipped(local, EquipSlot.Chestplate), true);
+        CreateInvSlot(_armorCol, "Legs", FindEquipped(local, EquipSlot.Leggings), true);
+        CreateInvSlot(_armorCol, "Boots", FindEquipped(local, EquipSlot.Boots), true);
+        CreateInvSlot(_weaponSlot, "Weapon", FindEquipped(local, EquipSlot.Weapon), true);
 
         var bag = BagItems(local);
         for (var i = 0; i < BagCapacity; i++)
@@ -1022,8 +1193,76 @@ public class CombatView : MonoBehaviour
         }
     }
 
+    void RebuildStats(Player local)
+    {
+        ClearChildren(_statRow);
+        ClearChildren(_statPlusRow);
+        if (_statRow == null || _statPlusRow == null)
+        {
+            return;
+        }
+
+        var canSpend = local != null && local.UnspentStatPoints > 0;
+        CreateStatBox(_statRow, "STR", local == null ? 0 : local.Strength);
+        CreateStatBox(_statRow, "SPD", local == null ? 0 : local.Speed);
+        CreateStatBox(_statRow, "DEX", local == null ? 0 : local.Dexterity);
+        CreateStatBox(_statRow, "INT", local == null ? 0 : local.Intelligence);
+        CreateStatPlus(_statPlusRow, StatType.Strength, canSpend);
+        CreateStatPlus(_statPlusRow, StatType.Speed, canSpend);
+        CreateStatPlus(_statPlusRow, StatType.Dexterity, canSpend);
+        CreateStatPlus(_statPlusRow, StatType.Intelligence, canSpend);
+        if (_statPointsText != null)
+        {
+            var points = local == null ? 0 : local.UnspentStatPoints;
+            _statPointsText.text = $"Available stat points: {points}";
+            _statPointsText.color = points > 0 ? new Color(0.95f, 0.82f, 0.4f) : new Color(0.7f, 0.72f, 0.8f, 0.75f);
+        }
+    }
+
+    void CreateStatBox(Transform parent, string name, uint value)
+    {
+        var button = CreateButton(parent, $"{name}\n{value}", () => { });
+        button.interactable = false;
+        button.GetComponent<LayoutElement>().preferredHeight = 48f;
+        var image = button.GetComponent<Image>();
+        image.color = new Color(0.16f, 0.18f, 0.28f, 0.95f);
+        var label = button.GetComponentInChildren<Text>();
+        if (label != null)
+        {
+            label.fontSize = 13;
+            label.horizontalOverflow = HorizontalWrapMode.Overflow;
+            label.verticalOverflow = VerticalWrapMode.Overflow;
+        }
+    }
+
+    void CreateStatPlus(Transform parent, StatType stat, bool enabled)
+    {
+        var button = CreateButton(parent, "+", () => OnAllocateStat(stat));
+        button.interactable = enabled;
+        var layout = button.GetComponent<LayoutElement>();
+        layout.preferredWidth = 32f;
+        layout.preferredHeight = 32f;
+        var image = button.GetComponent<Image>();
+        image.color = enabled
+            ? new Color(0.28f, 0.24f, 0.16f, 0.98f)
+            : new Color(0.14f, 0.15f, 0.22f, 0.85f);
+        var label = button.GetComponentInChildren<Text>();
+        if (label != null)
+        {
+            label.fontSize = 18;
+        }
+    }
+
+    void OnAllocateStat(StatType stat)
+    {
+        GameManager.Instance?.AllocateStat(stat, 1);
+    }
+
     void CreateInvSlot(Transform parent, string emptyLabel, PlayerItem item, bool equipped)
     {
+        var cell = new GameObject(string.IsNullOrEmpty(emptyLabel) ? "BagSlot" : emptyLabel, typeof(RectTransform));
+        cell.transform.SetParent(parent, false);
+
         var text = emptyLabel;
         uint itemId = 0;
         if (item != null)
@@ -1033,13 +1272,20 @@ public class CombatView : MonoBehaviour
             text = def == null ? emptyLabel : SlotText(def, item);
         }
 
-        var button = CreateButton(parent, string.IsNullOrEmpty(text) ? " " : text, () => OnInventoryClick(itemId, equipped));
-        button.GetComponent<LayoutElement>().preferredHeight = 48f;
+        var button = CreateButton(cell.transform, string.IsNullOrEmpty(text) ? " " : text, () => OnInventoryClick(itemId, equipped));
+        var buttonRect = button.GetComponent<RectTransform>();
+        buttonRect.anchorMin = Vector2.zero;
+        buttonRect.anchorMax = Vector2.one;
+        buttonRect.offsetMin = Vector2.zero;
+        buttonRect.offsetMax = Vector2.zero;
+        var layout = button.GetComponent<LayoutElement>();
+        layout.ignoreLayout = true;
+        layout.preferredHeight = GearCell;
         var image = button.GetComponent<Image>();
         var label = button.GetComponentInChildren<Text>();
         if (label != null)
         {
-            label.fontSize = 13;
+            label.fontSize = 12;
             label.horizontalOverflow = HorizontalWrapMode.Wrap;
             label.verticalOverflow = VerticalWrapMode.Overflow;
         }
@@ -1053,14 +1299,33 @@ public class CombatView : MonoBehaviour
                 label.text = emptyLabel;
                 label.color = new Color(0.7f, 0.72f, 0.8f, 0.7f);
             }
-
-            return;
+        }
+        else
+        {
+            button.interactable = true;
+            image.color = equipped
+                ? new Color(0.28f, 0.24f, 0.16f, 0.98f)
+                : new Color(0.18f, 0.22f, 0.38f, 0.98f);
         }
 
-        button.interactable = true;
-        image.color = equipped
-            ? new Color(0.28f, 0.24f, 0.16f, 0.98f)
-            : new Color(0.18f, 0.22f, 0.38f, 0.98f);
+        if (item != null && item.HealthPips > 0)
+        {
+            CreateHpBonusLabel(cell.transform, item.HealthPips);
+            if (label != null)
+            {
+                var textRect = label.rectTransform;
+                textRect.offsetMin = new Vector2(3f, 14f);
+                textRect.offsetMax = new Vector2(-3f, -3f);
+            }
+        }
+    }
+
+    void CreateHpBonusLabel(Transform parent, uint pips)
+    {
+        var bonus = Label(parent, "HpBonus", $"+{pips}HP", 11, TextAnchor.MiddleCenter, new Vector2(0.04f, 0.02f), new Vector2(0.96f, 0.22f));
+        bonus.color = new Color(0.95f, 0.55f, 0.55f);
+        bonus.horizontalOverflow = HorizontalWrapMode.Overflow;
+        bonus.verticalOverflow = VerticalWrapMode.Overflow;
     }
 
     void OnInventoryClick(uint itemId, bool equipped)
@@ -1150,7 +1415,11 @@ public class CombatView : MonoBehaviour
         {
             if (item.Owner == local.Identity && item.EquippedSlot == EquipSlot.Bag)
             {
-                bag.Add(item);
+                var def = ItemDefOf(item);
+                if (def != null && def.Kind != ItemKind.Consumable)
+                {
+                    bag.Add(item);
+                }
             }
         }
 
@@ -1173,34 +1442,110 @@ public class CombatView : MonoBehaviour
         return item.Quantity > 1 ? $"{def.Name}\nx{item.Quantity}" : def.Name;
     }
 
-    static uint HealthPotionCount(Player local)
+    void ToggleBattleLog()
     {
-        var potion = FindHealthPotion(local);
-        return potion == null ? 0 : potion.Quantity;
+        _logOpen = !_logOpen;
+        ApplyLogVisibility();
     }
 
-    static PlayerItem FindHealthPotion(Player local)
+    void ApplyLogVisibility()
     {
+        if (_logPanel != null)
+        {
+            _logPanel.SetActive(_logOpen);
+        }
+
+        if (_hudRoot != null)
+        {
+            _hudRoot.anchorMax = new Vector2(0.66f, _logOpen ? 0.43f : 0.21f);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_hudRoot);
+        }
+
+        if (_logToggleLabel != null)
+        {
+            _logToggleLabel.text = _logOpen ? "Hide" : "Log";
+            _logToggleLabel.horizontalOverflow = HorizontalWrapMode.Overflow;
+        }
+
+        if (_logToggle != null)
+        {
+            var image = _logToggle.GetComponent<Image>();
+            if (image != null)
+            {
+                image.color = _logOpen
+                    ? new Color(0.28f, 0.24f, 0.16f, 0.98f)
+                    : new Color(0.18f, 0.22f, 0.38f, 0.98f);
+            }
+        }
+
+        RefreshBattleLog();
+    }
+
+    void AppendBattleLog(string message)
+    {
+        if (string.IsNullOrEmpty(message))
+        {
+            return;
+        }
+
+        _battleLog.Add(message);
+        while (_battleLog.Count > BattleLogMax)
+        {
+            _battleLog.RemoveAt(0);
+        }
+
+        RefreshBattleLog();
+    }
+
+    void RefreshBattleLog()
+    {
+        if (_logText == null)
+        {
+            return;
+        }
+
+        _logText.text = _battleLog.Count == 0 ? "Combat log" : string.Join("\n", _battleLog.ToArray());
+    }
+
+    static bool HasWeapon(Player local) => local != null && local.EquippedWeaponDefId != 0;
+
+    static uint XpToNextLevel(uint level) => (level == 0 ? 1u : level) * 100u;
+
+    static uint PotionCount(Player local)
+    {
+        uint count = 0;
+        foreach (var potion in PotionItems(local))
+        {
+            count += potion.Quantity;
+        }
+
+        return count;
+    }
+
+    static List<PlayerItem> PotionItems(Player local)
+    {
+        var potions = new List<PlayerItem>();
         if (local == null || GameManager.Conn == null)
         {
-            return null;
+            return potions;
         }
 
         foreach (var item in GameManager.Conn.Db.PlayerItem.Iter())
         {
-            if (item.Owner != local.Identity || item.EquippedSlot != EquipSlot.Bag)
+            if (item.Owner != local.Identity)
             {
                 continue;
             }
 
-            var def = GameManager.Conn.Db.ItemDef.Id.Find(item.ItemDefId);
-            if (def != null && def.Name == HealthPotionName)
+            var def = ItemDefOf(item);
+            if (def != null && def.Kind == ItemKind.Consumable)
             {
-                return item;
+                potions.Add(item);
             }
         }
 
-        return null;
+        potions.Sort((a, b) => a.Id.CompareTo(b.Id));
+        return potions;
     }
 
     static Enemy FirstLivingEnemy()
