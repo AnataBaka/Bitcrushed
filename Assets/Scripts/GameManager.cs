@@ -75,7 +75,7 @@ public class GameManager : MonoBehaviour
             .OnConnectError(HandleConnectError)
             .OnDisconnect(HandleDisconnect)
             .WithUri(ServerUrl)
-            .WithModuleName(DatabaseName);
+            .WithDatabaseName(DatabaseName);
 
         var savedToken = PlayerPrefs.GetString(TokenPrefsKey, string.Empty);
         if (!string.IsNullOrEmpty(savedToken))

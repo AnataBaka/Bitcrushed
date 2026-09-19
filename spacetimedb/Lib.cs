@@ -3,7 +3,7 @@ using SpacetimeDB;
 public static partial class Module
 {
     public const uint SessionId = 1;
-    public const uint MaxPartySize = 4;
+    public const uint MaxPartySize = 3; // 3 players per playthrough
 
     [SpacetimeDB.Type]
     public enum PlayerClass
