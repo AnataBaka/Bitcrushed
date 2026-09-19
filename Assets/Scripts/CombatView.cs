@@ -1,6 +1,7 @@
 using SpacetimeDB.Types;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 using CombatActionType = SpacetimeDB.Types.CombatActionType;
 
@@ -108,12 +109,7 @@ public class CombatView : MonoBehaviour
 
     void CreateButtons()
     {
-        if (FindAnyObjectByType<EventSystem>() == null)
-        {
-            var eventSystem = new GameObject("EventSystem");
-            eventSystem.AddComponent<EventSystem>();
-            eventSystem.AddComponent<StandaloneInputModule>();
-        }
+        EnsureEventSystem();
 
         var canvasGo = new GameObject("CombatButtons");
         var canvas = canvasGo.AddComponent<Canvas>();
@@ -138,6 +134,29 @@ public class CombatView : MonoBehaviour
         _spells = CreateButton(row.transform, "Spells", OnSpells);
         _defend = CreateButton(row.transform, "Defend", OnDefend);
         _items = CreateButton(row.transform, "Items", OnItems);
+    }
+
+    static void EnsureEventSystem()
+    {
+        var eventSystem = FindAnyObjectByType<EventSystem>();
+        if (eventSystem == null)
+        {
+            var go = new GameObject("EventSystem");
+            eventSystem = go.AddComponent<EventSystem>();
+        }
+
+        var legacyModule = eventSystem.GetComponent<StandaloneInputModule>();
+        if (legacyModule != null)
+        {
+            legacyModule.enabled = false;
+            Destroy(legacyModule);
+        }
+
+        if (eventSystem.GetComponent<InputSystemUIInputModule>() == null)
+        {
+            var module = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+            module.AssignDefaultActions();
+        }
     }
 
     static Button CreateButton(Transform parent, string label, UnityEngine.Events.UnityAction onClick)
