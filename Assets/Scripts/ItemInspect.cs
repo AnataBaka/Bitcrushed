@@ -31,7 +31,6 @@ public static class ItemInspect
         def.Kind switch
         {
             ItemKind.Weapon => "Weapon",
-            ItemKind.Armor => def.ArmorSlot.ToString(),
             ItemKind.Amulet => "Amulet",
             ItemKind.Consumable => "Consumable",
             _ => def.Kind.ToString(),

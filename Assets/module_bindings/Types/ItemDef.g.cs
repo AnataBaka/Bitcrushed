@@ -23,8 +23,6 @@ namespace SpacetimeDB.Types
         public ItemKind Kind;
         [DataMember(Name = "weapon_type")]
         public WeaponType WeaponType;
-        [DataMember(Name = "armor_slot")]
-        public ArmorSlot ArmorSlot;
         [DataMember(Name = "atk_bonus")]
         public int AtkBonus;
         [DataMember(Name = "defense_bonus")]
@@ -52,7 +50,6 @@ namespace SpacetimeDB.Types
             string ShortName,
             ItemKind Kind,
             WeaponType WeaponType,
-            ArmorSlot ArmorSlot,
             int AtkBonus,
             int DefenseBonus,
             int StrengthBonus,
@@ -70,7 +67,6 @@ namespace SpacetimeDB.Types
             this.ShortName = ShortName;
             this.Kind = Kind;
             this.WeaponType = WeaponType;
-            this.ArmorSlot = ArmorSlot;
             this.AtkBonus = AtkBonus;
             this.DefenseBonus = DefenseBonus;
             this.StrengthBonus = StrengthBonus;

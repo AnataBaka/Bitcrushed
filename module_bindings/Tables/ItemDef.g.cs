@@ -44,7 +44,6 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<ItemDef, string> ShortName { get; }
         public global::SpacetimeDB.Col<ItemDef, ItemKind> Kind { get; }
         public global::SpacetimeDB.Col<ItemDef, WeaponType> WeaponType { get; }
-        public global::SpacetimeDB.Col<ItemDef, ArmorSlot> ArmorSlot { get; }
         public global::SpacetimeDB.Col<ItemDef, int> AtkBonus { get; }
         public global::SpacetimeDB.Col<ItemDef, int> DefenseBonus { get; }
         public global::SpacetimeDB.Col<ItemDef, int> StrengthBonus { get; }
@@ -63,7 +62,6 @@ namespace SpacetimeDB.Types
             ShortName = new global::SpacetimeDB.Col<ItemDef, string>(tableName, "short_name");
             Kind = new global::SpacetimeDB.Col<ItemDef, ItemKind>(tableName, "kind");
             WeaponType = new global::SpacetimeDB.Col<ItemDef, WeaponType>(tableName, "weapon_type");
-            ArmorSlot = new global::SpacetimeDB.Col<ItemDef, ArmorSlot>(tableName, "armor_slot");
             AtkBonus = new global::SpacetimeDB.Col<ItemDef, int>(tableName, "atk_bonus");
             DefenseBonus = new global::SpacetimeDB.Col<ItemDef, int>(tableName, "defense_bonus");
             StrengthBonus = new global::SpacetimeDB.Col<ItemDef, int>(tableName, "strength_bonus");
