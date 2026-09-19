@@ -63,7 +63,7 @@ public class BattleHud : MonoBehaviour
         _connectionLabel = connectionLabel;
 
         _menu.OnJoin = GameManager.JoinGame;
-        _menu.OnStartBattle = GameManager.StartBattle;
+        _menu.OnReady = HandleReadyClicked;
         _menu.OnFocus = () =>
         {
             ClearTargeting();
@@ -132,7 +132,10 @@ public class BattleHud : MonoBehaviour
 
         _log.SetLines(GameManager.LogLines(60));
         _menu.Render(session, me, myTurn, _targeting);
-        _equipment.Render(me);
+        _equipment.Render(
+            me,
+            session == null || session.Phase != BattlePhase.InBattle
+        );
 
         var finished =
             session != null
@@ -163,17 +166,25 @@ public class BattleHud : MonoBehaviour
 
         foreach (var entity in entities)
         {
-            // Defeated combatants leave the screen, but not until their last hit
-            // has finished animating.
-            if (!entity.Alive && !AnimationsPending())
+            var hasView = _views.TryGetValue(entity.EntityId, out var view) && view != null;
+
+            // Defeated combatants keep an existing card so the killing blow can
+            // finish, but a later attack must never spawn a new one. AnimationsPending
+            // used to force a recreate, which is what flickered dead entities back in.
+            if (!entity.Alive && !hasView)
             {
                 continue;
             }
 
-            if (!_views.TryGetValue(entity.EntityId, out var view) || view == null)
+            if (!hasView)
             {
                 view = EntityView.Create(_field, entity.Name, cardSize, showMana);
                 _views[entity.EntityId] = view;
+            }
+
+            if (view == null)
+            {
+                continue;
             }
 
             var index = (int)Mathf.Min(entity.Slot, slots.Length - 1);
@@ -182,6 +193,14 @@ public class BattleHud : MonoBehaviour
             var targetable = _targeting && myTurn && entity.Faction == Team.Enemies && entity.Alive;
             var isLocal = me != null && me.EntityId == entity.EntityId;
             view.Bind(entity, activeId == entity.EntityId, isLocal, targetable, HandleTargetClicked);
+
+            var occupant = GameManager.FindPlayer(entity.EntityId);
+            view.SetReadyBanner(
+                session != null
+                    && session.Phase == BattlePhase.Waiting
+                    && occupant != null
+                    && occupant.Ready
+            );
         }
     }
 
@@ -215,6 +234,17 @@ public class BattleHud : MonoBehaviour
     }
 
     bool AnimationsPending() => _animating || _pendingHits.Count > 0;
+
+    void HandleReadyClicked()
+    {
+        var player = GameManager.LocalPlayer();
+        if (player == null)
+        {
+            return;
+        }
+
+        GameManager.SetReady(!player.Ready);
+    }
 
     void HandleAttackSelected(uint skillDefId)
     {
