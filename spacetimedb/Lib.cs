@@ -106,12 +106,16 @@ public static partial class Module
             IsDefending = false,
             Alive = true,
             EquippedWeaponDefId = 0,
-            EquippedArmorDefId = 0,
+            EquippedHelmetDefId = 0,
+            EquippedChestplateDefId = 0,
+            EquippedLeggingsDefId = 0,
+            EquippedBootsDefId = 0,
         });
 
         GiveItem(ctx, player.Identity, weapon.Id, 1);
-        GiveHealthPotions(ctx, player.Identity, 1);
         EquipFromCatalog(ctx, player.Identity, weapon);
+        GiveStarterArmor(ctx, player.Identity);
+        GiveHealthPotions(ctx, player.Identity, 1);
         GrantClassSkills(ctx, player.Identity, classChoice, 0);
 
         var playerCount = session.PlayerCount + 1;
@@ -173,6 +177,7 @@ public static partial class Module
     {
         RequirePlayer(ctx);
         SyncSkillManaCosts(ctx);
+        SyncItemCatalog(ctx);
         foreach (var player in ctx.Db.Player.Iter().ToList())
         {
             RerollPlayer(ctx, player);
@@ -247,12 +252,6 @@ public static partial class Module
     public static void EquipItem(ReducerContext ctx, uint itemInstanceId)
     {
         var player = RequirePlayer(ctx);
-        var session = RequireSession(ctx);
-        if (session.Phase == GamePhase.Combat)
-        {
-            throw new Exception("Cannot equip during combat.");
-        }
-
         if (ctx.Db.PlayerItem.Id.Find(itemInstanceId) is not PlayerItem instance || instance.Owner != ctx.Sender)
         {
             throw new Exception("Item not in inventory.");
@@ -273,7 +272,30 @@ public static partial class Module
             throw new Exception($"{player.Class} can only equip a {ClassWeapon(player.Class)}.");
         }
 
-        EquipFromCatalog(ctx, player.Identity, item);
+        if (item.Kind == ItemKind.Armor && item.ArmorSlot == ArmorSlot.None)
+        {
+            throw new Exception("That armor has no slot.");
+        }
+
+        if (instance.EquippedSlot != EquipSlot.Bag)
+        {
+            UnequipOwnedItem(ctx, player.Identity, instance);
+            return;
+        }
+
+        EquipOwnedItem(ctx, player.Identity, instance, item);
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void UnequipItem(ReducerContext ctx, uint itemInstanceId)
+    {
+        var player = RequirePlayer(ctx);
+        if (ctx.Db.PlayerItem.Id.Find(itemInstanceId) is not PlayerItem instance || instance.Owner != ctx.Sender)
+        {
+            throw new Exception("Item not in inventory.");
+        }
+
+        UnequipOwnedItem(ctx, player.Identity, instance);
     }
 
     [SpacetimeDB.Reducer]
@@ -660,7 +682,10 @@ public static partial class Module
                     }
                 }
 
-                var targets = chosen.TargetCount > 1 ? livingPlayers.Take((int)chosen.TargetCount).ToList() : new List<Player> { target };
+                livingPlayers.Sort((a, b) => a.Slot.CompareTo(b.Slot));
+                var targets = chosen.TargetCount > 1
+                    ? livingPlayers.Take((int)chosen.TargetCount).ToList()
+                    : new List<Player> { target };
                 foreach (var player in targets)
                 {
                     ApplyOutgoingDamage(
@@ -1137,6 +1162,7 @@ public static partial class Module
             }
         }
 
+        living.Sort((a, b) => a.Slot.CompareTo(b.Slot));
         var selected = new List<Enemy>();
         if (preferred is Enemy chosen)
         {
@@ -1207,19 +1233,107 @@ public static partial class Module
 
     private static void EquipFromCatalog(ReducerContext ctx, Identity owner, ItemDef item)
     {
+        foreach (var instance in ctx.Db.PlayerItem.Owner.Filter(owner))
+        {
+            if (instance.ItemDefId == item.Id && instance.EquippedSlot == EquipSlot.Bag)
+            {
+                EquipOwnedItem(ctx, owner, instance, item);
+                return;
+            }
+        }
+
+        throw new Exception($"{item.Name} is not in the bag.");
+    }
+
+    private static void EquipOwnedItem(ReducerContext ctx, Identity owner, PlayerItem instance, ItemDef item)
+    {
         if (ctx.Db.Player.Identity.Find(owner) is not Player player)
         {
             throw new Exception("Not in the party.");
         }
 
-        var weaponId = item.Kind == ItemKind.Weapon ? item.Id : player.EquippedWeaponDefId;
-        var armorId = item.Kind == ItemKind.Armor ? item.Id : player.EquippedArmorDefId;
+        var slot = EquipSlotFor(item);
+        if (slot == EquipSlot.Bag)
+        {
+            throw new Exception("That item cannot be equipped.");
+        }
+
+        foreach (var other in ctx.Db.PlayerItem.Owner.Filter(owner).ToList())
+        {
+            if (other.Id != instance.Id && other.EquippedSlot == slot)
+            {
+                ctx.Db.PlayerItem.Id.Update(other with { EquippedSlot = EquipSlot.Bag });
+            }
+        }
+
+        ctx.Db.PlayerItem.Id.Update(instance with { EquippedSlot = slot });
         ctx.Db.Player.Identity.Update(player with
         {
-            EquippedWeaponDefId = weaponId,
-            EquippedArmorDefId = armorId,
+            EquippedWeaponDefId = slot == EquipSlot.Weapon ? item.Id : player.EquippedWeaponDefId,
+            EquippedHelmetDefId = slot == EquipSlot.Helmet ? item.Id : player.EquippedHelmetDefId,
+            EquippedChestplateDefId = slot == EquipSlot.Chestplate ? item.Id : player.EquippedChestplateDefId,
+            EquippedLeggingsDefId = slot == EquipSlot.Leggings ? item.Id : player.EquippedLeggingsDefId,
+            EquippedBootsDefId = slot == EquipSlot.Boots ? item.Id : player.EquippedBootsDefId,
         });
         RefreshDerivedStats(ctx, owner);
+    }
+
+    private static void UnequipOwnedItem(ReducerContext ctx, Identity owner, PlayerItem instance)
+    {
+        if (instance.EquippedSlot == EquipSlot.Bag)
+        {
+            throw new Exception("That item is not equipped.");
+        }
+
+        if (BagCount(ctx, owner) >= BagCapacity)
+        {
+            throw new Exception("Inventory is full.");
+        }
+
+        if (ctx.Db.Player.Identity.Find(owner) is not Player player)
+        {
+            throw new Exception("Not in the party.");
+        }
+
+        var slot = instance.EquippedSlot;
+        ctx.Db.PlayerItem.Id.Update(instance with { EquippedSlot = EquipSlot.Bag });
+        ctx.Db.Player.Identity.Update(player with
+        {
+            EquippedWeaponDefId = slot == EquipSlot.Weapon ? 0 : player.EquippedWeaponDefId,
+            EquippedHelmetDefId = slot == EquipSlot.Helmet ? 0 : player.EquippedHelmetDefId,
+            EquippedChestplateDefId = slot == EquipSlot.Chestplate ? 0 : player.EquippedChestplateDefId,
+            EquippedLeggingsDefId = slot == EquipSlot.Leggings ? 0 : player.EquippedLeggingsDefId,
+            EquippedBootsDefId = slot == EquipSlot.Boots ? 0 : player.EquippedBootsDefId,
+        });
+        RefreshDerivedStats(ctx, owner);
+    }
+
+    private static EquipSlot EquipSlotFor(ItemDef item) => item.Kind switch
+    {
+        ItemKind.Weapon => EquipSlot.Weapon,
+        ItemKind.Armor => item.ArmorSlot switch
+        {
+            ArmorSlot.Helmet => EquipSlot.Helmet,
+            ArmorSlot.Chestplate => EquipSlot.Chestplate,
+            ArmorSlot.Leggings => EquipSlot.Leggings,
+            ArmorSlot.Boots => EquipSlot.Boots,
+            _ => EquipSlot.Bag,
+        },
+        _ => EquipSlot.Bag,
+    };
+
+    private static uint BagCount(ReducerContext ctx, Identity owner)
+    {
+        uint count = 0;
+        foreach (var item in ctx.Db.PlayerItem.Owner.Filter(owner))
+        {
+            if (item.EquippedSlot == EquipSlot.Bag)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     private static void RefreshDerivedStats(ReducerContext ctx, Identity owner)
@@ -1229,16 +1343,23 @@ public static partial class Module
             throw new Exception("Not in the party.");
         }
 
-        ItemDef? weapon = player.EquippedWeaponDefId != 0 ? ctx.Db.ItemDef.Id.Find(player.EquippedWeaponDefId) : null;
-        ItemDef? armor = player.EquippedArmorDefId != 0 ? ctx.Db.ItemDef.Id.Find(player.EquippedArmorDefId) : null;
+        var gear = EquippedGear(ctx, player);
+        var strength = ClampStat(SaturatingAdd(player.BaseStrength, GearStat(gear, StatType.Strength)));
+        var dexterity = ClampStat(SaturatingAdd(player.BaseDexterity, GearStat(gear, StatType.Dexterity)));
+        var intelligence = ClampStat(SaturatingAdd(player.BaseIntelligence, GearStat(gear, StatType.Intelligence)));
+        var speed = ClampStat(SaturatingAdd(player.BaseSpeed, GearStat(gear, StatType.Speed)));
+        var atk = 0u;
+        var healthBonus = 0u;
+        var manaBonus = 0u;
+        foreach (var piece in gear)
+        {
+            atk = SaturatingAdd(atk, piece.AtkBonus);
+            healthBonus = SaturatingAdd(healthBonus, piece.MaxHealthBonus);
+            manaBonus = SaturatingAdd(manaBonus, piece.MaxManaBonus);
+        }
 
-        var strength = ClampStat(SaturatingAdd(player.BaseStrength, GearStat(weapon, armor, StatType.Strength)));
-        var dexterity = ClampStat(SaturatingAdd(player.BaseDexterity, GearStat(weapon, armor, StatType.Dexterity)));
-        var intelligence = ClampStat(SaturatingAdd(player.BaseIntelligence, GearStat(weapon, armor, StatType.Intelligence)));
-        var speed = ClampStat(SaturatingAdd(player.BaseSpeed, GearStat(weapon, armor, StatType.Speed)));
-        var atk = weapon?.AtkBonus ?? 0;
-        var maxHealth = SaturatingAdd(ClassMaxHealth(player.Class), armor?.MaxHealthBonus ?? 0);
-        var maxMana = SaturatingAdd(SaturatingAdd(ClassBaseMana(player.Class), intelligence), armor?.MaxManaBonus ?? 0);
+        var maxHealth = SaturatingAdd(ClassMaxHealth(player.Class), healthBonus);
+        var maxMana = SaturatingAdd(SaturatingAdd(ClassBaseMana(player.Class), intelligence), manaBonus);
 
         var currHealth = player.CurrHealth;
         if (maxHealth > player.MaxHealth)
@@ -1274,17 +1395,31 @@ public static partial class Module
         });
     }
 
-    private static uint GearStat(ItemDef? weapon, ItemDef? armor, StatType stat)
+    private static List<ItemDef> EquippedGear(ReducerContext ctx, Player player)
+    {
+        var gear = new List<ItemDef>();
+        AddGear(ctx, gear, player.EquippedWeaponDefId);
+        AddGear(ctx, gear, player.EquippedHelmetDefId);
+        AddGear(ctx, gear, player.EquippedChestplateDefId);
+        AddGear(ctx, gear, player.EquippedLeggingsDefId);
+        AddGear(ctx, gear, player.EquippedBootsDefId);
+        return gear;
+    }
+
+    private static void AddGear(ReducerContext ctx, List<ItemDef> gear, uint itemDefId)
+    {
+        if (itemDefId != 0 && ctx.Db.ItemDef.Id.Find(itemDefId) is ItemDef item)
+        {
+            gear.Add(item);
+        }
+    }
+
+    private static uint GearStat(List<ItemDef> gear, StatType stat)
     {
         uint bonus = 0;
-        if (weapon is ItemDef equippedWeapon)
+        foreach (var item in gear)
         {
-            bonus = SaturatingAdd(bonus, StatBonus(equippedWeapon, stat));
-        }
-
-        if (armor is ItemDef equippedArmor)
-        {
-            bonus = SaturatingAdd(bonus, StatBonus(equippedArmor, stat));
+            bonus = SaturatingAdd(bonus, StatBonus(item, stat));
         }
 
         return bonus;
@@ -1410,13 +1545,17 @@ public static partial class Module
             IsDefending = false,
             Alive = true,
             EquippedWeaponDefId = 0,
-            EquippedArmorDefId = 0,
+            EquippedHelmetDefId = 0,
+            EquippedChestplateDefId = 0,
+            EquippedLeggingsDefId = 0,
+            EquippedBootsDefId = 0,
         });
 
         var weapon = RequireItemDefByName(ctx, StarterWeaponName(classChoice));
         GiveItem(ctx, player.Identity, weapon.Id, 1);
-        GiveHealthPotions(ctx, player.Identity, 1);
         EquipFromCatalog(ctx, player.Identity, weapon);
+        GiveStarterArmor(ctx, player.Identity);
+        GiveHealthPotions(ctx, player.Identity, 1);
         GrantClassSkills(ctx, player.Identity, classChoice, 0);
     }
 
@@ -1499,14 +1638,107 @@ public static partial class Module
         _ => 8,
     };
 
+    private static void GiveStarterArmor(ReducerContext ctx, Identity owner)
+    {
+        GiveItem(ctx, owner, RequireItemDefByName(ctx, "Leather Helm").Id, 1);
+        GiveItem(ctx, owner, RequireItemDefByName(ctx, "Leather Vest").Id, 1);
+        GiveItem(ctx, owner, RequireItemDefByName(ctx, "Leather Leggings").Id, 1);
+        GiveItem(ctx, owner, RequireItemDefByName(ctx, "Leather Boots").Id, 1);
+    }
+
+    private static void SyncItemCatalog(ReducerContext ctx)
+    {
+        EnsureItem(ctx, "Leather Helm", ItemKind.Armor, WeaponType.None, ArmorSlot.Helmet, 0, 0, 0, 0, 0, 6, 0, 0, 0, 12);
+        EnsureItem(ctx, "Leather Vest", ItemKind.Armor, WeaponType.None, ArmorSlot.Chestplate, 0, 0, 0, 0, 0, 10, 0, 0, 0, 10);
+        EnsureItem(ctx, "Leather Leggings", ItemKind.Armor, WeaponType.None, ArmorSlot.Leggings, 0, 0, 0, 0, 1, 6, 0, 0, 0, 13);
+        EnsureItem(ctx, "Leather Boots", ItemKind.Armor, WeaponType.None, ArmorSlot.Boots, 0, 0, 0, 0, 1, 0, 0, 0, 0, 14);
+        EnsureItem(ctx, "Mage Robes", ItemKind.Armor, WeaponType.None, ArmorSlot.Chestplate, 0, 0, 0, 1, 0, 0, 20, 0, 0, 11);
+        foreach (var item in ctx.Db.ItemDef.Iter().ToList())
+        {
+            if (item.Kind != ItemKind.Armor && item.ArmorSlot != ArmorSlot.None)
+            {
+                ctx.Db.ItemDef.Id.Update(item with { ArmorSlot = ArmorSlot.None });
+            }
+        }
+    }
+
+    private static void EnsureItem(
+        ReducerContext ctx,
+        string name,
+        ItemKind kind,
+        WeaponType weaponType,
+        ArmorSlot armorSlot,
+        uint atkBonus,
+        uint strengthBonus,
+        uint dexterityBonus,
+        uint intelligenceBonus,
+        uint speedBonus,
+        uint maxHealthBonus,
+        uint maxManaBonus,
+        uint healAmount,
+        uint manaRestoreAmount,
+        uint spriteId)
+    {
+        foreach (var item in ctx.Db.ItemDef.Iter().ToList())
+        {
+            if (item.Name != name)
+            {
+                continue;
+            }
+
+            ctx.Db.ItemDef.Id.Update(item with
+            {
+                Kind = kind,
+                WeaponType = weaponType,
+                ArmorSlot = armorSlot,
+                AtkBonus = atkBonus,
+                StrengthBonus = strengthBonus,
+                DexterityBonus = dexterityBonus,
+                IntelligenceBonus = intelligenceBonus,
+                SpeedBonus = speedBonus,
+                MaxHealthBonus = maxHealthBonus,
+                MaxManaBonus = maxManaBonus,
+                HealAmount = healAmount,
+                ManaRestoreAmount = manaRestoreAmount,
+                SpriteId = spriteId,
+            });
+            return;
+        }
+
+        ctx.Db.ItemDef.Insert(new ItemDef
+        {
+            Id = 0,
+            Name = name,
+            Kind = kind,
+            WeaponType = weaponType,
+            ArmorSlot = armorSlot,
+            AtkBonus = atkBonus,
+            StrengthBonus = strengthBonus,
+            DexterityBonus = dexterityBonus,
+            IntelligenceBonus = intelligenceBonus,
+            SpeedBonus = speedBonus,
+            MaxHealthBonus = maxHealthBonus,
+            MaxManaBonus = maxManaBonus,
+            HealAmount = healAmount,
+            ManaRestoreAmount = manaRestoreAmount,
+            SpriteId = spriteId,
+        });
+    }
+
     private static void GiveItem(ReducerContext ctx, Identity owner, uint itemDefId, uint quantity)
     {
+        if (BagCount(ctx, owner) >= BagCapacity)
+        {
+            throw new Exception("Inventory is full.");
+        }
+
         ctx.Db.PlayerItem.Insert(new PlayerItem
         {
             Id = 0,
             Owner = owner,
             ItemDefId = itemDefId,
             Quantity = quantity,
+            EquippedSlot = EquipSlot.Bag,
         });
     }
 

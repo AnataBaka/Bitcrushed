@@ -303,6 +303,18 @@ public class GameManager : MonoBehaviour
         Status = "Equipping item...";
     }
 
+    public void UnequipItem(uint itemInstanceId)
+    {
+        if (!IsConnected())
+        {
+            Status = "Not connected.";
+            return;
+        }
+
+        Conn.Reducers.UnequipItem(itemInstanceId);
+        Status = "Unequipping item...";
+    }
+
     public static string ShortIdentity(Identity identity)
     {
         var hex = identity.ToString();

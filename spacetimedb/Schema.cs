@@ -47,6 +47,27 @@ public static partial class Module
     }
 
     [SpacetimeDB.Type]
+    public enum ArmorSlot
+    {
+        None,
+        Helmet,
+        Chestplate,
+        Leggings,
+        Boots,
+    }
+
+    [SpacetimeDB.Type]
+    public enum EquipSlot
+    {
+        Bag,
+        Weapon,
+        Helmet,
+        Chestplate,
+        Leggings,
+        Boots,
+    }
+
+    [SpacetimeDB.Type]
     public enum CombatActionType
     {
         Attack,
@@ -131,7 +152,10 @@ public static partial class Module
         public bool IsDefending;
         public bool Alive;
         public uint EquippedWeaponDefId;
-        public uint EquippedArmorDefId;
+        public uint EquippedHelmetDefId;
+        public uint EquippedChestplateDefId;
+        public uint EquippedLeggingsDefId;
+        public uint EquippedBootsDefId;
     }
 
     [SpacetimeDB.Table(Accessor = "SkillDef", Public = true)]
@@ -175,6 +199,7 @@ public static partial class Module
         public string Name;
         public ItemKind Kind;
         public WeaponType WeaponType;
+        public ArmorSlot ArmorSlot;
         public uint AtkBonus;
         public uint StrengthBonus;
         public uint DexterityBonus;
@@ -197,6 +222,7 @@ public static partial class Module
         public Identity Owner;
         public uint ItemDefId;
         public uint Quantity;
+        public EquipSlot EquippedSlot;
     }
 
     [SpacetimeDB.Table(Accessor = "Enemy", Public = true)]

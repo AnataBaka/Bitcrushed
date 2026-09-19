@@ -10,6 +10,9 @@ using CombatActionType = SpacetimeDB.Types.CombatActionType;
 public class CombatView : MonoBehaviour
 {
     const int SlotCount = 3;
+    const int BagColumns = 4;
+    const int BagRows = 3;
+    const int BagCapacity = BagColumns * BagRows;
     const float OrbScale = 0.72f;
     const string HealthPotionName = "Health Potion";
 
@@ -33,11 +36,14 @@ public class CombatView : MonoBehaviour
     float _hudHpShown = 1f;
     float _hudMpShown = 1f;
     Transform _turnRow;
+    Transform _equipRow;
+    Transform _bagGrid;
     Text _hudHpText;
     Text _hudMpText;
     Text _hudPotText;
     bool _menuOpen;
     bool _itemsMenu;
+    bool _canAct;
     bool _eventsBound;
     bool _lunging;
     uint _lastEventId;
@@ -53,13 +59,10 @@ public class CombatView : MonoBehaviour
         public TextMesh NameLabel;
         public Transform HpFill;
         public Transform MpFill;
-        public Transform AtbFill;
         public TextMesh HpLabel;
         public TextMesh MpLabel;
         public float ShownHp = 1f;
         public float ShownMp = 1f;
-        public float ShownAtb = 0f;
-        public float TargetAtb = 0f;
         public bool Busy;
         public bool IsTurn;
     }
@@ -111,8 +114,8 @@ public class CombatView : MonoBehaviour
 
     void CreateParty()
     {
-        var playerXs = new[] { -4.35f, -3.7f, -4.35f };
-        var enemyXs = new[] { 4.35f, 3.7f, 4.35f };
+        var playerXs = new[] { -3.45f, -2.8f, -3.45f };
+        var enemyXs = new[] { 3.85f, 3.2f, 3.85f };
         var ys = new[] { 1.85f, 0.35f, -1.15f };
 
         for (var i = 0; i < SlotCount; i++)
@@ -139,14 +142,13 @@ public class CombatView : MonoBehaviour
             Home = position,
             Orb = renderer,
             NameLabel = CreateWorldText(go.transform, new Vector3(0f, 1.02f, 0f), 38, Color.white),
-            AtbFill = CreateBar(go.transform, new Vector3(0f, -0.58f, 0f), new Color(0.95f, 0.78f, 0.22f)),
-            HpFill = CreateBar(go.transform, new Vector3(0f, -0.74f, 0f), new Color(0.82f, 0.18f, 0.22f)),
-            MpFill = CreateBar(go.transform, new Vector3(0f, -0.9f, 0f), new Color(0.25f, 0.55f, 0.95f)),
-            HpLabel = CreateWorldText(go.transform, new Vector3(0f, -0.74f, 0f), 24, Color.white),
-            MpLabel = CreateWorldText(go.transform, new Vector3(0f, -0.9f, 0f), 24, Color.white),
+            HpFill = CreateBar(go.transform, new Vector3(0f, -0.62f, 0f), new Color(0.82f, 0.18f, 0.22f)),
+            MpFill = CreateBar(go.transform, new Vector3(0f, -0.84f, 0f), new Color(0.25f, 0.55f, 0.95f)),
+            HpLabel = CreateWorldText(go.transform, new Vector3(0f, -0.62f, 0f), 32, Color.white),
+            MpLabel = CreateWorldText(go.transform, new Vector3(0f, -0.84f, 0f), 32, Color.white),
         };
-        slot.HpLabel.characterSize = 0.28f;
-        slot.MpLabel.characterSize = 0.28f;
+        slot.HpLabel.characterSize = 0.34f;
+        slot.MpLabel.characterSize = 0.34f;
         return slot;
     }
 
@@ -296,52 +298,53 @@ public class CombatView : MonoBehaviour
         scaler.matchWidthOrHeight = 0.5f;
         canvasGo.AddComponent<GraphicRaycaster>();
 
-        var hud = Panel(canvasGo.transform, "LocalHud", new Vector2(0.24f, 0.105f), new Vector2(0.76f, 0.24f), new Color(0.08f, 0.09f, 0.16f, 0.92f));
+        var hud = Panel(canvasGo.transform, "LocalHud", new Vector2(0.30f, 0.02f), new Vector2(0.66f, 0.155f), new Color(0.08f, 0.09f, 0.16f, 0.92f));
         hud.GetComponent<Outline>().effectColor = new Color(0.95f, 0.78f, 0.28f, 0.45f);
-        _hudName = Label(hud.transform, "Name", "Ready", 24, TextAnchor.MiddleLeft, new Vector2(0.04f, 0.58f), new Vector2(0.62f, 0.95f));
-        _hudPotText = Label(hud.transform, "Pots", "Pots x1", 20, TextAnchor.MiddleRight, new Vector2(0.5f, 0.58f), new Vector2(0.96f, 0.95f));
+        _hudName = Label(hud.transform, "Name", "Ready", 22, TextAnchor.MiddleLeft, new Vector2(0.04f, 0.58f), new Vector2(0.62f, 0.95f));
+        _hudPotText = Label(hud.transform, "Pots", "Pots x1", 18, TextAnchor.MiddleRight, new Vector2(0.5f, 0.58f), new Vector2(0.96f, 0.95f));
         _hudHpFill = Bar(hud.transform, "Hp", new Vector2(0.04f, 0.32f), new Vector2(0.96f, 0.55f), new Color(0.86f, 0.22f, 0.28f));
         _hudMpFill = Bar(hud.transform, "Mp", new Vector2(0.04f, 0.08f), new Vector2(0.96f, 0.3f), new Color(0.28f, 0.58f, 1f));
-        _hudHpText = Label(_hudHpFill.transform.parent, "HpText", "HP", 17, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
-        _hudMpText = Label(_hudMpFill.transform.parent, "MpText", "MP", 17, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
+        _hudHpText = Label(_hudHpFill.transform.parent, "HpText", "HP", 20, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
+        _hudMpText = Label(_hudMpFill.transform.parent, "MpText", "MP", 20, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
 
-        var turnHud = Panel(canvasGo.transform, "TurnHud", new Vector2(0.18f, 0.9f), new Vector2(0.82f, 0.985f), new Color(0.08f, 0.09f, 0.16f, 0.9f));
+        var turnHud = Panel(canvasGo.transform, "TurnHud", new Vector2(0.012f, 0.45f), new Vector2(0.155f, 0.985f), new Color(0.08f, 0.09f, 0.16f, 0.9f));
         turnHud.GetComponent<Outline>().effectColor = new Color(0.95f, 0.78f, 0.28f, 0.35f);
-        var turnTitle = Label(turnHud.transform, "TurnTitle", "TURN", 14, TextAnchor.MiddleLeft, new Vector2(0.02f, 0f), new Vector2(0.12f, 1f));
+        var turnTitle = Label(turnHud.transform, "TurnTitle", "TURN", 16, TextAnchor.MiddleCenter, new Vector2(0.04f, 0.92f), new Vector2(0.96f, 0.995f));
         turnTitle.color = new Color(0.95f, 0.82f, 0.4f);
-        var turnRow = new GameObject("TurnRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+        var turnRow = new GameObject("TurnRow", typeof(RectTransform), typeof(VerticalLayoutGroup));
         turnRow.transform.SetParent(turnHud.transform, false);
         var turnRect = turnRow.GetComponent<RectTransform>();
-        turnRect.anchorMin = new Vector2(0.12f, 0.08f);
-        turnRect.anchorMax = new Vector2(0.98f, 0.92f);
+        turnRect.anchorMin = new Vector2(0.06f, 0.02f);
+        turnRect.anchorMax = new Vector2(0.94f, 0.91f);
         turnRect.offsetMin = Vector2.zero;
         turnRect.offsetMax = Vector2.zero;
-        var turnLayout = turnRow.GetComponent<HorizontalLayoutGroup>();
-        turnLayout.spacing = 8f;
-        turnLayout.childAlignment = TextAnchor.MiddleLeft;
-        turnLayout.childForceExpandHeight = true;
+        var turnLayout = turnRow.GetComponent<VerticalLayoutGroup>();
+        turnLayout.spacing = 6f;
+        turnLayout.childAlignment = TextAnchor.UpperCenter;
+        turnLayout.childForceExpandHeight = false;
         turnLayout.childForceExpandWidth = true;
+        turnLayout.childControlHeight = true;
+        turnLayout.childControlWidth = true;
         _turnRow = turnRow.transform;
 
-        var row = new GameObject("Row", typeof(RectTransform), typeof(HorizontalLayoutGroup));
-        row.transform.SetParent(canvasGo.transform, false);
-        var rowRect = row.GetComponent<RectTransform>();
-        rowRect.anchorMin = new Vector2(0.22f, 0.025f);
-        rowRect.anchorMax = new Vector2(0.78f, 0.1f);
-        rowRect.offsetMin = Vector2.zero;
-        rowRect.offsetMax = Vector2.zero;
-        var layout = row.GetComponent<HorizontalLayoutGroup>();
-        layout.spacing = 14f;
+        CreateInventoryPanel(canvasGo.transform);
+
+        var actions = Panel(canvasGo.transform, "ActionRow", new Vector2(0.78f, 0.02f), new Vector2(0.985f, 0.22f), new Color(0.08f, 0.09f, 0.16f, 0.92f));
+        actions.GetComponent<Outline>().effectColor = new Color(0.95f, 0.78f, 0.28f, 0.45f);
+        var layout = actions.AddComponent<VerticalLayoutGroup>();
+        layout.spacing = 8f;
         layout.childAlignment = TextAnchor.MiddleCenter;
-        layout.childForceExpandHeight = true;
+        layout.childForceExpandHeight = false;
         layout.childForceExpandWidth = true;
-        layout.padding = new RectOffset(8, 8, 4, 4);
+        layout.childControlHeight = true;
+        layout.childControlWidth = true;
+        layout.padding = new RectOffset(10, 10, 8, 8);
 
-        _attacks = CreateButton(row.transform, "Attacks", ToggleAttacksMenu);
-        _focus = CreateButton(row.transform, "Focus", OnFocus);
-        _items = CreateButton(row.transform, "Items", ToggleItemsMenu);
+        _attacks = CreateButton(actions.transform, "Attacks", ToggleAttacksMenu);
+        _focus = CreateButton(actions.transform, "Focus", OnFocus);
+        _items = CreateButton(actions.transform, "Items", ToggleItemsMenu);
 
-        _menu = Panel(canvasGo.transform, "ActionMenu", new Vector2(0.22f, 0.115f), new Vector2(0.5f, 0.48f), new Color(0.06f, 0.07f, 0.11f, 0.94f));
+        _menu = Panel(canvasGo.transform, "ActionMenu", new Vector2(0.78f, 0.23f), new Vector2(0.985f, 0.62f), new Color(0.06f, 0.07f, 0.11f, 0.94f));
         var menuLayout = _menu.AddComponent<VerticalLayoutGroup>();
         menuLayout.spacing = 8f;
         menuLayout.padding = new RectOffset(12, 12, 12, 12);
@@ -352,8 +355,49 @@ public class CombatView : MonoBehaviour
         menuLayout.childControlWidth = true;
         _menu.SetActive(false);
 
-        _toast = Label(canvasGo.transform, "Toast", "", 26, TextAnchor.MiddleCenter, new Vector2(0.2f, 0.84f), new Vector2(0.8f, 0.94f));
+        _toast = Label(canvasGo.transform, "Toast", "", 26, TextAnchor.MiddleCenter, new Vector2(0.22f, 0.88f), new Vector2(0.78f, 0.97f));
         _toast.color = new Color(1f, 0.93f, 0.72f);
+    }
+
+    void CreateInventoryPanel(Transform canvas)
+    {
+        var inv = Panel(canvas, "InventoryHud", new Vector2(0.012f, 0.015f), new Vector2(0.275f, 0.43f), new Color(0.08f, 0.09f, 0.16f, 0.92f));
+        inv.GetComponent<Outline>().effectColor = new Color(0.95f, 0.78f, 0.28f, 0.45f);
+        var gearTitle = Label(inv.transform, "GearTitle", "GEAR", 16, TextAnchor.MiddleLeft, new Vector2(0.05f, 0.9f), new Vector2(0.95f, 0.99f));
+        gearTitle.color = new Color(0.95f, 0.82f, 0.4f);
+
+        var equip = new GameObject("EquipRow", typeof(RectTransform), typeof(GridLayoutGroup));
+        equip.transform.SetParent(inv.transform, false);
+        var equipRect = equip.GetComponent<RectTransform>();
+        equipRect.anchorMin = new Vector2(0.05f, 0.58f);
+        equipRect.anchorMax = new Vector2(0.95f, 0.89f);
+        equipRect.offsetMin = Vector2.zero;
+        equipRect.offsetMax = Vector2.zero;
+        var equipGrid = equip.GetComponent<GridLayoutGroup>();
+        equipGrid.cellSize = new Vector2(112f, 48f);
+        equipGrid.spacing = new Vector2(8f, 6f);
+        equipGrid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        equipGrid.constraintCount = 2;
+        equipGrid.childAlignment = TextAnchor.MiddleLeft;
+        _equipRow = equip.transform;
+
+        var bagTitle = Label(inv.transform, "BagTitle", "BAG", 16, TextAnchor.MiddleLeft, new Vector2(0.05f, 0.5f), new Vector2(0.95f, 0.58f));
+        bagTitle.color = new Color(0.95f, 0.82f, 0.4f);
+
+        var bag = new GameObject("BagGrid", typeof(RectTransform), typeof(GridLayoutGroup));
+        bag.transform.SetParent(inv.transform, false);
+        var bagRect = bag.GetComponent<RectTransform>();
+        bagRect.anchorMin = new Vector2(0.05f, 0.04f);
+        bagRect.anchorMax = new Vector2(0.95f, 0.5f);
+        bagRect.offsetMin = Vector2.zero;
+        bagRect.offsetMax = Vector2.zero;
+        var bagGrid = bag.GetComponent<GridLayoutGroup>();
+        bagGrid.cellSize = new Vector2(64f, 52f);
+        bagGrid.spacing = new Vector2(6f, 6f);
+        bagGrid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        bagGrid.constraintCount = BagColumns;
+        bagGrid.childAlignment = TextAnchor.UpperLeft;
+        _bagGrid = bag.transform;
     }
 
     GameObject Panel(Transform parent, string name, Vector2 min, Vector2 max, Color color)
@@ -503,7 +547,8 @@ public class CombatView : MonoBehaviour
             _toast.text = row.Message;
         }
 
-        if (row.ActionType == CombatActionType.Attack || row.ActionType == CombatActionType.Spell)
+        if ((row.ActionType == CombatActionType.Attack || row.ActionType == CombatActionType.Spell)
+            && (row.ActorKind != row.TargetKind || row.ActorId != row.TargetId))
         {
             _lunges.Enqueue(row);
         }
@@ -521,18 +566,34 @@ public class CombatView : MonoBehaviour
         }
 
         actor.Busy = true;
-        var home = actor.Home;
-        var dest = Vector3.Lerp(home, target.Home, 0.78f);
-        yield return MoveTo(actor.Root, home, dest, 0.16f);
+        var dest = Vector3.Lerp(actor.Home, target.Home, 0.78f);
+        yield return MoveTo(actor.Root, actor.Root.position, dest, 0.16f);
         if (target.Orb != null)
         {
             StartCoroutine(PunchScale(target.Root));
         }
 
-        yield return MoveTo(actor.Root, dest, home, 0.2f);
-        actor.Root.position = home;
-        actor.Busy = false;
+        yield return new WaitForSeconds(0.08f);
+        var chain = NextLungeSameActor(row);
+        if (!chain)
+        {
+            yield return MoveTo(actor.Root, dest, actor.Home, 0.2f);
+            actor.Root.position = actor.Home;
+            actor.Busy = false;
+        }
+
         _lunging = false;
+    }
+
+    bool NextLungeSameActor(CombatEvent row)
+    {
+        if (_lunges.Count == 0)
+        {
+            return false;
+        }
+
+        var next = _lunges.Peek();
+        return next.ActorKind == row.ActorKind && next.ActorId == row.ActorId;
     }
 
     static IEnumerator MoveTo(Transform actor, Vector3 from, Vector3 to, float duration)
@@ -594,6 +655,7 @@ public class CombatView : MonoBehaviour
 
         RefreshHud(local);
         RebuildTurnStrip(session);
+        RebuildInventory(local);
 
         var canAct = local != null
             && local.Alive
@@ -602,6 +664,7 @@ public class CombatView : MonoBehaviour
             && session.Phase == GamePhase.Combat
             && session.ActiveKind == CombatantKind.Player
             && session.ActiveCombatantId == local.Slot;
+        _canAct = canAct;
 
         SetButtons(canAct);
         if (!canAct)
@@ -648,7 +711,6 @@ public class CombatView : MonoBehaviour
             slot.Orb.color = new Color(0.28f, 0.3f, 0.34f, 0.4f);
             slot.NameLabel.text = "Empty";
             slot.IsTurn = false;
-            slot.TargetAtb = 0f;
             SetBar(slot, 0f, 0f, 0, 0, 0, 0);
             return;
         }
@@ -661,7 +723,6 @@ public class CombatView : MonoBehaviour
             && session.ActiveCombatantId == player.Slot;
         slot.NameLabel.text = $"{player.Name}{you}\n{player.Class}";
         slot.IsTurn = isTurn;
-        slot.TargetAtb = isTurn ? 1f : Mathf.Clamp01(player.Speed / 8f);
         slot.Orb.color = !player.Alive
             ? new Color(0.35f, 0.35f, 0.35f)
             : isTurn ? Color.Lerp(ClassColor(player.Class), Color.white, 0.35f) : ClassColor(player.Class);
@@ -688,7 +749,6 @@ public class CombatView : MonoBehaviour
                 && session.ActiveKind == CombatantKind.Enemy
                 && session.ActiveCombatantId == enemy.Id;
         }
-        slot.TargetAtb = slot.IsTurn ? 1f : Mathf.Clamp01(enemy.Speed / 8f);
         slot.Orb.color = !enemy.Alive
             ? new Color(0.35f, 0.35f, 0.35f)
             : target != null && target.Id == enemy.Id ? new Color(0.95f, 0.45f, 0.42f) : new Color(0.86f, 0.28f, 0.28f);
@@ -741,12 +801,6 @@ public class CombatView : MonoBehaviour
             var mp = new Vector3(Mathf.Max(0.02f, slot.ShownMp), slot.MpFill.localScale.y, 1f);
             slot.HpFill.localScale = Vector3.Lerp(slot.HpFill.localScale, hp, Time.deltaTime * 10f);
             slot.MpFill.localScale = Vector3.Lerp(slot.MpFill.localScale, mp, Time.deltaTime * 10f);
-            if (slot.AtbFill != null)
-            {
-                slot.ShownAtb = Mathf.MoveTowards(slot.ShownAtb, slot.TargetAtb, Time.deltaTime * (slot.IsTurn ? 2.8f : 0.9f + slot.TargetAtb));
-                var atb = new Vector3(Mathf.Max(0.02f, slot.ShownAtb), slot.AtbFill.localScale.y, 1f);
-                slot.AtbFill.localScale = Vector3.Lerp(slot.AtbFill.localScale, atb, Time.deltaTime * 12f);
-            }
         }
     }
 
@@ -778,7 +832,7 @@ public class CombatView : MonoBehaviour
 
         if (GameManager.Conn == null || session == null || session.Phase != GamePhase.Combat)
         {
-            Label(_turnRow, "Wait", "Waiting for combat...", 16, TextAnchor.MiddleLeft, Vector2.zero, Vector2.one);
+            Label(_turnRow, "Wait", "Waiting", 14, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
             return;
         }
 
@@ -793,8 +847,9 @@ public class CombatView : MonoBehaviour
         {
             var active = session.ActiveKind == row.Kind && session.ActiveCombatantId == row.CombatantId;
             var label = TurnLabel(row);
-            var chip = CreateButton(_turnRow, $"{label}  SPD {row.Speed}", () => { });
+            var chip = CreateButton(_turnRow, $"{label}\nSPD {row.Speed}", () => { });
             chip.interactable = false;
+            chip.GetComponent<LayoutElement>().preferredHeight = 44f;
             var image = chip.GetComponent<Image>();
             image.color = active
                 ? new Color(0.95f, 0.78f, 0.28f, 0.95f)
@@ -804,7 +859,9 @@ public class CombatView : MonoBehaviour
             var text = chip.GetComponentInChildren<Text>();
             if (text != null)
             {
-                text.fontSize = 15;
+                text.fontSize = 13;
+                text.horizontalOverflow = HorizontalWrapMode.Wrap;
+                text.verticalOverflow = VerticalWrapMode.Overflow;
                 text.color = active ? new Color(0.12f, 0.1f, 0.06f) : Color.white;
             }
         }
@@ -943,6 +1000,179 @@ public class CombatView : MonoBehaviour
         CloseMenu();
     }
 
+    void RebuildInventory(Player local)
+    {
+        ClearChildren(_equipRow);
+        ClearChildren(_bagGrid);
+        if (_equipRow == null || _bagGrid == null)
+        {
+            return;
+        }
+
+        CreateInvSlot(_equipRow, "Helm", FindEquipped(local, EquipSlot.Helmet), true);
+        CreateInvSlot(_equipRow, "Chest", FindEquipped(local, EquipSlot.Chestplate), true);
+        CreateInvSlot(_equipRow, "Legs", FindEquipped(local, EquipSlot.Leggings), true);
+        CreateInvSlot(_equipRow, "Boots", FindEquipped(local, EquipSlot.Boots), true);
+        CreateInvSlot(_equipRow, "Weapon", FindEquipped(local, EquipSlot.Weapon), true);
+
+        var bag = BagItems(local);
+        for (var i = 0; i < BagCapacity; i++)
+        {
+            CreateInvSlot(_bagGrid, "", i < bag.Count ? bag[i] : null, false);
+        }
+    }
+
+    void CreateInvSlot(Transform parent, string emptyLabel, PlayerItem item, bool equipped)
+    {
+        var text = emptyLabel;
+        uint itemId = 0;
+        if (item != null)
+        {
+            itemId = item.Id;
+            var def = ItemDefOf(item);
+            text = def == null ? emptyLabel : SlotText(def, item);
+        }
+
+        var button = CreateButton(parent, string.IsNullOrEmpty(text) ? " " : text, () => OnInventoryClick(itemId, equipped));
+        button.GetComponent<LayoutElement>().preferredHeight = 48f;
+        var image = button.GetComponent<Image>();
+        var label = button.GetComponentInChildren<Text>();
+        if (label != null)
+        {
+            label.fontSize = 13;
+            label.horizontalOverflow = HorizontalWrapMode.Wrap;
+            label.verticalOverflow = VerticalWrapMode.Overflow;
+        }
+
+        if (item == null)
+        {
+            button.interactable = false;
+            image.color = new Color(0.14f, 0.15f, 0.22f, 0.85f);
+            if (label != null)
+            {
+                label.text = emptyLabel;
+                label.color = new Color(0.7f, 0.72f, 0.8f, 0.7f);
+            }
+
+            return;
+        }
+
+        button.interactable = true;
+        image.color = equipped
+            ? new Color(0.28f, 0.24f, 0.16f, 0.98f)
+            : new Color(0.18f, 0.22f, 0.38f, 0.98f);
+    }
+
+    void OnInventoryClick(uint itemId, bool equipped)
+    {
+        if (itemId == 0 || GameManager.Instance == null || GameManager.Conn == null)
+        {
+            return;
+        }
+
+        var item = GameManager.Conn.Db.PlayerItem.Id.Find(itemId);
+        if (item == null)
+        {
+            return;
+        }
+
+        if (equipped)
+        {
+            GameManager.Instance.UnequipItem(itemId);
+            return;
+        }
+
+        var def = ItemDefOf(item);
+        if (def == null)
+        {
+            return;
+        }
+
+        if (def.Kind == ItemKind.Consumable)
+        {
+            if (!_canAct)
+            {
+                if (_toast != null)
+                {
+                    _toast.text = "Wait for your turn to use items.";
+                }
+
+                return;
+            }
+
+            GameManager.Instance.SubmitAction(CombatActionType.Item, 0, 0, itemId);
+            return;
+        }
+
+        GameManager.Instance.EquipItem(itemId);
+    }
+
+    static void ClearChildren(Transform parent)
+    {
+        if (parent == null)
+        {
+            return;
+        }
+
+        for (var i = parent.childCount - 1; i >= 0; i--)
+        {
+            DestroyImmediate(parent.GetChild(i).gameObject);
+        }
+    }
+
+    static PlayerItem FindEquipped(Player local, EquipSlot slot)
+    {
+        if (local == null || GameManager.Conn == null)
+        {
+            return null;
+        }
+
+        foreach (var item in GameManager.Conn.Db.PlayerItem.Iter())
+        {
+            if (item.Owner == local.Identity && item.EquippedSlot == slot)
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    static List<PlayerItem> BagItems(Player local)
+    {
+        var bag = new List<PlayerItem>();
+        if (local == null || GameManager.Conn == null)
+        {
+            return bag;
+        }
+
+        foreach (var item in GameManager.Conn.Db.PlayerItem.Iter())
+        {
+            if (item.Owner == local.Identity && item.EquippedSlot == EquipSlot.Bag)
+            {
+                bag.Add(item);
+            }
+        }
+
+        bag.Sort((a, b) => a.Id.CompareTo(b.Id));
+        if (bag.Count > BagCapacity)
+        {
+            bag.RemoveRange(BagCapacity, bag.Count - BagCapacity);
+        }
+
+        return bag;
+    }
+
+    static ItemDef ItemDefOf(PlayerItem item)
+    {
+        return GameManager.Conn == null ? null : GameManager.Conn.Db.ItemDef.Id.Find(item.ItemDefId);
+    }
+
+    static string SlotText(ItemDef def, PlayerItem item)
+    {
+        return item.Quantity > 1 ? $"{def.Name}\nx{item.Quantity}" : def.Name;
+    }
+
     static uint HealthPotionCount(Player local)
     {
         var potion = FindHealthPotion(local);
@@ -958,7 +1188,7 @@ public class CombatView : MonoBehaviour
 
         foreach (var item in GameManager.Conn.Db.PlayerItem.Iter())
         {
-            if (item.Owner != local.Identity)
+            if (item.Owner != local.Identity || item.EquippedSlot != EquipSlot.Bag)
             {
                 continue;
             }

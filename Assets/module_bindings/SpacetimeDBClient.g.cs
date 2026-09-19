@@ -648,6 +648,7 @@ namespace SpacetimeDB.Types
                 Reducer.ResetEncounter args => Reducers.InvokeResetEncounter(eventContext, args),
                 Reducer.StartRun args => Reducers.InvokeStartRun(eventContext, args),
                 Reducer.SubmitAction args => Reducers.InvokeSubmitAction(eventContext, args),
+                Reducer.UnequipItem args => Reducers.InvokeUnequipItem(eventContext, args),
                 _ => throw new ArgumentOutOfRangeException("Reducer", $"Unknown reducer {reducer}")
             };
         }

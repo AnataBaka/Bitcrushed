@@ -56,6 +56,7 @@ public static partial class Module
             Name = "Starter Sword",
             Kind = ItemKind.Weapon,
             WeaponType = WeaponType.Sword,
+            ArmorSlot = ArmorSlot.None,
             AtkBonus = 6,
             StrengthBonus = 1,
             SpriteId = 1,
@@ -66,6 +67,7 @@ public static partial class Module
             Name = "Starter Bow",
             Kind = ItemKind.Weapon,
             WeaponType = WeaponType.Bow,
+            ArmorSlot = ArmorSlot.None,
             AtkBonus = 5,
             DexterityBonus = 1,
             SpriteId = 2,
@@ -76,6 +78,7 @@ public static partial class Module
             Name = "Starter Staff",
             Kind = ItemKind.Weapon,
             WeaponType = WeaponType.Staff,
+            ArmorSlot = ArmorSlot.None,
             AtkBonus = 4,
             IntelligenceBonus = 1,
             SpriteId = 3,
@@ -86,6 +89,7 @@ public static partial class Module
             Name = "Starter Dagger",
             Kind = ItemKind.Weapon,
             WeaponType = WeaponType.Dagger,
+            ArmorSlot = ArmorSlot.None,
             AtkBonus = 5,
             SpeedBonus = 1,
             SpriteId = 4,
@@ -93,11 +97,43 @@ public static partial class Module
         ctx.Db.ItemDef.Insert(new ItemDef
         {
             Id = 0,
+            Name = "Leather Helm",
+            Kind = ItemKind.Armor,
+            WeaponType = WeaponType.None,
+            ArmorSlot = ArmorSlot.Helmet,
+            MaxHealthBonus = 6,
+            SpriteId = 12,
+        });
+        ctx.Db.ItemDef.Insert(new ItemDef
+        {
+            Id = 0,
             Name = "Leather Vest",
             Kind = ItemKind.Armor,
             WeaponType = WeaponType.None,
+            ArmorSlot = ArmorSlot.Chestplate,
             MaxHealthBonus = 10,
             SpriteId = 10,
+        });
+        ctx.Db.ItemDef.Insert(new ItemDef
+        {
+            Id = 0,
+            Name = "Leather Leggings",
+            Kind = ItemKind.Armor,
+            WeaponType = WeaponType.None,
+            ArmorSlot = ArmorSlot.Leggings,
+            MaxHealthBonus = 6,
+            SpeedBonus = 1,
+            SpriteId = 13,
+        });
+        ctx.Db.ItemDef.Insert(new ItemDef
+        {
+            Id = 0,
+            Name = "Leather Boots",
+            Kind = ItemKind.Armor,
+            WeaponType = WeaponType.None,
+            ArmorSlot = ArmorSlot.Boots,
+            SpeedBonus = 1,
+            SpriteId = 14,
         });
         ctx.Db.ItemDef.Insert(new ItemDef
         {
@@ -105,6 +141,7 @@ public static partial class Module
             Name = "Mage Robes",
             Kind = ItemKind.Armor,
             WeaponType = WeaponType.None,
+            ArmorSlot = ArmorSlot.Chestplate,
             MaxManaBonus = 20,
             IntelligenceBonus = 1,
             SpriteId = 11,
@@ -115,6 +152,7 @@ public static partial class Module
             Name = "Health Potion",
             Kind = ItemKind.Consumable,
             WeaponType = WeaponType.None,
+            ArmorSlot = ArmorSlot.None,
             HealAmount = 30,
             SpriteId = 20,
         });
@@ -124,6 +162,7 @@ public static partial class Module
             Name = "Mana Potion",
             Kind = ItemKind.Consumable,
             WeaponType = WeaponType.None,
+            ArmorSlot = ArmorSlot.None,
             ManaRestoreAmount = 40,
             SpriteId = 21,
         });

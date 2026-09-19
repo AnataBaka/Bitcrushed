@@ -25,6 +25,7 @@ public static partial class Module
     public const uint OffStatMax = 3;
     public const uint ClashDamageBonus = 1;
     public const uint SpriteVariantCount = 8;
+    public const uint BagCapacity = 12;
 
     /// <summary>
     /// XP required to go from `level` to `level + 1` is `level * 100`.
