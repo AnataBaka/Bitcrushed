@@ -280,7 +280,7 @@ public class BattleHud : MonoBehaviour
             {
                 _stale.Add(pair.Key);
             }
-            else if (!entity.Alive && !AnimationsPending())
+            else if (!entity.Alive && !AnimationsPending() && (pair.Value == null || !pair.Value.Busy))
             {
                 _stale.Add(pair.Key);
             }
@@ -297,7 +297,23 @@ public class BattleHud : MonoBehaviour
         }
     }
 
-    bool AnimationsPending() => _animating || _pendingHits.Count > 0;
+    bool AnimationsPending()
+    {
+        if (_animating || _pendingHits.Count > 0)
+        {
+            return true;
+        }
+
+        foreach (var pair in _views)
+        {
+            if (pair.Value != null && pair.Value.Busy)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     void HandleReadyClicked()
     {
@@ -460,12 +476,40 @@ public class BattleHud : MonoBehaviour
             && target != null
         )
         {
-            actor.PlayLunge(target.Home);
-            yield return new WaitForSeconds(0.14f);
-            target.PlayHit();
-            // Waiting on a fixed duration rather than the lunge coroutine keeps
-            // the queue moving even if the card is destroyed mid-strike.
-            yield return new WaitForSeconds(EntityView.LungeSeconds - 0.14f);
+            void Impact()
+            {
+                if (target != null)
+                {
+                    target.PlayHit();
+                }
+
+                var victim = GameManager.FindEntity(row.TargetEntityId);
+                if (victim != null && !victim.Alive && target != null)
+                {
+                    target.PlayDeath();
+                }
+            }
+
+            if (actor.UsesWarriorSprites)
+            {
+                yield return actor.PlayStrike(target.Home, Impact);
+            }
+            else
+            {
+                actor.PlayLunge(target.Home);
+                yield return new WaitForSeconds(0.14f);
+                Impact();
+                // Waiting on a fixed duration rather than the lunge coroutine keeps
+                // the queue moving even if the card is destroyed mid-strike.
+                yield return new WaitForSeconds(EntityView.LungeSeconds - 0.14f);
+            }
+
+            var wait = 0f;
+            while (target != null && target.Busy && wait < 2f)
+            {
+                wait += Time.deltaTime;
+                yield return null;
+            }
         }
 
         _animating = false;

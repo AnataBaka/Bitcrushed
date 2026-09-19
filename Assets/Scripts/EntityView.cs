@@ -30,10 +30,22 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
 
     Vector2 _home;
     bool _lunging;
+    bool _striking;
+    bool _dying;
+    bool _deadPose;
+    bool _spriteMode;
+    SpriteFlipbook _flipbook;
     Coroutine _hit;
+    Coroutine _death;
 
     /// Where the card sits when nothing is animating.
     public Vector2 Home => _home;
+
+    /// True once this card is drawing Knight_1 frames instead of a placeholder.
+    public bool UsesWarriorSprites => _spriteMode;
+
+    /// True while a lunge, walk-in strike, or death clip owns the card.
+    public bool Busy => _lunging || _striking || _dying;
 
     public static EntityView Create(Transform parent, string name, Vector2 size, bool showMana)
     {
@@ -144,8 +156,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         _root.pivot = new Vector2(0.5f, 0f);
         _home = anchoredPosition;
 
-        // A lunge in flight owns the position until it puts the card back.
-        if (!_lunging)
+        // A lunge or walk-in strike owns the position until it puts the card back.
+        if (!_lunging && !_striking)
         {
             _root.anchoredPosition = anchoredPosition;
         }
@@ -154,8 +166,104 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     /// How long a full lunge takes, so callers can pace a volley of strikes.
     public const float LungeSeconds = 0.32f;
 
-    /// Steps most of the way toward the target and back.
+    /// Steps most of the way toward the target and back. Used by placeholder
+    /// combatants; Warriors walk all the way in and swing instead.
     public void PlayLunge(Vector2 targetPosition) => StartCoroutine(LungeRoutine(targetPosition));
+
+    /// Walk to the enemy, play the Knight_1 sword swing, walk home.
+    public IEnumerator PlayStrike(Vector2 targetPosition, Action onImpact)
+    {
+        if (!_spriteMode || _flipbook == null || !WarriorSpriteLibrary.Ready)
+        {
+            PlayLunge(targetPosition);
+            yield return new WaitForSeconds(0.14f);
+            onImpact?.Invoke();
+            yield return new WaitForSeconds(LungeSeconds - 0.14f);
+            yield break;
+        }
+
+        _striking = true;
+        transform.SetAsLastSibling();
+
+        var start = _home;
+        var reach = targetPosition + new Vector2(-100f, 0f);
+        var outbound = MoveSeconds(start, reach);
+        var inbound = MoveSeconds(reach, start);
+
+        _flipbook.Play(WarriorSpriteLibrary.Walk, WarriorSpriteLibrary.WalkFps, true);
+        yield return Slide(start, reach, outbound);
+
+        _flipbook.Play(WarriorSpriteLibrary.Attack, WarriorSpriteLibrary.AttackFps, false);
+        var swing = WarriorSpriteLibrary.Attack.Length / WarriorSpriteLibrary.AttackFps;
+        yield return new WaitForSeconds(swing * 0.55f);
+        onImpact?.Invoke();
+        while (_flipbook != null && _flipbook.IsPlaying)
+        {
+            yield return null;
+        }
+
+        if (!_deadPose && !_dying)
+        {
+            _flipbook.Play(WarriorSpriteLibrary.Walk, WarriorSpriteLibrary.WalkFps, true);
+        }
+
+        yield return Slide(reach, _home, inbound);
+        _root.anchoredPosition = _home;
+
+        if (!_deadPose && !_dying && _flipbook != null)
+        {
+            _flipbook.Play(WarriorSpriteLibrary.Idle, WarriorSpriteLibrary.IdleFps, true);
+        }
+
+        _striking = false;
+    }
+
+    /// Plays the Knight_1 death clip and holds the last frame. No-op for placeholders.
+    public void PlayDeath()
+    {
+        if (!_spriteMode || _dying || _deadPose)
+        {
+            return;
+        }
+
+        if (_death != null)
+        {
+            StopCoroutine(_death);
+        }
+
+        _death = StartCoroutine(DeathRoutine());
+    }
+
+    IEnumerator DeathRoutine()
+    {
+        _dying = true;
+        if (_hit != null)
+        {
+            StopCoroutine(_hit);
+            _hit = null;
+            _shape.transform.localScale = Vector3.one;
+        }
+
+        if (_flipbook != null && WarriorSpriteLibrary.Ready)
+        {
+            yield return _flipbook.PlayOnce(
+                WarriorSpriteLibrary.Dead,
+                WarriorSpriteLibrary.DeadFps
+            );
+            _flipbook.HoldLast();
+        }
+
+        _shape.color = new Color(0.72f, 0.72f, 0.72f, 1f);
+        _dying = false;
+        _deadPose = true;
+        _death = null;
+    }
+
+    static float MoveSeconds(Vector2 from, Vector2 to)
+    {
+        var distance = Vector2.Distance(from, to);
+        return Mathf.Clamp(distance / 1600f, 0.35f, 1.15f);
+    }
 
     IEnumerator LungeRoutine(Vector2 targetPosition)
     {
@@ -211,7 +319,10 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
 
         shape.localScale = Vector3.one;
-        _shape.color = Color.white;
+        if (!_deadPose && !_dying)
+        {
+            _shape.color = Color.white;
+        }
         _hit = null;
     }
 
@@ -227,15 +338,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         _onClick = onClick;
 
         var isEnemy = entity.Faction == SpacetimeDB.Types.Team.Enemies;
-        var color = isEnemy
-            ? PlaceholderArt.EnemyVisual(entity.ClassName).Color
-            : PlaceholderArt.ClassColor(entity.ClassName);
-        var shape = isEnemy
-            ? PlaceholderArt.EnemyVisual(entity.ClassName).Shape
-            : PlaceholderArt.ClassShape(entity.ClassName);
-
-        _shape.sprite = PlaceholderArt.Shape(shape, color);
-        _shape.color = Color.white;
+        ApplyVisual(entity, isEnemy);
 
         var suffix = isEnemy ? "" : $" ({entity.ClassName})";
         _nameText.text = $"{entity.Name}{suffix}{(isLocal ? " [you]" : "")}";
@@ -267,6 +370,60 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
 
         _button.interactable = entity.Alive;
+    }
+
+    void ApplyVisual(Entity entity, bool isEnemy)
+    {
+        WarriorSpriteLibrary.EnsureLoaded();
+        if (!isEnemy && WarriorSpriteLibrary.Matches(entity.ClassName))
+        {
+            EnableWarriorSprite();
+            if (!_striking && !_dying && !_deadPose && _flipbook != null)
+            {
+                _flipbook.Play(WarriorSpriteLibrary.Idle, WarriorSpriteLibrary.IdleFps, true);
+            }
+
+            if (_hit == null && !_dying && !_deadPose)
+            {
+                _shape.color = Color.white;
+            }
+
+            return;
+        }
+
+        var color = isEnemy
+            ? PlaceholderArt.EnemyVisual(entity.ClassName).Color
+            : PlaceholderArt.ClassColor(entity.ClassName);
+        var shape = isEnemy
+            ? PlaceholderArt.EnemyVisual(entity.ClassName).Shape
+            : PlaceholderArt.ClassShape(entity.ClassName);
+
+        _shape.sprite = PlaceholderArt.Shape(shape, color);
+        if (_hit == null)
+        {
+            _shape.color = Color.white;
+        }
+    }
+
+    void EnableWarriorSprite()
+    {
+        if (_spriteMode)
+        {
+            return;
+        }
+
+        _spriteMode = true;
+        _flipbook = _shape.gameObject.GetComponent<SpriteFlipbook>();
+        if (_flipbook == null)
+        {
+            _flipbook = _shape.gameObject.AddComponent<SpriteFlipbook>();
+        }
+
+        var height = _root.sizeDelta.y;
+        _shape.rectTransform.sizeDelta = new Vector2(height * 1.1f, height * 1.1f);
+        _shape.rectTransform.anchoredPosition = new Vector2(16f, 10f);
+        _shape.preserveAspect = true;
+        _shape.color = Color.white;
     }
 
     /// Driven from Player.Ready during lobby and rest stop.
