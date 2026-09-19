@@ -160,8 +160,8 @@ public static class SkillInspect
                 description = "Rain arrows on every living enemy, three hits each.";
                 return;
             case "Snipe":
-                damage = "30 to one enemy";
-                description = "A heavy shot. If it hits, inflict 4 Fragile on the target.";
+                damage = "10 to one enemy";
+                description = "A single shot. If it hits, inflict 4 Fragile on the target. 50 MP. Unlocked at level 1.";
                 return;
             case "Curved Shot":
                 damage = "2 hits of 17 to all enemies";
@@ -214,7 +214,7 @@ public static class SkillInspect
                 return;
             case "Finish the Job":
                 damage = "None";
-                description = $"Once per battle, after {GameManager.FinishTheJobTurnRequirement} turns have passed. Gain 6 Enraged next turn, +6 ATK, and a battle-long stance that adds +2 skill power plus +8 more at the start of every turn. Unlocks Overthrow.";
+                description = $"Once per battle, after {GameManager.FinishTheJobTurnRequirement} turns have passed. Gain 6 Enraged next turn, +6 ATK, and a battle-long stance that adds +2 skill power plus +8 more at the start of every turn (caps at +40). Unlocks Overthrow.";
                 return;
             case "Overthrow":
                 damage = "42 + 12 Enraged to all enemies";

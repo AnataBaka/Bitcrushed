@@ -60,7 +60,16 @@ public static partial class Module
             7,
             hitCount: 3
         );
-        AddPlayerSkill(ctx, SkillNames.Snipe, PlayerClass.Archer, 50, 30, 1, DamageType.Physical, 12);
+        AddPlayerSkill(
+            ctx,
+            SkillNames.Snipe,
+            PlayerClass.Archer,
+            SnipeManaCost,
+            SnipeDamage,
+            1,
+            DamageType.Physical,
+            SnipeLevelRequired
+        );
         AddPlayerSkill(
             ctx,
             SkillNames.CurvedShot,
@@ -183,6 +192,30 @@ public static partial class Module
             {
                 ctx.Db.SkillDef.Id.Update(skill with { ManaCost = OverthrowManaCost });
             }
+
+            if (
+                skill.Name == SkillNames.Snipe
+                && (
+                    skill.LevelRequired != SnipeLevelRequired
+                    || skill.BaseDamage != SnipeDamage
+                    || skill.ManaCost != SnipeManaCost
+                )
+            )
+            {
+                ctx.Db.SkillDef.Id.Update(
+                    skill with
+                    {
+                        LevelRequired = SnipeLevelRequired,
+                        BaseDamage = SnipeDamage,
+                        ManaCost = SnipeManaCost,
+                    }
+                );
+            }
+        }
+
+        foreach (var player in ctx.Db.Player.Iter())
+        {
+            GrantUnlockedSkills(ctx, player.EntityId, player.Class, player.CharacterLevel);
         }
     }
 

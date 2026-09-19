@@ -1119,10 +1119,15 @@ public static partial class Module
         EnsureSkillCatalog(ctx);
         var floor = CombatFloor(ctx);
         var players = PartyEncounterSize(ctx);
+        var partyLevel = PartyCombatLevel(ctx);
         var pool = EnemyPool;
-        var count = RollEnemyPackSize(ctx, players);
-        var maxHp = EnemyHpForEncounter(floor, players);
-        var atk = EnemyAtkForEncounter(floor, players);
+        var count = RollEnemyPackSize(ctx, players, floor);
+        var maxHp = ScaleByBps(EnemyHpForEncounter(floor, partyLevel, players), PackVitalityBps(count));
+        var atk = Math.Max(
+            1,
+            ScaleByBps(EnemyAtkForEncounter(floor, partyLevel, players), PackPowerBps(count))
+        );
+        var defense = EnemyDefenseBaseline(EncounterScaleLevel(floor, partyLevel));
 
         for (uint slot = 0; slot < (uint)count; slot++)
         {
@@ -1154,7 +1159,7 @@ public static partial class Module
                     Intelligence = intelligence,
                     Speed = speed,
                     Atk = atk,
-                    Defense = 0,
+                    Defense = defense,
                     StrengthBuff = 0,
                     NextTurnStrengthBonus = 0,
                     GoFirstNextRound = false,
@@ -1172,6 +1177,26 @@ public static partial class Module
     {
         var stage = RequireSession(ctx).StageNumber;
         return stage == 0 ? 1u : stage;
+    }
+
+    static uint PartyCombatLevel(ReducerContext ctx)
+    {
+        uint level = 1;
+        foreach (var player in ctx.Db.Player.Iter())
+        {
+            if (!IsLivingPlayer(ctx, player))
+            {
+                continue;
+            }
+
+            var characterLevel = player.CharacterLevel == 0 ? 1u : player.CharacterLevel;
+            if (characterLevel > level)
+            {
+                level = characterLevel;
+            }
+        }
+
+        return level;
     }
 
     static int PartyEncounterSize(ReducerContext ctx)
@@ -1193,10 +1218,29 @@ public static partial class Module
         return Math.Max(1, LivingMembers(ctx, Team.Players).Count);
     }
 
-    static int RollEnemyPackSize(ReducerContext ctx, int playerCount)
+    static int RollEnemyPackSize(ReducerContext ctx, int playerCount, uint floor)
     {
         var maxPack = Math.Clamp(playerCount, 1, (int)MaxEnemySlots);
-        return ctx.Rng.Next(1, maxPack + 1);
+        var minPack = 1;
+        if (floor >= 30 && playerCount >= 2)
+        {
+            minPack = Math.Min(maxPack, Math.Max(2, playerCount));
+        }
+        else if (floor >= 20 && playerCount >= 2)
+        {
+            minPack = 2;
+        }
+        else if (floor >= 15 && playerCount >= 3)
+        {
+            minPack = 2;
+        }
+
+        if (minPack >= maxPack)
+        {
+            return maxPack;
+        }
+
+        return ctx.Rng.Next(minPack, maxPack + 1);
     }
 
     /// Fastest combatant first. Rush / Grand Undertaking jump the queue for one round.
@@ -1398,7 +1442,9 @@ public static partial class Module
 
     static void SetActive(ReducerContext ctx, uint round, uint idx, Entity entity)
     {
-        var stancePower = entity.FinishTheJobStance ? entity.FinishTheJobPower + 8 : entity.FinishTheJobPower;
+        var stancePower = entity.FinishTheJobStance
+            ? Math.Min(FinishTheJobPowerCap, entity.FinishTheJobPower + 8)
+            : entity.FinishTheJobPower;
         var refreshed = entity with
         {
             Mana = Math.Min(entity.MaxMana, entity.Mana + ManaRegenPerTurn),

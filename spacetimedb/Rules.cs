@@ -51,6 +51,8 @@ public static partial class Module
     public const int NecromancyReviveHpBps = 1500;
     public const int NinjaSpeedPowerCap = 5;
     public const int FinishTheJobTurnRequirement = 4;
+    /// Stance +8/turn is uncapped in the spec; a cap keeps long L30 fights from snowballing.
+    public const int FinishTheJobPowerCap = 40;
     public const int RushNextTurnSpeed = 99999;
     public const int EvadeDamageThreshold = 20;
     public const int FuriosoManaCost = 100;
@@ -62,6 +64,9 @@ public static partial class Module
     public const int GrandshotBaseDamage = 50;
     public const int GrandshotDamagePerDodge = 50;
     public const int GrandshotDodgeCap = 4;
+    public const int SnipeDamage = 10;
+    public const int SnipeManaCost = 50;
+    public const uint SnipeLevelRequired = 1;
     public const int OverthrowEnragedStacks = 12;
     public const int OverthrowDamage = 42;
     public const int OverthrowManaCost = 40;
@@ -507,20 +512,50 @@ public static partial class Module
         return (uint)Math.Round(xp, MidpointRounding.AwayFromZero);
     }
 
-    /// EnemyHP(L) = 30 + 6*L, then scaled by party size vs a 3-player baseline.
-    public static int EnemyHpForEncounter(uint floor, int playerCount)
+    /// Uses the stronger of floor and party level so a L30 group cannot farm weak early floors.
+    /// Party level is capped at 35 so cheat-level characters do not spawn raid bosses.
+    public static int EncounterScaleLevel(uint floor, uint partyLevel)
     {
-        var level = floor == 0 ? 1 : (int)floor;
-        var baseline = 30 + (6 * level);
+        var stage = floor == 0 ? 1 : (int)floor;
+        var level = partyLevel == 0 ? 1 : (int)partyLevel;
+        return Math.Max(stage, Math.Clamp(level, 1, 35));
+    }
+
+    /// Early HP eased now that Snipe is 10, not 30. Late HP stays high for L30 nukes
+    /// (Furioso ~153, Grandshot 100–250, Overthrow 54, Grand Undertaking 50% max HP).
+    /// L1 ~52; L30 ~693 before party/pack.
+    public static int EnemyHpBaseline(int level)
+    {
+        var n = Math.Max(1, level);
+        return Math.Max(1, (int)Math.Round(45 + (6.0 * n) + (0.52 * n * n), MidpointRounding.AwayFromZero));
+    }
+
+    /// Tracks the longer late fights without over-tuning the opener. L1 ~6; L30 ~41.
+    public static int EnemyAtkBaseline(int level)
+    {
+        var n = Math.Max(1, level);
+        return Math.Max(1, (int)Math.Round(5 + (0.6 * n) + (0.02 * n * n), MidpointRounding.AwayFromZero));
+    }
+
+    /// Light late-game armor so flat nukes chip instead of deleting. 0 until level 10.
+    public static int EnemyDefenseBaseline(int level)
+    {
+        var n = Math.Max(1, level);
+        return Math.Max(0, (n - 10) / 5);
+    }
+
+    /// EnemyHP = baseline(L) * (P / 3).
+    public static int EnemyHpForEncounter(uint floor, uint partyLevel, int playerCount)
+    {
+        var baseline = EnemyHpBaseline(EncounterScaleLevel(floor, partyLevel));
         var p = Math.Max(1, playerCount);
         return Math.Max(1, (int)Math.Round(baseline * (p / 3.0), MidpointRounding.AwayFromZero));
     }
 
-    /// EnemyATK(L) = 4 + 0.6*L, then scaled by party size vs a 3-player baseline.
-    public static int EnemyAtkForEncounter(uint floor, int playerCount)
+    /// EnemyATK = baseline(L) * (P / 3).
+    public static int EnemyAtkForEncounter(uint floor, uint partyLevel, int playerCount)
     {
-        var level = floor == 0 ? 1 : (int)floor;
-        var baseline = 4 + (0.6 * level);
+        var baseline = EnemyAtkBaseline(EncounterScaleLevel(floor, partyLevel));
         var p = Math.Max(1, playerCount);
         return Math.Max(1, (int)Math.Round(baseline * (p / 3.0), MidpointRounding.AwayFromZero));
     }

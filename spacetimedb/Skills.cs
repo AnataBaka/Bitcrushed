@@ -182,7 +182,7 @@ public static partial class Module
                 StrikeLivingEnemies(ctx, caster, skill.Name, 4, hits: 3);
                 break;
             case SkillNames.Snipe:
-                if (Strike(ctx, caster, targetEntityId, skill.Name, 30, isSkill: true).Connected)
+                if (Strike(ctx, caster, targetEntityId, skill.Name, SnipeDamage, isSkill: true).Connected)
                 {
                     QueueFragile(ctx, targetEntityId, 4);
                 }
