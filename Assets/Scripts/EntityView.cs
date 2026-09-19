@@ -156,8 +156,9 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         _root.pivot = new Vector2(0.5f, 0f);
         _home = anchoredPosition;
 
-        // A lunge or walk-in strike owns the position until it puts the card back.
-        if (!_lunging && !_striking)
+        // A lunge, walk-in strike, or hit recoil owns the position until it
+        // puts the card back.
+        if (!_lunging && !_striking && _hit == null)
         {
             _root.anchoredPosition = anchoredPosition;
         }
@@ -170,8 +171,9 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     /// combatants; Warriors walk all the way in and swing instead.
     public void PlayLunge(Vector2 targetPosition) => StartCoroutine(LungeRoutine(targetPosition));
 
-    /// Walk to the enemy, play the Knight_1 sword swing, walk home.
-    public IEnumerator PlayStrike(Vector2 targetPosition, Action onImpact)
+    /// Run to the enemy, play a sword swing (or a charging Run+Attack on a
+    /// skill), then run home.
+    public IEnumerator PlayStrike(Vector2 targetPosition, Action onImpact, bool heavy = false)
     {
         if (!_spriteMode || _flipbook == null || !WarriorSpriteLibrary.Ready)
         {
@@ -186,16 +188,34 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         transform.SetAsLastSibling();
 
         var start = _home;
-        var reach = targetPosition + new Vector2(-100f, 0f);
-        var outbound = MoveSeconds(start, reach);
-        var inbound = MoveSeconds(reach, start);
+        var reach = targetPosition + new Vector2(-90f, 0f);
+        var outbound = MoveSeconds(start, reach, heavy);
+        var inbound = MoveSeconds(reach, start, heavy);
 
-        _flipbook.Play(WarriorSpriteLibrary.Walk, WarriorSpriteLibrary.WalkFps, true);
-        yield return Slide(start, reach, outbound);
+        var strikeClip = heavy ? WarriorSpriteLibrary.RunAttack : WarriorSpriteLibrary.Attack;
+        var strikeFps = heavy
+            ? WarriorSpriteLibrary.RunAttackFps
+            : WarriorSpriteLibrary.AttackFps;
 
-        _flipbook.Play(WarriorSpriteLibrary.Attack, WarriorSpriteLibrary.AttackFps, false);
-        var swing = WarriorSpriteLibrary.Attack.Length / WarriorSpriteLibrary.AttackFps;
-        yield return new WaitForSeconds(swing * 0.55f);
+        if (heavy)
+        {
+            _flipbook.Play(strikeClip, strikeFps, false);
+            yield return Slide(start, reach, outbound);
+        }
+        else
+        {
+            _flipbook.Play(WarriorSpriteLibrary.Run, WarriorSpriteLibrary.RunFps, true);
+            yield return Slide(start, reach, outbound);
+            _flipbook.Play(strikeClip, strikeFps, false);
+        }
+
+        var swing = strikeClip.Length / strikeFps;
+        var already = heavy ? outbound : 0f;
+        var impactAt = Mathf.Max(0f, (swing * 0.55f) - already);
+        if (impactAt > 0f)
+        {
+            yield return new WaitForSeconds(impactAt);
+        }
         onImpact?.Invoke();
         while (_flipbook != null && _flipbook.IsPlaying)
         {
@@ -204,7 +224,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
 
         if (!_deadPose && !_dying)
         {
-            _flipbook.Play(WarriorSpriteLibrary.Walk, WarriorSpriteLibrary.WalkFps, true);
+            _flipbook.Play(WarriorSpriteLibrary.Run, WarriorSpriteLibrary.RunFps, true);
         }
 
         yield return Slide(reach, _home, inbound);
@@ -259,10 +279,11 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         _death = null;
     }
 
-    static float MoveSeconds(Vector2 from, Vector2 to)
+    static float MoveSeconds(Vector2 from, Vector2 to, bool heavy = false)
     {
         var distance = Vector2.Distance(from, to);
-        return Mathf.Clamp(distance / 1600f, 0.35f, 1.15f);
+        var speed = heavy ? 5200f : 4200f;
+        return Mathf.Clamp(distance / speed, 0.10f, 0.38f);
     }
 
     IEnumerator LungeRoutine(Vector2 targetPosition)
@@ -290,35 +311,53 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
     }
 
-    /// Squash-and-flash on the receiving end of a hit.
-    public void PlayHit()
+    /// Squash-and-flash on the receiving end of a hit. Skills get a heavier
+    /// punch plus a slash / shockwave overlay.
+    public void PlayHit(bool heavy = false)
     {
         if (_hit != null)
         {
             StopCoroutine(_hit);
             _shape.transform.localScale = Vector3.one;
+            _root.anchoredPosition = _home;
         }
 
-        _hit = StartCoroutine(HitRoutine());
+        CombatVfx.Spawn(_root.parent as RectTransform, _shape.rectTransform, heavy);
+        _hit = StartCoroutine(HitRoutine(heavy));
     }
 
-    IEnumerator HitRoutine()
+    IEnumerator HitRoutine(bool heavy)
     {
         var shape = _shape.transform;
         var elapsed = 0f;
-        const float duration = 0.22f;
+        var duration = heavy ? 0.28f : 0.2f;
+        var punch = heavy ? 0.34f : 0.22f;
+        var knock = heavy ? 34f : 16f;
+        var flash = heavy ? new Color(1f, 0.92f, 0.55f) : new Color(1f, 0.55f, 0.5f);
+        var origin = _home;
 
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
             var t = Mathf.Clamp01(elapsed / duration);
-            var bump = 1f + (Mathf.Sin(t * Mathf.PI) * 0.22f);
+            var wave = Mathf.Sin(t * Mathf.PI);
+            var bump = 1f + (wave * punch);
             shape.localScale = new Vector3(bump, bump, 1f);
-            _shape.color = Color.Lerp(Color.white, new Color(1f, 0.55f, 0.5f), 1f - t);
+            _shape.color = Color.Lerp(Color.white, flash, 1f - t);
+            var shake = (1f - t) * (heavy ? 10f : 5f);
+            var recoil = Vector2.right * (wave * knock);
+            _root.anchoredPosition =
+                origin
+                + recoil
+                + new Vector2(
+                    (Mathf.PerlinNoise(t * 28f, 0.1f) - 0.5f) * 2f * shake,
+                    (Mathf.PerlinNoise(0.2f, t * 28f) - 0.5f) * 2f * shake
+                );
             yield return null;
         }
 
         shape.localScale = Vector3.one;
+        _root.anchoredPosition = _home;
         if (!_deadPose && !_dying)
         {
             _shape.color = Color.white;
@@ -420,8 +459,12 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
 
         var height = _root.sizeDelta.y;
-        _shape.rectTransform.sizeDelta = new Vector2(height * 1.1f, height * 1.1f);
-        _shape.rectTransform.anchoredPosition = new Vector2(16f, 10f);
+        var rt = _shape.rectTransform;
+        rt.anchorMin = new Vector2(0.5f, 0.58f);
+        rt.anchorMax = new Vector2(0.5f, 0.58f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = Vector2.zero;
+        rt.sizeDelta = new Vector2(height * 1.15f, height * 1.15f);
         _shape.preserveAspect = true;
         _shape.color = Color.white;
     }

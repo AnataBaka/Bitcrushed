@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using SpacetimeDB.Types;
@@ -465,6 +466,31 @@ public class BattleHud : MonoBehaviour
         _pendingHits.Enqueue(row);
     }
 
+    /// Skills (Cleaving Strike, Cleave, ...) are the heavier swings. The free
+    /// weapon attack is logged as "Sword Swing" for Warriors and is not a skill.
+    static bool IsSkillStrike(BattleLog row)
+    {
+        if (string.IsNullOrEmpty(row.Message) || GameManager.Conn == null)
+        {
+            return false;
+        }
+
+        foreach (var skill in GameManager.Conn.Db.SkillDef.Iter())
+        {
+            if (string.IsNullOrEmpty(skill.Name))
+            {
+                continue;
+            }
+
+            if (row.Message.IndexOf($" uses {skill.Name} ", StringComparison.Ordinal) >= 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     IEnumerator PlayHit(BattleLog row)
     {
         _animating = true;
@@ -476,11 +502,13 @@ public class BattleHud : MonoBehaviour
             && target != null
         )
         {
+            var heavy = IsSkillStrike(row);
+
             void Impact()
             {
                 if (target != null)
                 {
-                    target.PlayHit();
+                    target.PlayHit(heavy);
                 }
 
                 var victim = GameManager.FindEntity(row.TargetEntityId);
@@ -492,7 +520,7 @@ public class BattleHud : MonoBehaviour
 
             if (actor.UsesWarriorSprites)
             {
-                yield return actor.PlayStrike(target.Home, Impact);
+                yield return actor.PlayStrike(target.Home, Impact, heavy);
             }
             else
             {
