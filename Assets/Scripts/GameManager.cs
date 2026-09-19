@@ -15,7 +15,7 @@ public class GameManager : MonoBehaviour
     /// Hard-coded so a leftover Inspector / scene value cannot keep the client
     /// on Maincloud after switching to a local host.
     public const string DefaultServerUrl = "http://127.0.0.1:3000";
-    public const string DefaultDatabaseName = "hophacks-party-vp2";
+    public const string DefaultDatabaseName = "hophacks-party-vp3";
 
     string serverUrl = DefaultServerUrl;
     string databaseName = DefaultDatabaseName;
