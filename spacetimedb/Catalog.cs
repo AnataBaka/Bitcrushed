@@ -37,12 +37,12 @@ public static partial class Module
             ctx,
             SkillNames.Furioso,
             PlayerClass.Knight,
-            100,
-            5,
+            FuriosoManaCost,
+            FuriosoBaseDamage,
             1,
             DamageType.Physical,
             30,
-            hitCount: 9
+            hitCount: FuriosoHitCount
         );
 
         AddPlayerSkill(ctx, SkillNames.Shoot, PlayerClass.Archer, 0, 4, 1, DamageType.Physical, 1);
@@ -76,11 +76,11 @@ public static partial class Module
             ctx,
             SkillNames.Grandshot,
             PlayerClass.Archer,
-            100,
-            30,
+            GrandshotManaCost,
+            GrandshotBaseDamage,
             1,
             DamageType.Physical,
-            30
+            GrandshotLevelRequired
         );
 
         AddPlayerSkill(
@@ -135,8 +135,8 @@ public static partial class Module
             ctx,
             SkillNames.Overthrow,
             PlayerClass.Ninja,
-            40,
-            42,
+            OverthrowManaCost,
+            OverthrowDamage,
             4,
             DamageType.Physical,
             30
@@ -149,6 +149,41 @@ public static partial class Module
         AddEnemySkill(ctx, "Hex Bolt", 8, 10, 1, DamageType.Magical);
         AddEnemySkill(ctx, "Bite", 5, 7, 1, DamageType.Physical);
         AddEnemySkill(ctx, "Bone Slash", 7, 8, 1, DamageType.Physical);
+    }
+
+    public static void EnsureSkillCatalog(ReducerContext ctx)
+    {
+        foreach (var skill in ctx.Db.SkillDef.Iter().ToList())
+        {
+            if (skill.Name == SkillNames.Furioso && skill.ManaCost != FuriosoManaCost)
+            {
+                ctx.Db.SkillDef.Id.Update(skill with { ManaCost = FuriosoManaCost });
+            }
+
+            if (
+                skill.Name == SkillNames.Grandshot
+                && (
+                    skill.ManaCost != GrandshotManaCost
+                    || skill.LevelRequired != GrandshotLevelRequired
+                    || skill.BaseDamage != GrandshotBaseDamage
+                )
+            )
+            {
+                ctx.Db.SkillDef.Id.Update(
+                    skill with
+                    {
+                        ManaCost = GrandshotManaCost,
+                        LevelRequired = GrandshotLevelRequired,
+                        BaseDamage = GrandshotBaseDamage,
+                    }
+                );
+            }
+
+            if (skill.Name == SkillNames.Overthrow && skill.ManaCost != OverthrowManaCost)
+            {
+                ctx.Db.SkillDef.Id.Update(skill with { ManaCost = OverthrowManaCost });
+            }
+        }
     }
 
     public static void EnsureEnemyCatalog(ReducerContext ctx)
@@ -411,7 +446,7 @@ public static partial class Module
         throw new Exception($"Skill catalog is missing {name}.");
     }
 
-    /// Weapon worn on arrival, potions in the bag. Ninjas cannot wear armor.
+    /// Weapon worn on arrival, potions in the bag. Every class can wear armor.
     public static void GiveStartingLoadout(
         ReducerContext ctx,
         Identity owner,

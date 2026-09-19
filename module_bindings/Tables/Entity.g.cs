@@ -78,6 +78,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Entity, int> EvadeFragileOnDodge { get; }
         public global::SpacetimeDB.Col<Entity, int> EvadeStrengthOnDodge { get; }
         public global::SpacetimeDB.Col<Entity, bool> HasDodged { get; }
+        public global::SpacetimeDB.Col<Entity, int> DodgeCount { get; }
         public global::SpacetimeDB.Col<Entity, bool> UsedAttackThisTurn { get; }
         public global::SpacetimeDB.Col<Entity, bool> UsedAttackLastTurn { get; }
         public global::SpacetimeDB.Col<Entity, int> NextAttackBonus { get; }
@@ -132,6 +133,7 @@ namespace SpacetimeDB.Types
             EvadeFragileOnDodge = new global::SpacetimeDB.Col<Entity, int>(tableName, "evade_fragile_on_dodge");
             EvadeStrengthOnDodge = new global::SpacetimeDB.Col<Entity, int>(tableName, "evade_strength_on_dodge");
             HasDodged = new global::SpacetimeDB.Col<Entity, bool>(tableName, "has_dodged");
+            DodgeCount = new global::SpacetimeDB.Col<Entity, int>(tableName, "dodge_count");
             UsedAttackThisTurn = new global::SpacetimeDB.Col<Entity, bool>(tableName, "used_attack_this_turn");
             UsedAttackLastTurn = new global::SpacetimeDB.Col<Entity, bool>(tableName, "used_attack_last_turn");
             NextAttackBonus = new global::SpacetimeDB.Col<Entity, int>(tableName, "next_attack_bonus");

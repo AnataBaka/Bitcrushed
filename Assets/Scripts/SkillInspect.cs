@@ -1,3 +1,4 @@
+using System;
 using SpacetimeDB.Types;
 
 /// Client-side inspect copy for the skill menu. Mirrors named skill rules so
@@ -31,7 +32,7 @@ public static class SkillInspect
             name,
             "Free",
             "Weapon ATK to one enemy",
-            "A free weapon swing. Adds class passives (Knight +0.2 per STR, Archer +0.5 per DEX and +2% dodge per DEX capped at 50%, Ninja +0.5 per Speed). Mage basic attacks are not spells.",
+            "A free weapon swing. Adds class passives (Knight +0.2 per STR, Archer +0.5 per DEX and +2% dodge per DEX capped at 50%, Ninja +0.5 per base Speed). Mage basic attacks are not spells.",
             ""
         );
     }
@@ -136,7 +137,7 @@ public static class SkillInspect
                 return;
             case "Furioso":
                 damage = "9 hits, starting at 5";
-                description = "Nine strikes on one enemy. The first hit deals 5; each connecting hit adds +9 damage to the remaining hits.";
+                description = "Nine strikes on one enemy. The first hit deals 5; each connecting hit adds +3 base power to the remaining hits of this skill only (153 if every hit lands).";
                 return;
             case "Shoot":
                 damage = "4 to one enemy";
@@ -167,8 +168,10 @@ public static class SkillInspect
                 description = "Two shots against every living enemy. If any hit connects on an enemy, that enemy gains 4 Fragile.";
                 return;
             case "Grandshot":
-                damage = "30 + 6 per heads (9 coins)";
-                description = "Flip 9 coins, then fire one shot dealing 30 plus 6 per heads (30–84). Requires having dodged at least once this battle.";
+                var dodges = caster == null ? 0 : Math.Clamp(caster.DodgeCount, 0, 4);
+                var grandshot = 50 + (dodges * 50);
+                damage = $"{grandshot} (50 + 50 per dodge, cap 4)";
+                description = "Can only be used after you have dodged once this battle. Base 50 power, plus 50 for each dodge this battle (max 4 dodges, 250 power).";
                 return;
             case "Magic Missile":
                 damage = "10 to one enemy";
@@ -176,7 +179,7 @@ public static class SkillInspect
                 return;
             case "Fireball":
                 damage = "2 to one enemy";
-                description = "A weak spell hit. If it connects, apply Burn 5 for 6 ticks. Gains Mage spell damage (+0.2 per INT).";
+                description = "A weak spell hit. If it connects, apply Burn 5 for 6 ticks. Burn stack is capped at 25; extra applications still add duration. Gains Mage spell damage (+0.2 per INT).";
                 return;
             case "Concentrate":
                 damage = "None";
@@ -199,11 +202,11 @@ public static class SkillInspect
                 return;
             case "Spear":
                 damage = "12 to one enemy";
-                description = "A single-target skill. Each use discounts Spear's MP cost by 15 (floor 0). Ninja attacks gain +0.5 per Speed, and skills also gain +1 power per Speed above the target (max +5).";
+                description = "A single-target skill. Each use discounts Spear's MP cost by 15 (floor 0). Ninja attacks gain +0.5 per base Speed (not combat Speed), and skills also gain +1 power per Speed above the target (max +5).";
                 return;
             case "Vertical Cut":
                 damage = "27 to one enemy";
-                description = "A heavy single-target skill. Each use discounts Vertical Cut's MP cost by 15 (floor 0). Ninja attacks gain +0.5 per Speed, and skills also gain +1 power per Speed above the target (max +5).";
+                description = "A heavy single-target skill. Each use discounts Vertical Cut's MP cost by 15 (floor 0). Ninja attacks gain +0.5 per base Speed (not combat Speed), and skills also gain +1 power per Speed above the target (max +5).";
                 return;
             case "Focus Spirit":
                 damage = "None";
@@ -214,8 +217,8 @@ public static class SkillInspect
                 description = $"Once per battle, after {GameManager.FinishTheJobTurnRequirement} turns have passed. Gain 6 Enraged next turn, +6 ATK, and a battle-long stance that adds +2 skill power plus +8 more at the start of every turn. Unlocks Overthrow.";
                 return;
             case "Overthrow":
-                damage = "42 to all enemies";
-                description = "Hit every living enemy. Requires Finish the Job stance. Ninja attacks gain +0.5 per Speed, and skills also gain +1 power per Speed above the target (max +5).";
+                damage = "42 + 12 Enraged to all enemies";
+                description = "Gain 12 Enraged on this Overthrow (applied now, not next turn), deal 42 to all enemies, and inflict 3 Weak and 4 Fragile on all enemies next turn. 40 MP. Requires Finish the Job stance.";
                 return;
             default:
                 damage = "See battle log";
@@ -260,7 +263,7 @@ public static class SkillInspect
                 return;
             default:
                 damage = "5 to one enemy";
-                description = "Stage I. One bolt. Applies Burn 2 for 2 ticks if it hits. Advances to II. Gains Mage spell damage (+0.2 per INT).";
+                description = "Stage I. One bolt. Applies Burn 2 for 2 ticks if it hits. Advances to II. Burn stack is capped at 25. Gains Mage spell damage (+0.2 per INT).";
                 return;
         }
     }

@@ -28,12 +28,14 @@ public static partial class Module
         );
 
         SeedCatalog(ctx);
+        EnsureSkillCatalog(ctx);
         Log.Info("Testing Fight Stage initialized.");
     }
 
     [SpacetimeDB.Reducer(ReducerKind.ClientConnected)]
     public static void ClientConnected(ReducerContext ctx)
     {
+        EnsureSkillCatalog(ctx);
         if (ctx.Db.Player.Identity.Find(ctx.Sender) is Player player)
         {
             ctx.Db.Player.Identity.Update(player with { Online = true });
@@ -519,11 +521,6 @@ public static partial class Module
         if (def.Kind == ItemKind.Weapon && def.WeaponType != ClassWeapon(player.Class))
         {
             throw new Exception($"A {ClassName(player.Class)} cannot wield a {def.Name}.");
-        }
-
-        if (def.Kind == ItemKind.Armor && !CanWearArmor(player.Class))
-        {
-            throw new Exception($"A {ClassName(player.Class)} cannot wear armor.");
         }
 
         var slot = SlotFor(def);
@@ -1103,6 +1100,7 @@ public static partial class Module
                 FinishTheJobStance = false,
                 FinishTheJobPower = 0,
                 HasDodged = false,
+                DodgeCount = 0,
                 SkipNextTurn = false,
                 GrandUndertakingPending = false,
             };
@@ -1118,6 +1116,7 @@ public static partial class Module
     static void SpawnEnemies(ReducerContext ctx)
     {
         EnsureEnemyCatalog(ctx);
+        EnsureSkillCatalog(ctx);
         var floor = CombatFloor(ctx);
         var players = PartyEncounterSize(ctx);
         var pool = EnemyPool;
@@ -1219,7 +1218,8 @@ public static partial class Module
         var ordered = ctx
             .Db.Entity.Iter()
             .Where(e => e.Alive)
-            .OrderByDescending(e => e.GoFirstNextRound)
+            .OrderByDescending(e => HasForcedFirstSpeed(e))
+            .ThenByDescending(e => HasKnightHighPriority(ctx, e))
             .ThenByDescending(e => EffectiveSpeed(e))
             .ThenBy(e => e.Faction == Team.Players ? ClassTurnPriority(ClassOf(ctx, e)) : 2)
             .ThenBy(e => e.Faction == Team.Players ? 0 : 1)
@@ -1262,6 +1262,14 @@ public static partial class Module
 
     static int PendingCombatSpeed(Entity entity) =>
         entity.NextTurnSpeedSet != 0 ? entity.NextTurnSpeedSet : entity.Speed + entity.NextTurnSpeedDelta;
+
+    /// Knights act first unless Rush / Ninja first-action jumped the queue, or
+    /// Gallant Pride set their Speed to 1.
+    static bool HasKnightHighPriority(ReducerContext ctx, Entity entity) =>
+        entity.Faction == Team.Players
+        && ClassOf(ctx, entity) == PlayerClass.Knight
+        && !HasForcedFirstSpeed(entity)
+        && EffectiveSpeed(entity) > 1;
 
     static void RefreshRoundStatuses(ReducerContext ctx)
     {
@@ -1538,7 +1546,7 @@ public static partial class Module
                 attacker.Strength,
                 attacker.Dexterity,
                 attacker.Intelligence,
-                attacker.Speed,
+                attacker.BaseSpeed,
                 isSpell: attackerClass == PlayerClass.Mage && isSkill
             );
         }
@@ -1597,7 +1605,13 @@ public static partial class Module
         var alive = hp > 0;
         var wasAlive = target.Alive;
         ctx.Db.Entity.EntityId.Update(
-            target with { Hp = hp, Alive = alive, HasDodged = target.HasDodged || dodged || evaded }
+            target with
+            {
+                Hp = hp,
+                Alive = alive,
+                HasDodged = target.HasDodged || dodged || evaded,
+                DodgeCount = target.DodgeCount + (dodged || evaded ? 1 : 0),
+            }
         );
 
         if (dodged || evaded)
