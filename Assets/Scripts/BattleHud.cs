@@ -13,7 +13,7 @@ public class BattleHud : MonoBehaviour
 {
     static readonly Vector2[] PlayerSlots =
     {
-        new Vector2(250f, 50f),
+        new Vector2(360f, 50f),
         new Vector2(530f, 300f),
         new Vector2(810f, 550f),
     };

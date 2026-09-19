@@ -114,9 +114,9 @@ public class BattleBootstrap : MonoBehaviour
         menuRect.offsetMin = new Vector2(5f, 10f);
         menuRect.offsetMax = new Vector2(-10f, -10f);
 
+        var turnList = TurnOrderListView.Create(canvas);
         var overlay = BuildOverlay(canvas, out var overlayText, out var overlaySubtext, out var resetButton);
         var popup = StatPopupView.Create(canvas);
-        var turnList = TurnOrderListView.Create(field);
         var inventory = InventoryPopupView.Create(canvas, equipment.BagButtonRect);
         var banner = LevelUpBannerView.Create(canvas);
         var escape = EscapeMenuView.Create(canvas, popup);

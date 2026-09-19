@@ -4,20 +4,25 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// Left-edge name list of the server DisplayPos queue. Current actor is always
-/// row 0. Unity never reorders; it only tweens rows when DisplayPos changes.
+/// DisplayPos 0. Unity never reorders; it only tweens rows when DisplayPos changes.
 public class TurnOrderListView : MonoBehaviour
 {
     public const float ShiftSeconds = 0.35f;
     const float FadeSeconds = 0.22f;
-    const float Width = 186f;
+    /// Floor for "> Shadow Goblin A" / "> Magma Colossus" at 14px plus padding.
+    const float Width = 188f;
+    const float EdgePad = 10f;
+    const float HeaderHeight = 22f;
     const float RowHeight = 22f;
-    const float TopPad = 8f;
+    const float TopPad = 6f;
+    const float BottomPad = 8f;
     const int MaxSlots = 7;
-    const int NameClip = 20;
+    const int NameClip = 18;
 
-    static readonly Color Backing = new Color(0.06f, 0.07f, 0.09f, 0.55f);
+    static readonly Color Backing = new Color(0.10f, 0.11f, 0.14f, 0.82f);
     static readonly Color PlayerColor = new Color(0.82f, 0.90f, 0.98f, 1f);
     static readonly Color EnemyColor = new Color(0.93f, 0.62f, 0.56f, 1f);
+    static readonly Color Highlight = new Color(0.95f, 0.82f, 0.30f, 0.28f);
 
     readonly Dictionary<ulong, Row> _rows = new Dictionary<ulong, Row>();
     readonly List<ulong> _scratch = new List<ulong>();
@@ -32,6 +37,7 @@ public class TurnOrderListView : MonoBehaviour
         public RectTransform Rt;
         public CanvasGroup Group;
         public Text Label;
+        public Image Highlight;
         public bool Enemy;
         public int Slot;
         public bool Leaving;
@@ -42,23 +48,39 @@ public class TurnOrderListView : MonoBehaviour
         public float Fade = 1f;
     }
 
-    public static TurnOrderListView Create(Transform field)
+    public static TurnOrderListView Create(Transform canvas)
     {
-        var root = UiFactory.NewRect(field, "TurnOrderList");
+        var root = UiFactory.NewRect(canvas, "TurnOrderList");
         var panel = root.gameObject.AddComponent<Image>();
         panel.sprite = PlaceholderArt.FlatWhite();
         panel.color = Backing;
         panel.type = Image.Type.Simple;
         panel.raycastTarget = false;
-        root.anchorMin = new Vector2(0f, 1f);
-        root.anchorMax = new Vector2(0f, 1f);
-        root.pivot = new Vector2(0f, 1f);
-        root.sizeDelta = new Vector2(Width, TopPad + (MaxSlots * RowHeight) + 8f);
-        root.anchoredPosition = new Vector2(8f, -64f);
+        root.anchorMin = new Vector2(0f, 0.5f);
+        root.anchorMax = new Vector2(0f, 0.5f);
+        root.pivot = new Vector2(0f, 0.5f);
+        root.sizeDelta = new Vector2(Width, PanelHeight);
+        root.anchoredPosition = new Vector2(EdgePad, 0f);
 
         var group = root.gameObject.AddComponent<CanvasGroup>();
         group.blocksRaycasts = false;
         group.interactable = false;
+
+        var header = UiFactory.Label(
+            root,
+            "Header",
+            "TURN ORDER",
+            12,
+            TextAnchor.MiddleCenter,
+            UiFactory.MutedColor
+        );
+        header.fontStyle = FontStyle.Bold;
+        header.raycastTarget = false;
+        header.rectTransform.anchorMin = new Vector2(0f, 1f);
+        header.rectTransform.anchorMax = new Vector2(1f, 1f);
+        header.rectTransform.pivot = new Vector2(0.5f, 1f);
+        header.rectTransform.sizeDelta = new Vector2(0f, HeaderHeight);
+        header.rectTransform.anchoredPosition = Vector2.zero;
 
         var view = root.gameObject.AddComponent<TurnOrderListView>();
         view.gameObject.SetActive(false);
@@ -322,25 +344,35 @@ public class TurnOrderListView : MonoBehaviour
         group.blocksRaycasts = false;
         group.interactable = false;
 
+        var highlightRt = UiFactory.NewRect(rt, "Highlight");
+        UiFactory.Anchor(highlightRt, Vector2.zero, Vector2.one);
+        var highlight = highlightRt.gameObject.AddComponent<Image>();
+        highlight.sprite = PlaceholderArt.FlatWhite();
+        highlight.color = Highlight;
+        highlight.raycastTarget = false;
+        highlight.enabled = false;
+
         var label = UiFactory.Label(
             rt,
             "Name",
             "",
-            15,
+            14,
             TextAnchor.MiddleLeft,
             PlayerColor
         );
         label.horizontalOverflow = HorizontalWrapMode.Overflow;
-        label.resizeTextForBestFit = true;
-        label.resizeTextMinSize = 10;
-        label.resizeTextMaxSize = 15;
+        label.verticalOverflow = VerticalWrapMode.Overflow;
+        label.resizeTextForBestFit = false;
         UiFactory.Anchor(label.rectTransform, Vector2.zero, Vector2.one);
+        label.rectTransform.offsetMin = new Vector2(6f, 0f);
+        label.rectTransform.offsetMax = new Vector2(-4f, 0f);
 
         return new Row
         {
             Rt = rt,
             Group = group,
             Label = label,
+            Highlight = highlight,
             Enemy = entity.Faction == Team.Enemies,
             Fade = 1f,
         };
@@ -354,6 +386,10 @@ public class TurnOrderListView : MonoBehaviour
         row.Label.color = current
             ? UiFactory.ActiveColor
             : (row.Enemy ? EnemyColor : PlayerColor);
+        if (row.Highlight != null)
+        {
+            row.Highlight.enabled = current;
+        }
     }
 
     static string ClipName(string name)
@@ -366,7 +402,9 @@ public class TurnOrderListView : MonoBehaviour
         return name.Length <= NameClip ? name : name.Substring(0, NameClip - 1) + "…";
     }
 
-    static float YForSlot(int slot) => -TopPad - (slot * RowHeight);
+    static float PanelHeight => HeaderHeight + TopPad + (MaxSlots * RowHeight) + BottomPad;
+
+    static float YForSlot(int slot) => -HeaderHeight - TopPad - (slot * RowHeight);
 
     static float Ease(float t)
     {
