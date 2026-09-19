@@ -1119,10 +1119,12 @@ public static partial class Module
         EnsureEnemyCatalog(ctx);
         var floor = CombatFloor(ctx);
         var players = PartyEncounterSize(ctx);
+        var playerLevel = PartyCombatLevel(ctx);
         var pool = EnemyPool;
         var count = RollEnemyPackSize(ctx, players);
-        var maxHp = EnemyHpForFloor(floor, players);
-        var atk = EnemyAtkForFloor(floor, players);
+        var maxHp = EnemyHpForEncounter(floor, playerLevel, players);
+        var atk = EnemyAtkForEncounter(floor, playerLevel);
+        var strength = EnemyStrengthForEncounter(floor, playerLevel);
 
         for (uint slot = 0; slot < (uint)count; slot++)
         {
@@ -1144,11 +1146,11 @@ public static partial class Module
                     Hp = maxHp,
                     MaxMana = maxMana,
                     Mana = maxMana,
-                    BaseStrength = 0,
+                    BaseStrength = strength,
                     BaseDexterity = dexterity,
                     BaseIntelligence = intelligence,
                     BaseSpeed = speed,
-                    Strength = 0,
+                    Strength = strength,
                     Dexterity = dexterity,
                     Intelligence = intelligence,
                     Speed = speed,
@@ -1171,6 +1173,26 @@ public static partial class Module
     {
         var stage = RequireSession(ctx).StageNumber;
         return stage == 0 ? 1u : stage;
+    }
+
+    static uint PartyCombatLevel(ReducerContext ctx)
+    {
+        uint level = 1;
+        foreach (var player in ctx.Db.Player.Iter())
+        {
+            if (!IsLivingPlayer(ctx, player))
+            {
+                continue;
+            }
+
+            var characterLevel = player.CharacterLevel == 0 ? 1u : player.CharacterLevel;
+            if (characterLevel > level)
+            {
+                level = characterLevel;
+            }
+        }
+
+        return level;
     }
 
     static int PartyEncounterSize(ReducerContext ctx)
@@ -1520,6 +1542,10 @@ public static partial class Module
 
         var attackerClass = ClassOf(ctx, attacker);
         var power = skillBaseDamage + attacker.StrengthBuff + attacker.NextAttackBonus;
+        if (attacker.Faction == Team.Enemies)
+        {
+            power += Math.Max(0, attacker.Strength);
+        }
         if (isSkill && attacker.Faction == Team.Players && attackerClass == PlayerClass.Ninja)
         {
             power += NinjaSpeedPowerBonus(attacker.Speed, target.Speed);
@@ -1541,7 +1567,13 @@ public static partial class Module
 
         var raw = DealtDamage(power, attacker.Atk);
         raw = ApplyWeak(raw, attacker.WeakStacks);
-        raw = AfterDefense(raw, target.Defense);
+        var afterArmor = AfterDefense(raw, target.Defense);
+        if (attacker.Faction == Team.Enemies && raw > 0)
+        {
+            afterArmor = Math.Max(1, afterArmor);
+        }
+
+        raw = afterArmor;
 
         if (attacker.NextAttackBonus != 0)
         {
