@@ -161,7 +161,7 @@ public static class SkillInspect
                 return;
             case "Snipe":
                 damage = "30 to one enemy";
-                description = "A heavy shot. If it hits, inflict 4 Fragile on the target.";
+                description = "A heavy shot. If it hits, inflict 4 Fragile on the target. 50 MP. Unlocked at level 1.";
                 return;
             case "Curved Shot":
                 damage = "2 hits of 17 to all enemies";
