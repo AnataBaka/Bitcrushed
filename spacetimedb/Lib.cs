@@ -46,11 +46,17 @@ public static partial class Module
     [SpacetimeDB.Reducer(ReducerKind.ClientDisconnected)]
     public static void ClientDisconnected(ReducerContext ctx)
     {
-        // Only the presence flag changes. The character keeps its slot, stats and
-        // place in the turn order so a reconnecting client picks up where it left off.
+        // Mark the sender offline so a quick reconnect can resume mid-battle.
         if (ctx.Db.Player.Identity.Find(ctx.Sender) is Player player)
         {
             ctx.Db.Player.Identity.Update(player with { Online = false });
+        }
+
+        // When the last connected player drops, wipe the stage so the next session
+        // starts fresh instead of resuming an abandoned battle of offline characters.
+        if (!ctx.Db.Player.Iter().Any(p => p.Online))
+        {
+            ResetStageState(ctx);
         }
     }
 
@@ -189,7 +195,12 @@ public static partial class Module
 
     /// Wipes the stage back to an empty lobby. Testing affordance only.
     [SpacetimeDB.Reducer]
-    public static void ResetStage(ReducerContext ctx)
+    public static void ResetStage(ReducerContext ctx) => ResetStageState(ctx);
+
+    /// Clears timers, turn order, entities, players, items, skills, and battle
+    /// log, then returns the session to Waiting. Shared by the manual ResetStage
+    /// reducer and the auto-reset that fires when every player disconnects.
+    static void ResetStageState(ReducerContext ctx)
     {
         foreach (var timer in ctx.Db.EnemyTurnTimer.Iter().ToList())
         {
