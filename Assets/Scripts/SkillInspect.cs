@@ -31,7 +31,7 @@ public static class SkillInspect
             name,
             "Free",
             "Weapon ATK to one enemy",
-            "A free weapon swing. Adds class passives (Knight +0.5 per STR, Archer +0.2 per DEX). Mage basic attacks are not spells.",
+            "A free weapon swing. Adds class passives (Knight +0.2 per STR, Archer +0.5 per DEX and +2% dodge per DEX capped at 50%, Ninja +0.5 per Speed). Mage basic attacks are not spells.",
             ""
         );
     }
@@ -87,7 +87,7 @@ public static class SkillInspect
             }
 
             var round = session == null ? 0 : session.Round;
-            return $"Locked until round 8 (now round {round}).";
+            return $"Locked until round {GameManager.FinishTheJobTurnRequirement} (now round {round}).";
         }
 
         if (skill.Name == "Necromancy")
@@ -104,7 +104,7 @@ public static class SkillInspect
         {
             case "Bash":
                 damage = "5 to one enemy";
-                description = "A single physical strike against one enemy.";
+                description = "A single physical strike against one enemy. Knight attacks also gain +0.2 power per STR.";
                 return;
             case "Rush":
                 damage = "3 to one enemy";
@@ -140,11 +140,11 @@ public static class SkillInspect
                 return;
             case "Shoot":
                 damage = "4 to one enemy";
-                description = "A single shot at one enemy.";
+                description = "A single shot at one enemy. Archer attacks also gain +0.5 power per DEX.";
                 return;
             case "Restring":
                 damage = "None";
-                description = "Gain +15% dodge chance next turn.";
+                description = "Gain +15% dodge chance and 4 Enraged next turn.";
                 return;
             case "Scheme":
                 damage = "None";
@@ -195,15 +195,15 @@ public static class SkillInspect
                 return;
             case "Necromancy":
                 damage = "None";
-                description = "Revive one fallen ally at 15% of their max HP. Once per battle. Target a defeated ally.";
+                description = "Revive one fallen ally at 15% of their max HP. One-time use. Target a defeated ally.";
                 return;
             case "Spear":
                 damage = "12 to one enemy";
-                description = "A single-target skill. Each use discounts Spear's MP cost by 15 (floor 0). Ninja skills also gain +1 power per Speed above the target (max +5).";
+                description = "A single-target skill. Each use discounts Spear's MP cost by 15 (floor 0). Ninja attacks gain +0.5 per Speed, and skills also gain +1 power per Speed above the target (max +5).";
                 return;
             case "Vertical Cut":
                 damage = "27 to one enemy";
-                description = "A heavy single-target skill. Each use discounts Vertical Cut's MP cost by 15 (floor 0). Ninja skills also gain +1 power per Speed above the target (max +5).";
+                description = "A heavy single-target skill. Each use discounts Vertical Cut's MP cost by 15 (floor 0). Ninja attacks gain +0.5 per Speed, and skills also gain +1 power per Speed above the target (max +5).";
                 return;
             case "Focus Spirit":
                 damage = "None";
@@ -211,11 +211,11 @@ public static class SkillInspect
                 return;
             case "Finish the Job":
                 damage = "None";
-                description = "Once per battle, after round 8. Gain 6 Enraged next turn, +6 ATK, and a battle-long stance that adds growing bonus power to your skill hits. Unlocks Overthrow.";
+                description = $"Once per battle, after {GameManager.FinishTheJobTurnRequirement} turns have passed. Gain 6 Enraged next turn, +6 ATK, and a battle-long stance that adds +2 skill power plus +8 more at the start of every turn. Unlocks Overthrow.";
                 return;
             case "Overthrow":
                 damage = "42 to all enemies";
-                description = "Hit every living enemy. Requires Finish the Job stance. Ninja skills also gain +1 power per Speed above the target (max +5).";
+                description = "Hit every living enemy. Requires Finish the Job stance. Ninja attacks gain +0.5 per Speed, and skills also gain +1 power per Speed above the target (max +5).";
                 return;
             default:
                 damage = "See battle log";

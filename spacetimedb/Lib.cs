@@ -1102,6 +1102,7 @@ public static partial class Module
                 FinishTheJobUsed = false,
                 FinishTheJobStance = false,
                 FinishTheJobPower = 0,
+                HasDodged = false,
                 SkipNextTurn = false,
                 GrandUndertakingPending = false,
             };
@@ -1119,17 +1120,16 @@ public static partial class Module
         EnsureEnemyCatalog(ctx);
         var floor = CombatFloor(ctx);
         var players = PartyEncounterSize(ctx);
-        var playerLevel = PartyCombatLevel(ctx);
         var pool = EnemyPool;
         var count = RollEnemyPackSize(ctx, players);
-        var maxHp = EnemyHpForEncounter(floor, playerLevel, players);
-        var atk = EnemyAtkForEncounter(floor, playerLevel);
-        var strength = EnemyStrengthForEncounter(floor, playerLevel);
+        var maxHp = EnemyHpForEncounter(floor, players);
+        var atk = EnemyAtkForEncounter(floor, players);
 
         for (uint slot = 0; slot < (uint)count; slot++)
         {
             var arch = pool[ctx.Rng.Next(0, pool.Length)];
             var maxMana = Math.Max(1, arch.MaxMana);
+            var strength = Math.Max(1, arch.Strength);
             var dexterity = Math.Max(1, arch.Dexterity);
             var intelligence = Math.Max(1, arch.Intelligence);
             var speed = Math.Max(1, arch.Speed);
@@ -1173,26 +1173,6 @@ public static partial class Module
     {
         var stage = RequireSession(ctx).StageNumber;
         return stage == 0 ? 1u : stage;
-    }
-
-    static uint PartyCombatLevel(ReducerContext ctx)
-    {
-        uint level = 1;
-        foreach (var player in ctx.Db.Player.Iter())
-        {
-            if (!IsLivingPlayer(ctx, player))
-            {
-                continue;
-            }
-
-            var characterLevel = player.CharacterLevel == 0 ? 1u : player.CharacterLevel;
-            if (characterLevel > level)
-            {
-                level = characterLevel;
-            }
-        }
-
-        return level;
     }
 
     static int PartyEncounterSize(ReducerContext ctx)
@@ -1542,10 +1522,6 @@ public static partial class Module
 
         var attackerClass = ClassOf(ctx, attacker);
         var power = skillBaseDamage + attacker.StrengthBuff + attacker.NextAttackBonus;
-        if (attacker.Faction == Team.Enemies)
-        {
-            power += Math.Max(0, attacker.Strength);
-        }
         if (isSkill && attacker.Faction == Team.Players && attackerClass == PlayerClass.Ninja)
         {
             power += NinjaSpeedPowerBonus(attacker.Speed, target.Speed);
@@ -1562,6 +1538,7 @@ public static partial class Module
                 attacker.Strength,
                 attacker.Dexterity,
                 attacker.Intelligence,
+                attacker.Speed,
                 isSpell: attackerClass == PlayerClass.Mage && isSkill
             );
         }

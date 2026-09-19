@@ -21,16 +21,21 @@ public static partial class Module
     public const int MaxDodgePercent = 25;
     /// Enemy dodge is this many times smaller than the shared Dexterity formula.
     public const int EnemyDodgeDivisor = 3;
-    /// Archer passive: 0.1% dodge per Dexterity (10 basis points).
-    public const int ArcherDodgeBpsPerDex = 10;
-    /// Archer passive: +0.2 damage per Dexterity, stored as tenths.
-    public const int ArcherDamageTenthsPerDex = 2;
-    public const int KnightDamageTenthsPerStrength = 5;
+    /// Archer passive: 2% dodge per Dexterity (200 basis points).
+    public const int ArcherDodgeBpsPerDex = 200;
+    /// Archer DEX dodge is capped at 50% before skill bonuses such as Restring.
+    public const int ArcherMaxDodgeBps = 5000;
+    /// Archer passive: +0.5 damage per Dexterity, stored as tenths.
+    public const int ArcherDamageTenthsPerDex = 5;
+    /// Knight STR stat passive: +0.2 damage per Strength, stored as tenths.
+    public const int KnightDamageTenthsPerStrength = 2;
     /// Mage passive: +0.2 spell damage per Intelligence, stored as tenths.
     public const int MageSpellDamageTenthsPerInt = 2;
     /// Mage passive: +0.4 max mana per Intelligence, stored as tenths.
     public const int MageManaTenthsPerInt = 4;
-    /// Ninja crit: 0.1% per Speed (10 basis points).
+    /// Ninja Speed stat passive: +0.5 damage per Speed on all attacks, stored as tenths.
+    public const int NinjaDamageTenthsPerSpeed = 5;
+    /// Ninja crit: 0.1% per Speed stat (10 basis points). Uses Speed, not CombatSpeed.
     public const int NinjaCritBpsPerSpeed = 10;
     public const int NinjaSpeedLeadForFirstAction = 5;
     public const int NinjaGuaranteedFirstSpeed = 999999999;
@@ -45,7 +50,7 @@ public static partial class Module
     public const int GrandUndertakingAllyHpBps = 1000;
     public const int NecromancyReviveHpBps = 1500;
     public const int NinjaSpeedPowerCap = 5;
-    public const int FinishTheJobTurnRequirement = 8;
+    public const int FinishTheJobTurnRequirement = 4;
     public const int RushNextTurnSpeed = 99999;
     public const int EvadeDamageThreshold = 20;
     public const int SpearBaseManaCost = 45;
@@ -257,12 +262,14 @@ public static partial class Module
 
     // ------------------------------------------------------------------- math
 
-    /// Flat class passives: Knight +0.5/STR, Archer +0.2/DEX, Mage +0.2/INT on spells.
+    /// Flat class passives: Knight +0.2/STR, Archer +0.5/DEX, Ninja +0.5/Speed,
+    /// Mage +0.2/INT on spells. CombatSpeed must not be passed in for Ninja.
     public static int ClassPassiveDamage(
         PlayerClass playerClass,
         int strength,
         int dexterity,
         int intelligence,
+        int speed,
         bool isSpell
     )
     {
@@ -275,6 +282,11 @@ public static partial class Module
         if (playerClass == PlayerClass.Archer)
         {
             tenths += ArcherDamageTenthsPerDex * Math.Max(0, dexterity);
+        }
+
+        if (playerClass == PlayerClass.Ninja)
+        {
+            tenths += NinjaDamageTenthsPerSpeed * Math.Max(0, speed);
         }
 
         if (playerClass == PlayerClass.Mage && isSpell)
@@ -373,7 +385,8 @@ public static partial class Module
         return chance;
     }
 
-    /// Dodge chance in basis points (10000 = 100%). Archer uses 0.1% per DEX.
+    /// Dodge chance in basis points (10000 = 100%). Archer uses 2% per DEX, capped
+    /// at 50% before temporary bonuses such as Restring.
     public static int DodgeChanceBps(
         int dexterity,
         Team faction,
@@ -384,7 +397,7 @@ public static partial class Module
         int bps;
         if (archerPassive)
         {
-            bps = Math.Max(0, dexterity) * ArcherDodgeBpsPerDex;
+            bps = Math.Min(ArcherMaxDodgeBps, Math.Max(0, dexterity) * ArcherDodgeBpsPerDex);
         }
         else
         {
@@ -442,35 +455,22 @@ public static partial class Module
         return (uint)Math.Round(xp, MidpointRounding.AwayFromZero);
     }
 
-    /// Floor is the main driver. Player level adds a quarter-weight, capped at 35
-    /// so a cheat-level party does not spawn raid-boss stats.
-    public static double EnemyScaleLevel(uint floor, uint playerLevel)
+    /// EnemyHP(L) = 30 + 6*L, then scaled by party size vs a 3-player baseline.
+    public static int EnemyHpForEncounter(uint floor, int playerCount)
     {
-        var f = floor == 0 ? 1 : (int)floor;
-        var level = playerLevel == 0 ? 1 : (int)playerLevel;
-        var capped = Math.Clamp(level, 1, 35);
-        return f + 0.25 * capped;
-    }
-
-    /// EnemyHP = (30 + 6*blend) * (P/3). Blend is floor + 0.25*min(playerLevel, 35).
-    public static int EnemyHpForEncounter(uint floor, uint playerLevel, int playerCount)
-    {
-        var baseline = 30 + 6 * EnemyScaleLevel(floor, playerLevel);
+        var level = floor == 0 ? 1 : (int)floor;
+        var baseline = 30 + (6 * level);
         var p = Math.Max(1, playerCount);
         return Math.Max(1, (int)Math.Round(baseline * (p / 3.0), MidpointRounding.AwayFromZero));
     }
 
-    /// ATK is not cut by party size — starter armor is 5, so P/3 was zeroing solo hits.
-    public static int EnemyAtkForEncounter(uint floor, uint playerLevel)
+    /// EnemyATK(L) = 4 + 0.6*L, then scaled by party size vs a 3-player baseline.
+    public static int EnemyAtkForEncounter(uint floor, int playerCount)
     {
-        var atk = 4 + 0.6 * EnemyScaleLevel(floor, playerLevel);
-        return Math.Max(6, (int)Math.Round(atk, MidpointRounding.AwayFromZero));
-    }
-
-    public static int EnemyStrengthForEncounter(uint floor, uint playerLevel)
-    {
-        var strength = 2 + 0.3 * EnemyScaleLevel(floor, playerLevel);
-        return Math.Max(3, (int)Math.Round(strength, MidpointRounding.AwayFromZero));
+        var level = floor == 0 ? 1 : (int)floor;
+        var baseline = 4 + (0.6 * level);
+        var p = Math.Max(1, playerCount);
+        return Math.Max(1, (int)Math.Round(baseline * (p / 3.0), MidpointRounding.AwayFromZero));
     }
 
     /// Each kill grants `25 * stage` EXP to every living party member.
