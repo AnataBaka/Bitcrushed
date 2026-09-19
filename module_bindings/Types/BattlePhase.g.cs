@@ -14,5 +14,6 @@ namespace SpacetimeDB.Types
         InBattle,
         Victory,
         Defeat,
+        RestStop,
     }
 }

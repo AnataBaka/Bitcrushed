@@ -27,6 +27,7 @@ public static partial class Module
         InBattle,
         Victory,
         Defeat,
+        RestStop,
     }
 
     [SpacetimeDB.Type]

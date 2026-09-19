@@ -83,7 +83,7 @@ public static partial class Module
             throw new Exception("Party is Full");
         }
 
-        if (session.Phase != BattlePhase.Waiting)
+        if (!IsReadyUpPhase(session.Phase))
         {
             throw new Exception("The battle has already started.");
         }
@@ -182,14 +182,15 @@ public static partial class Module
         TryStartIfAllReady(ctx);
     }
 
-    /// Lobby ready-up. A player may un-ready until the fight actually starts.
+    /// Ready-up for the lobby and rest stop. A player may un-ready until the
+    /// next battle actually starts.
     [SpacetimeDB.Reducer]
     public static void SetReady(ReducerContext ctx, bool ready)
     {
         var session = RequireSession(ctx);
-        if (session.Phase != BattlePhase.Waiting)
+        if (!IsReadyUpPhase(session.Phase))
         {
-            throw new Exception("Ready state can only change in the lobby.");
+            throw new Exception("Ready state can only change in the lobby or at a rest stop.");
         }
 
         var player = RequirePlayer(ctx);
@@ -652,12 +653,12 @@ public static partial class Module
 
     // ------------------------------------------------------------ battle rules
 
-    /// Starts the fight once every currently connected lobby player is ready.
+    /// Starts the next fight once every currently connected player is ready.
     /// Offline seats do not count, so a disconnect can unblock the rest.
     static void TryStartIfAllReady(ReducerContext ctx)
     {
         var session = RequireSession(ctx);
-        if (session.Phase != BattlePhase.Waiting)
+        if (!IsReadyUpPhase(session.Phase))
         {
             return;
         }
@@ -673,11 +674,20 @@ public static partial class Module
             return;
         }
 
+        if (session.Phase == BattlePhase.RestStop)
+        {
+            BeginNextStage(ctx);
+            return;
+        }
+
         StartRun(ctx);
     }
 
-    /// Single phase gate for loadout changes. Rest stop will share this predicate.
-    static bool EquipmentChangesAllowed(BattlePhase phase) => phase != BattlePhase.InBattle;
+    /// Lobby and rest stop share ready-up and loadout. Every other phase is locked.
+    static bool IsReadyUpPhase(BattlePhase phase) =>
+        phase is BattlePhase.Waiting or BattlePhase.RestStop;
+
+    static bool EquipmentChangesAllowed(BattlePhase phase) => IsReadyUpPhase(phase);
 
     static void RejectEquipmentChangeInBattle(ReducerContext ctx)
     {
@@ -698,6 +708,7 @@ public static partial class Module
 
     static void EnterBattle(ReducerContext ctx)
     {
+        ClearReadyFlags(ctx);
         ClearEnemySide(ctx);
         PreparePlayersForStage(ctx);
         SpawnEnemies(ctx);
@@ -749,6 +760,7 @@ public static partial class Module
 
         if (cleared >= MaxStageCount)
         {
+            ClearReadyFlags(ctx);
             ctx.Db.GameSession.Id.Update(
                 session with
                 {
@@ -769,11 +781,58 @@ public static partial class Module
         BeginNextStage(ctx);
     }
 
-    static bool ShouldEnterRestStop(uint clearedStage) => false;
+    static bool ShouldEnterRestStop(uint clearedStage) =>
+        RestStopEvery > 0 && clearedStage < MaxStageCount && clearedStage % RestStopEvery == 0;
 
     static void EnterRestStop(ReducerContext ctx)
     {
-        // Filled in with the rest-stop phase.
+        ClearReadyFlags(ctx);
+        RestorePartyAtRest(ctx);
+
+        var session = RequireSession(ctx);
+        ctx.Db.GameSession.Id.Update(
+            session with
+            {
+                Phase = BattlePhase.RestStop,
+                Round = 0,
+                TurnIndex = 0,
+                ActiveEntityId = 0,
+            }
+        );
+        AddLog(ctx, "Rest stop. HP and mana restored. Ready up to continue.");
+    }
+
+    static void RestorePartyAtRest(ReducerContext ctx)
+    {
+        foreach (var entity in ctx.Db.Entity.Iter().ToList())
+        {
+            if (entity.Faction != Team.Players)
+            {
+                continue;
+            }
+
+            ctx.Db.Entity.EntityId.Update(
+                entity with
+                {
+                    Alive = true,
+                    Hp = entity.MaxHp,
+                    Mana = entity.MaxMana,
+                }
+            );
+        }
+    }
+
+    static void ClearReadyFlags(ReducerContext ctx)
+    {
+        foreach (var player in ctx.Db.Player.Iter().ToList())
+        {
+            if (!player.Ready)
+            {
+                continue;
+            }
+
+            ctx.Db.Player.Identity.Update(player with { Ready = false });
+        }
     }
 
     static void ClearEnemySide(ReducerContext ctx)
@@ -1050,6 +1109,7 @@ public static partial class Module
 
         if (playersAlive == 0)
         {
+            ClearReadyFlags(ctx);
             ctx.Db.GameSession.Id.Update(
                 session with
                 {

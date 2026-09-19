@@ -138,7 +138,11 @@ public class BattleHud : MonoBehaviour
         {
             if (session != null && session.StageNumber > 0 && session.Phase != BattlePhase.Waiting)
             {
-                _stageLabel.text = $"Stage {session.StageNumber}/10";
+                var stageText = $"Stage {session.StageNumber}/10";
+                _stageLabel.text =
+                    session.Phase == BattlePhase.RestStop
+                        ? $"{stageText}  —  Rest Stop"
+                        : stageText;
             }
             else
             {
@@ -160,7 +164,11 @@ public class BattleHud : MonoBehaviour
         _menu.Render(session, me, myTurn, _targeting);
         _equipment.Render(
             me,
-            session == null || session.Phase != BattlePhase.InBattle
+            session != null
+                && (
+                    session.Phase == BattlePhase.Waiting
+                    || session.Phase == BattlePhase.RestStop
+                )
         );
 
         var finished =
@@ -225,7 +233,10 @@ public class BattleHud : MonoBehaviour
             var occupant = GameManager.FindPlayer(entity.EntityId);
             view.SetReadyBanner(
                 session != null
-                    && session.Phase == BattlePhase.Waiting
+                    && (
+                        session.Phase == BattlePhase.Waiting
+                        || session.Phase == BattlePhase.RestStop
+                    )
                     && occupant != null
                     && occupant.Ready
             );

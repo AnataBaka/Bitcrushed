@@ -153,11 +153,14 @@ public class ActionMenuView : MonoBehaviour
             }
         }
 
-        if (session.Phase == BattlePhase.Waiting)
+        if (session.Phase == BattlePhase.Waiting || session.Phase == BattlePhase.RestStop)
         {
             _page = Page.Lobby;
             ApplyPage();
-            _status.text = $"Lobby {session.PlayerCount}/{session.MaxPlayers}";
+            _status.text =
+                session.Phase == BattlePhase.RestStop
+                    ? "Rest Stop"
+                    : $"Lobby {session.PlayerCount}/{session.MaxPlayers}";
             _joinButton.interactable = me == null && session.PlayerCount < session.MaxPlayers;
             var localPlayer = GameManager.LocalPlayer();
             _readyButton.interactable = localPlayer != null;

@@ -279,7 +279,7 @@ public class EntityView : MonoBehaviour
         _button.interactable = entity.Alive;
     }
 
-    /// Driven from Player.Ready + lobby phase, never from local click state.
+    /// Driven from Player.Ready during lobby and rest stop.
     public void SetReadyBanner(bool visible)
     {
         if (_readyBanner == null)
