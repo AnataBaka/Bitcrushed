@@ -135,8 +135,14 @@ public class GameManager : MonoBehaviour
             .OnError(
                 (_, ex) =>
                 {
-                    Status = $"Subscription failed: {ex.Message}";
+                    Status =
+                        "Server module is outdated. Republish spacetimedb to hophacks-party-vp, then press Play.";
                     Debug.LogError(ex);
+                    Debug.LogError(
+                        "The Unity client expects combat_event / inventory tables that are not on Maincloud yet. "
+                            + "From the repo root, log in and republish (this clears the old lobby schema):\n"
+                            + "  spacetime publish hophacks-party-vp --module-path spacetimedb --server maincloud --yes --delete-data=always"
+                    );
                     Changed();
                 }
             )

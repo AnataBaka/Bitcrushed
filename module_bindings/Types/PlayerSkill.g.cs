@@ -37,7 +37,6 @@ namespace SpacetimeDB.Types
 
         public PlayerSkill()
         {
-
         }
     }
 }

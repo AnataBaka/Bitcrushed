@@ -41,7 +41,6 @@ namespace SpacetimeDB.Types
 
         public TurnOrder()
         {
-
         }
     }
 }

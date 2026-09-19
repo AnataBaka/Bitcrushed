@@ -29,7 +29,6 @@ namespace SpacetimeDB.Types
             internal CombatEventHandle(DbConnection conn) : base(conn)
             {
                 Id = new(this);
-
             }
 
             protected override object GetPrimaryKey(CombatEvent row) => row.Id;

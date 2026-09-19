@@ -15,9 +15,9 @@ namespace SpacetimeDB.Types
         public delegate void UnequipItemHandler(ReducerEventContext ctx, uint itemInstanceId);
         public event UnequipItemHandler? OnUnequipItem;
 
-        public void UnequipItem(uint ItemInstanceId)
+        public void UnequipItem(uint itemInstanceId)
         {
-            conn.InternalCallReducer(new Reducer.UnequipItem(ItemInstanceId));
+            conn.InternalCallReducer(new Reducer.UnequipItem(itemInstanceId));
         }
 
         public bool InvokeUnequipItem(ReducerEventContext ctx, Reducer.UnequipItem args)

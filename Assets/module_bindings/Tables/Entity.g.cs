@@ -29,7 +29,6 @@ namespace SpacetimeDB.Types
             internal EntityHandle(DbConnection conn) : base(conn)
             {
                 EntityId = new(this);
-
             }
 
             protected override object GetPrimaryKey(Entity row) => row.EntityId;

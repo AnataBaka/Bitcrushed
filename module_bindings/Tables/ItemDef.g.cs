@@ -29,7 +29,6 @@ namespace SpacetimeDB.Types
             internal ItemDefHandle(DbConnection conn) : base(conn)
             {
                 Id = new(this);
-
             }
 
             protected override object GetPrimaryKey(ItemDef row) => row.Id;

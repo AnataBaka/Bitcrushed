@@ -29,7 +29,6 @@ namespace SpacetimeDB.Types
             internal TurnOrderHandle(DbConnection conn) : base(conn)
             {
                 Idx = new(this);
-
             }
 
             protected override object GetPrimaryKey(TurnOrder row) => row.Idx;

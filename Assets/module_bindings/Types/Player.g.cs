@@ -77,7 +77,6 @@ namespace SpacetimeDB.Types
 
         public Player()
         {
-
         }
     }
 }

@@ -15,9 +15,9 @@ namespace SpacetimeDB.Types
         public delegate void EquipItemHandler(ReducerEventContext ctx, uint itemInstanceId);
         public event EquipItemHandler? OnEquipItem;
 
-        public void EquipItem(ItemInstanceId)
+        public void EquipItem(uint itemInstanceId)
         {
-            conn.InternalCallReducer(new Reducer.EquipItem(ItemInstanceId));
+            conn.InternalCallReducer(new Reducer.EquipItem(itemInstanceId));
         }
 
         public bool InvokeEquipItem(ReducerEventContext ctx, Reducer.EquipItem args)

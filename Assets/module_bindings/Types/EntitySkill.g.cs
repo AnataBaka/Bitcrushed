@@ -33,7 +33,6 @@ namespace SpacetimeDB.Types
 
         public EntitySkill()
         {
-
         }
     }
 }

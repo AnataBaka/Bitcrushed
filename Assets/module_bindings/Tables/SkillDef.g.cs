@@ -29,7 +29,6 @@ namespace SpacetimeDB.Types
             internal SkillDefHandle(DbConnection conn) : base(conn)
             {
                 Id = new(this);
-
             }
 
             protected override object GetPrimaryKey(SkillDef row) => row.Id;

@@ -15,9 +15,9 @@ namespace SpacetimeDB.Types
         public delegate void UseItemHandler(ReducerEventContext ctx, uint itemInstanceId);
         public event UseItemHandler? OnUseItem;
 
-        public void UseItem(uint ItemInstanceId)
+        public void UseItem(uint itemInstanceId)
         {
-            conn.InternalCallReducer(new Reducer.UseItem(ItemInstanceId));
+            conn.InternalCallReducer(new Reducer.UseItem(itemInstanceId));
         }
 
         public bool InvokeUseItem(ReducerEventContext ctx, Reducer.UseItem args)

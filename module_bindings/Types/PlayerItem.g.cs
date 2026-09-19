@@ -45,7 +45,6 @@ namespace SpacetimeDB.Types
 
         public PlayerItem()
         {
-
         }
     }
 }

@@ -17,15 +17,6 @@ namespace SpacetimeDB.Types
         {
             public override string RemoteTableName => "entity_skill";
 
-            public sealed class IdUniqueIndex : UniqueIndexBase<uint>
-            {
-                protected override uint GetKey(EntitySkill row) => row.Id;
-
-                public IdUniqueIndex(EntitySkillHandle table) : base(table) { }
-            }
-
-            public readonly IdUniqueIndex Id;
-
             public sealed class EntityIdIndex : BTreeIndexBase<ulong>
             {
                 protected override ulong GetKey(EntitySkill row) => row.EntityId;
@@ -35,10 +26,19 @@ namespace SpacetimeDB.Types
 
             public readonly EntityIdIndex EntityId;
 
+            public sealed class IdUniqueIndex : UniqueIndexBase<uint>
+            {
+                protected override uint GetKey(EntitySkill row) => row.Id;
+
+                public IdUniqueIndex(EntitySkillHandle table) : base(table) { }
+            }
+
+            public readonly IdUniqueIndex Id;
+
             internal EntitySkillHandle(DbConnection conn) : base(conn)
             {
-                Id = new(this);
                 EntityId = new(this);
+                Id = new(this);
             }
 
             protected override object GetPrimaryKey(EntitySkill row) => row.Id;

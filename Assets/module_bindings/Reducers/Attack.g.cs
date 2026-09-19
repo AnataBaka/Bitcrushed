@@ -15,9 +15,9 @@ namespace SpacetimeDB.Types
         public delegate void AttackHandler(ReducerEventContext ctx, ulong targetEntityId, uint skillDefId);
         public event AttackHandler? OnAttack;
 
-        public void Attack(ulong TargetEntityId, uint SkillDefId)
+        public void Attack(ulong targetEntityId, uint skillDefId)
         {
-            conn.InternalCallReducer(new Reducer.Attack(TargetEntityId, SkillDefId));
+            conn.InternalCallReducer(new Reducer.Attack(targetEntityId, skillDefId));
         }
 
         public bool InvokeAttack(ReducerEventContext ctx, Reducer.Attack args)
@@ -54,7 +54,10 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "skill_def_id")]
             public uint SkillDefId;
 
-            public Attack(ulong TargetEntityId, uint SkillDefId)
+            public Attack(
+                ulong TargetEntityId,
+                uint SkillDefId
+            )
             {
                 this.TargetEntityId = TargetEntityId;
                 this.SkillDefId = SkillDefId;
