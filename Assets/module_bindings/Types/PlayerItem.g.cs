@@ -21,18 +21,22 @@ namespace SpacetimeDB.Types
         public uint ItemDefId;
         [DataMember(Name = "quantity")]
         public uint Quantity;
+        [DataMember(Name = "equipped_slot")]
+        public EquipSlot EquippedSlot;
 
         public PlayerItem(
             uint Id,
             SpacetimeDB.Identity Owner,
             uint ItemDefId,
-            uint Quantity
+            uint Quantity,
+            EquipSlot EquippedSlot
         )
         {
             this.Id = Id;
             this.Owner = Owner;
             this.ItemDefId = ItemDefId;
             this.Quantity = Quantity;
+            this.EquippedSlot = EquippedSlot;
         }
 
         public PlayerItem()

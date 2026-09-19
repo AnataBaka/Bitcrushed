@@ -75,8 +75,14 @@ namespace SpacetimeDB.Types
         public bool Alive;
         [DataMember(Name = "equipped_weapon_def_id")]
         public uint EquippedWeaponDefId;
-        [DataMember(Name = "equipped_armor_def_id")]
-        public uint EquippedArmorDefId;
+        [DataMember(Name = "equipped_helmet_def_id")]
+        public uint EquippedHelmetDefId;
+        [DataMember(Name = "equipped_chestplate_def_id")]
+        public uint EquippedChestplateDefId;
+        [DataMember(Name = "equipped_leggings_def_id")]
+        public uint EquippedLeggingsDefId;
+        [DataMember(Name = "equipped_boots_def_id")]
+        public uint EquippedBootsDefId;
 
         public Player(
             SpacetimeDB.Identity Identity,
@@ -110,7 +116,10 @@ namespace SpacetimeDB.Types
             bool IsDefending,
             bool Alive,
             uint EquippedWeaponDefId,
-            uint EquippedArmorDefId
+            uint EquippedHelmetDefId,
+            uint EquippedChestplateDefId,
+            uint EquippedLeggingsDefId,
+            uint EquippedBootsDefId
         )
         {
             this.Identity = Identity;
@@ -144,7 +153,10 @@ namespace SpacetimeDB.Types
             this.IsDefending = IsDefending;
             this.Alive = Alive;
             this.EquippedWeaponDefId = EquippedWeaponDefId;
-            this.EquippedArmorDefId = EquippedArmorDefId;
+            this.EquippedHelmetDefId = EquippedHelmetDefId;
+            this.EquippedChestplateDefId = EquippedChestplateDefId;
+            this.EquippedLeggingsDefId = EquippedLeggingsDefId;
+            this.EquippedBootsDefId = EquippedBootsDefId;
         }
 
         public Player()

@@ -80,7 +80,10 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Player, bool> IsDefending { get; }
         public global::SpacetimeDB.Col<Player, bool> Alive { get; }
         public global::SpacetimeDB.Col<Player, uint> EquippedWeaponDefId { get; }
-        public global::SpacetimeDB.Col<Player, uint> EquippedArmorDefId { get; }
+        public global::SpacetimeDB.Col<Player, uint> EquippedHelmetDefId { get; }
+        public global::SpacetimeDB.Col<Player, uint> EquippedChestplateDefId { get; }
+        public global::SpacetimeDB.Col<Player, uint> EquippedLeggingsDefId { get; }
+        public global::SpacetimeDB.Col<Player, uint> EquippedBootsDefId { get; }
 
         public PlayerCols(string tableName)
         {
@@ -115,7 +118,10 @@ namespace SpacetimeDB.Types
             IsDefending = new global::SpacetimeDB.Col<Player, bool>(tableName, "is_defending");
             Alive = new global::SpacetimeDB.Col<Player, bool>(tableName, "alive");
             EquippedWeaponDefId = new global::SpacetimeDB.Col<Player, uint>(tableName, "equipped_weapon_def_id");
-            EquippedArmorDefId = new global::SpacetimeDB.Col<Player, uint>(tableName, "equipped_armor_def_id");
+            EquippedHelmetDefId = new global::SpacetimeDB.Col<Player, uint>(tableName, "equipped_helmet_def_id");
+            EquippedChestplateDefId = new global::SpacetimeDB.Col<Player, uint>(tableName, "equipped_chestplate_def_id");
+            EquippedLeggingsDefId = new global::SpacetimeDB.Col<Player, uint>(tableName, "equipped_leggings_def_id");
+            EquippedBootsDefId = new global::SpacetimeDB.Col<Player, uint>(tableName, "equipped_boots_def_id");
         }
     }
 
