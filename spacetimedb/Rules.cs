@@ -631,7 +631,7 @@ public static partial class Module
         return Math.Max(1, (int)Math.Round(5 + (0.6 * n) + (0.02 * n * n), MidpointRounding.AwayFromZero));
     }
 
-    /// Light late-game armor so flat nukes chip instead of deleting. 0 until level 10.
+    /// Light late-game defense so flat nukes chip instead of deleting. 0 until level 10.
     public static int EnemyDefenseBaseline(int level)
     {
         var n = Math.Max(1, level);

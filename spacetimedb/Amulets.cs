@@ -126,9 +126,9 @@ public static partial class Module
         DealFlatReflect(ctx, target, attacker, RedCocoonReflect);
     }
 
-    static void ApplyAmuletOnAllyDefeat(ReducerContext ctx, Entity fallen)
+    static void ApplyAmuletOnAllyDefeat(ReducerContext ctx, Entity defeatedAlly)
     {
-        if (fallen.Faction != Team.Players)
+        if (defeatedAlly.Faction != Team.Players)
         {
             return;
         }
@@ -138,7 +138,7 @@ public static partial class Module
             if (
                 ally.Faction != Team.Players
                 || !ally.Alive
-                || ally.EntityId == fallen.EntityId
+                || ally.EntityId == defeatedAlly.EntityId
                 || !HasAmulet(ctx, ally, AmuletNames.DragonflyCharm)
             )
             {

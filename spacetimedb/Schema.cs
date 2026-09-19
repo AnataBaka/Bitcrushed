@@ -49,16 +49,6 @@ public static partial class Module
         Bow,
     }
 
-    [SpacetimeDB.Type]
-    public enum ArmorSlot
-    {
-        None,
-        Helmet,
-        Chestplate,
-        Leggings,
-        Boots,
-    }
-
     /// Where an owned item currently lives. Bag is potions only. Inventory is
     /// the 3x3 gear grid (see InventoryIndex). Weapon and Amulet are worn.
     [SpacetimeDB.Type]
@@ -435,7 +425,6 @@ public static partial class Module
         public string ShortName;
         public ItemKind Kind;
         public WeaponType WeaponType;
-        public ArmorSlot ArmorSlot;
         public int AtkBonus;
         public int DefenseBonus;
         public int StrengthBonus;
