@@ -44,6 +44,7 @@ public class BattleHud : MonoBehaviour
     TurnOrderListView _turnList;
     LevelUpBannerView _banner;
     EscapeMenuView _escape;
+    BiomeBackdropView _backdrop;
 
     readonly Dictionary<ulong, EntityView> _views = new Dictionary<ulong, EntityView>();
     readonly List<ulong> _stale = new List<ulong>();
@@ -72,7 +73,8 @@ public class BattleHud : MonoBehaviour
         InventoryPopupView inventory,
         TurnOrderListView turnList,
         LevelUpBannerView banner,
-        EscapeMenuView escape
+        EscapeMenuView escape,
+        BiomeBackdropView backdrop
     )
     {
         _field = field;
@@ -90,6 +92,7 @@ public class BattleHud : MonoBehaviour
         _turnList = turnList;
         _banner = banner;
         _escape = escape;
+        _backdrop = backdrop;
 
         _menu.OnJoin = GameManager.JoinGame;
         _menu.OnReady = HandleReadyClicked;
@@ -216,7 +219,7 @@ public class BattleHud : MonoBehaviour
         {
             if (session != null && session.StageNumber > 0 && session.Phase != BattlePhase.Waiting)
             {
-                var stageText = $"Stage {session.StageNumber}/10";
+                var stageText = $"Stage {session.StageNumber}";
                 _stageLabel.text =
                     session.Phase == BattlePhase.RestStop
                         ? $"{stageText}  —  Rest Stop"
@@ -244,11 +247,11 @@ public class BattleHud : MonoBehaviour
         _menu.Render(session, me, myTurn, _targeting);
         _equipment.Render();
 
+        _backdrop?.Render(session);
+
         var transitioning =
             session != null && session.Phase == BattlePhase.StageTransition;
-        var finished =
-            session != null
-            && (session.Phase == BattlePhase.Victory || session.Phase == BattlePhase.Defeat);
+        var finished = session != null && session.Phase == BattlePhase.Defeat;
         _overlay.gameObject.SetActive(finished || transitioning);
         if (_resetButton != null)
         {
@@ -274,26 +277,42 @@ public class BattleHud : MonoBehaviour
                 _overlayText.color = new Color(0.95f, 0.86f, 0.45f);
                 if (_overlaySubtext != null)
                 {
-                    _overlaySubtext.text = session.UpcomingRestStop
-                        ? "Next: Rest Stop"
-                        : $"Next: Stage {session.StageNumber + 1}";
+                    _overlaySubtext.text = NextLine(session);
                 }
             }
             else
             {
                 _overlayText.fontSize = 96;
-                _overlayText.text =
-                    session.Phase == BattlePhase.Victory ? "FINAL VICTORY" : "DEFEAT";
-                _overlayText.color =
-                    session.Phase == BattlePhase.Victory
-                        ? new Color(0.55f, 0.90f, 0.55f)
-                        : new Color(0.92f, 0.45f, 0.45f);
+                _overlayText.text = "DEFEAT";
+                _overlayText.color = new Color(0.92f, 0.45f, 0.45f);
                 if (_overlaySubtext != null)
                 {
-                    _overlaySubtext.text = "";
+                    _overlaySubtext.text = $"Reached Stage {session.StageNumber}";
                 }
             }
         }
+    }
+
+    static string NextLine(GameSession session)
+    {
+        var nextName = GameManager.BiomeTheName(session.NextBiome);
+        var biomeChanges = session.NextBiome != session.CurrentBiome;
+        if (session.UpcomingRestStop && biomeChanges)
+        {
+            return $"Next: Rest Stop — then {nextName}";
+        }
+
+        if (session.UpcomingRestStop)
+        {
+            return "Next: Rest Stop";
+        }
+
+        if (biomeChanges)
+        {
+            return $"Next: {nextName}";
+        }
+
+        return $"Next: Stage {session.StageNumber + 1}";
     }
 
     void SyncTeam(

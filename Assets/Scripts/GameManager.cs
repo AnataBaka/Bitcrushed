@@ -226,6 +226,42 @@ public class GameManager : MonoBehaviour
     public static GameSession Session() =>
         Conn == null ? null : Conn.Db.GameSession.Id.Find(SessionId);
 
+    public static BiomeDef? FindBiomeDef(WorldBiome biome)
+    {
+        if (Conn == null)
+        {
+            return null;
+        }
+
+        foreach (var row in Conn.Db.BiomeDef.Iter())
+        {
+            if (row.Kind == biome)
+            {
+                return row;
+            }
+        }
+
+        return null;
+    }
+
+    public static string BiomeTheName(WorldBiome biome)
+    {
+        var row = FindBiomeDef(biome);
+        if (row is BiomeDef def && !string.IsNullOrEmpty(def.TheName))
+        {
+            return def.TheName;
+        }
+
+        return biome switch
+        {
+            WorldBiome.Caves => "the Caves",
+            WorldBiome.Volcano => "the Volcano",
+            WorldBiome.Swamp => "the Swamp",
+            WorldBiome.SnowyTundra => "the Snowy Tundra",
+            _ => "the Plains",
+        };
+    }
+
     public static Player LocalPlayer() =>
         Conn == null ? null : Conn.Db.Player.Identity.Find(LocalIdentity);
 

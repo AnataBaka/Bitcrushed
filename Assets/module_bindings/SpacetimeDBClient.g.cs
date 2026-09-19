@@ -28,6 +28,7 @@ namespace SpacetimeDB.Types
         public RemoteTables(DbConnection conn)
         {
             AddTable(BattleLog = new(conn));
+            AddTable(BiomeDef = new(conn));
             AddTable(Entity = new(conn));
             AddTable(EntitySkill = new(conn));
             AddTable(GameSession = new(conn));
@@ -533,6 +534,7 @@ namespace SpacetimeDB.Types
         internal static string[] AllTablesSqlQueries() => new string[]
         {
             new QueryBuilder().From.BattleLog().ToSql(),
+            new QueryBuilder().From.BiomeDef().ToSql(),
             new QueryBuilder().From.Entity().ToSql(),
             new QueryBuilder().From.EntitySkill().ToSql(),
             new QueryBuilder().From.GameSession().ToSql(),
@@ -548,6 +550,7 @@ namespace SpacetimeDB.Types
     public sealed class From
     {
         public global::SpacetimeDB.Table<BattleLog, BattleLogCols, BattleLogIxCols> BattleLog() => new("battle_log", new BattleLogCols("battle_log"), new BattleLogIxCols("battle_log"));
+        public global::SpacetimeDB.Table<BiomeDef, BiomeDefCols, BiomeDefIxCols> BiomeDef() => new("biome_def", new BiomeDefCols("biome_def"), new BiomeDefIxCols("biome_def"));
         public global::SpacetimeDB.Table<Entity, EntityCols, EntityIxCols> Entity() => new("entity", new EntityCols("entity"), new EntityIxCols("entity"));
         public global::SpacetimeDB.Table<EntitySkill, EntitySkillCols, EntitySkillIxCols> EntitySkill() => new("entity_skill", new EntitySkillCols("entity_skill"), new EntitySkillIxCols("entity_skill"));
         public global::SpacetimeDB.Table<GameSession, GameSessionCols, GameSessionIxCols> GameSession() => new("game_session", new GameSessionCols("game_session"), new GameSessionIxCols("game_session"));

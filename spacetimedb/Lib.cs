@@ -24,6 +24,8 @@ public static partial class Module
                 ActiveEntityId = 0,
                 StageNumber = 0,
                 UpcomingRestStop = false,
+                CurrentBiome = WorldBiome.Plains,
+                NextBiome = WorldBiome.Plains,
             }
         );
 
@@ -362,6 +364,9 @@ public static partial class Module
                 ActiveEntityId = 0,
                 StageNumber = 0,
                 UpcomingRestStop = false,
+                AttackRedirectEntityId = 0,
+                CurrentBiome = WorldBiome.Plains,
+                NextBiome = WorldBiome.Plains,
             }
         );
         AddLog(ctx, "Stage reset. Waiting for players.");
@@ -887,13 +892,16 @@ public static partial class Module
         }
 
         var session = RequireSession(ctx);
-        ctx.Db.GameSession.Id.Update(session with { StageNumber = 1 });
-        AddLog(ctx, "Stage 1 begins.");
+        var stage = DebugStartStage < 1 ? 1u : DebugStartStage;
+        ApplyStageFields(ctx, session, stage);
+        MaybeLogBiomeEntry(ctx, 0, stage);
+        AddLog(ctx, $"Stage {stage} begins.");
         EnterBattle(ctx);
     }
 
     static void EnterBattle(ReducerContext ctx)
     {
+        EnsureBiomeDefs(ctx);
         ClearReadyFlags(ctx);
         ClearEnemySide(ctx);
         PreparePlayersForStage(ctx);
@@ -937,8 +945,10 @@ public static partial class Module
         }
 
         var session = RequireSession(ctx);
-        var next = session.StageNumber + 1;
-        ctx.Db.GameSession.Id.Update(session with { StageNumber = next });
+        var previous = session.StageNumber;
+        var next = previous + 1;
+        ApplyStageFields(ctx, session, next);
+        MaybeLogBiomeEntry(ctx, previous, next);
         AddLog(ctx, $"Stage {next} begins.");
         EnterBattle(ctx);
     }
@@ -949,27 +959,67 @@ public static partial class Module
         var cleared = session.StageNumber < 1 ? 1u : session.StageNumber;
         ClearEnemySide(ctx);
         AddLog(ctx, $"Stage {cleared} cleared.");
-
-        if (cleared >= MaxStageCount)
-        {
-            ClearReadyFlags(ctx);
-            ctx.Db.GameSession.Id.Update(
-                session with
-                {
-                    Phase = BattlePhase.Victory,
-                    ActiveEntityId = 0,
-                    UpcomingRestStop = false,
-                }
-            );
-            AddLog(ctx, "The party is victorious!");
-            return;
-        }
-
         EnterStageTransition(ctx, ShouldEnterRestStop(cleared));
     }
 
     static bool ShouldEnterRestStop(uint clearedStage) =>
-        RestStopEvery > 0 && clearedStage < MaxStageCount && clearedStage % RestStopEvery == 0;
+        RestStopEvery > 0 && clearedStage % RestStopEvery == 0;
+
+    static void ApplyStageFields(ReducerContext ctx, GameSession session, uint stage)
+    {
+        var biome = BiomeOf(stage);
+        ctx.Db.GameSession.Id.Update(
+            session with
+            {
+                StageNumber = stage,
+                CurrentBiome = biome,
+                NextBiome = BiomeOf(stage + 1),
+            }
+        );
+    }
+
+    static void MaybeLogBiomeEntry(ReducerContext ctx, uint previousStage, uint stage)
+    {
+        EnsureBiomeDefs(ctx);
+        var biome = BiomeOf(stage);
+        if (previousStage >= 1 && BiomeOf(previousStage) == biome)
+        {
+            return;
+        }
+
+        var theName = BiomeTheName(ctx, biome);
+        AddLog(ctx, $"Entering {theName}");
+    }
+
+    static string BiomeTheName(ReducerContext ctx, WorldBiome biome)
+    {
+        if (FindBiomeDef(ctx, biome) is BiomeDef row && !string.IsNullOrEmpty(row.TheName))
+        {
+            return row.TheName;
+        }
+
+        return biome switch
+        {
+            WorldBiome.Caves => "the Caves",
+            WorldBiome.Volcano => "the Volcano",
+            WorldBiome.Swamp => "the Swamp",
+            WorldBiome.SnowyTundra => "the Snowy Tundra",
+            _ => "the Plains",
+        };
+    }
+
+    static BiomeDef? FindBiomeDef(ReducerContext ctx, WorldBiome biome)
+    {
+        foreach (var row in ctx.Db.BiomeDef.Iter())
+        {
+            if (row.Kind == biome)
+            {
+                return row;
+            }
+        }
+
+        return null;
+    }
 
     static void EnterStageTransition(ReducerContext ctx, bool upcomingRestStop)
     {
@@ -977,6 +1027,7 @@ public static partial class Module
         ClearStageTransitionTimers(ctx);
 
         var session = RequireSession(ctx);
+        var nextStage = (session.StageNumber < 1 ? 1u : session.StageNumber) + 1;
         ctx.Db.GameSession.Id.Update(
             session with
             {
@@ -985,6 +1036,7 @@ public static partial class Module
                 TurnIndex = 0,
                 ActiveEntityId = 0,
                 UpcomingRestStop = upcomingRestStop,
+                NextBiome = BiomeOf(nextStage),
             }
         );
 

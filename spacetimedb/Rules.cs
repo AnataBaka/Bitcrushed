@@ -8,8 +8,12 @@ public static partial class Module
     public const uint SessionId = 1;
     public const uint MaxPartySize = 3;
     public const uint MaxEnemySlots = 4;
-    public const uint MaxStageCount = 10;
     public const uint RestStopEvery = 3;
+    public const uint BiomeLength = 10;
+    public const uint BossInterval = 10;
+    public const uint BiomeCount = 5;
+    /// New runs start here. Keep at 1 in committed code.
+    public const uint DebugStartStage = 1;
     public const int StageScalePercent = 8;
 
     public const int BagCapacity = 12;
@@ -477,24 +481,46 @@ public static partial class Module
         var p = Math.Max(1, playerCount);
         var fromParty = baseline * (p / 3.0);
         var vitalityBps = PackVitalityBps(Math.Max(1, enemyCount));
-        return Math.Max(
-            1,
-            (int)Math.Round(fromParty * vitalityBps / 10000.0, MidpointRounding.AwayFromZero)
-        );
+        return ClampStat(fromParty * vitalityBps / 10000.0, 1);
     }
 
     /// ATK is not cut by party size — starter armor is 5, so P/3 was zeroing solo hits.
     public static int EnemyAtkForEncounter(uint floor, uint playerLevel)
     {
         var atk = 4 + 0.6 * EnemyScaleLevel(floor, playerLevel);
-        return Math.Max(6, (int)Math.Round(atk, MidpointRounding.AwayFromZero));
+        return Math.Max(6, ClampStat(atk, 6));
     }
 
     public static int EnemyStrengthForEncounter(uint floor, uint playerLevel)
     {
         var strength = 2 + 0.3 * EnemyScaleLevel(floor, playerLevel);
-        return Math.Max(3, (int)Math.Round(strength, MidpointRounding.AwayFromZero));
+        return Math.Max(3, ClampStat(strength, 3));
     }
+
+    /// Saturate so huge stages cannot overflow int or produce NaN/Infinity.
+    public static int ClampStat(double value, int min)
+    {
+        if (double.IsNaN(value) || double.IsPositiveInfinity(value) || value >= int.MaxValue)
+        {
+            return int.MaxValue;
+        }
+
+        if (double.IsNegativeInfinity(value) || value <= min)
+        {
+            return min;
+        }
+
+        return (int)Math.Round(value, MidpointRounding.AwayFromZero);
+    }
+
+    public static WorldBiome BiomeOf(uint stage)
+    {
+        var n = stage < 1 ? 1u : stage;
+        return (WorldBiome)(((n - 1) / BiomeLength) % BiomeCount);
+    }
+
+    public static bool IsBossStageNumber(uint stage) =>
+        stage > 0 && stage % BossInterval == 0;
 
     /// Each kill grants `25 * stage` EXP to every living party member.
     public static uint KillXp(uint stage) =>
@@ -503,13 +529,17 @@ public static partial class Module
     public static int ApplyStageScale(int value, uint stage)
     {
         var n = stage < 1 ? 1u : stage;
-        var scaled = value;
+        long scaled = value;
         for (uint i = 1; i < n; i++)
         {
-            scaled = (scaled * (100 + StageScalePercent)) / 100;
+            scaled = scaled * (100 + StageScalePercent) / 100;
+            if (scaled >= int.MaxValue)
+            {
+                return int.MaxValue;
+            }
         }
 
-        return Math.Max(1, scaled);
+        return scaled < 1 ? 1 : (int)scaled;
     }
 
     /// 4-pack member is 1.0x. A solo spawn is beefier, not a raid boss.

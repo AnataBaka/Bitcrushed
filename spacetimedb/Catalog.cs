@@ -9,7 +9,113 @@ public static partial class Module
     {
         SeedSkills(ctx);
         SeedItems(ctx);
+        SeedBiomeDefs(ctx);
     }
+
+    public static void EnsureBiomeDefs(ReducerContext ctx)
+    {
+        if (ctx.Db.BiomeDef.Count > 0)
+        {
+            return;
+        }
+
+        SeedBiomeDefs(ctx);
+    }
+
+    public static void SeedBiomeDefs(ReducerContext ctx)
+    {
+        foreach (var row in ctx.Db.BiomeDef.Iter().ToList())
+        {
+            ctx.Db.BiomeDef.Id.Delete(row.Id);
+        }
+
+        AddBiomeDef(
+            ctx,
+            WorldBiome.Plains,
+            "Plains",
+            "the Plains",
+            92, 132, 72,
+            42, 68, 32,
+            "",
+            255, 255, 255
+        );
+        AddBiomeDef(
+            ctx,
+            WorldBiome.Caves,
+            "Caves",
+            "the Caves",
+            48, 42, 62,
+            14, 12, 20,
+            "Shadow",
+            88, 70, 140
+        );
+        AddBiomeDef(
+            ctx,
+            WorldBiome.Volcano,
+            "Volcano",
+            "the Volcano",
+            148, 52, 28,
+            42, 12, 10,
+            "Magma",
+            220, 86, 40
+        );
+        AddBiomeDef(
+            ctx,
+            WorldBiome.Swamp,
+            "Swamp",
+            "the Swamp",
+            52, 86, 58,
+            16, 32, 24,
+            "Bog",
+            48, 120, 72
+        );
+        AddBiomeDef(
+            ctx,
+            WorldBiome.SnowyTundra,
+            "Snowy Tundra",
+            "the Snowy Tundra",
+            186, 208, 226,
+            82, 102, 124,
+            "Frost",
+            168, 214, 236
+        );
+    }
+
+    static void AddBiomeDef(
+        ReducerContext ctx,
+        WorldBiome biome,
+        string name,
+        string theName,
+        int topR,
+        int topG,
+        int topB,
+        int botR,
+        int botG,
+        int botB,
+        string variantPrefix,
+        int tintR,
+        int tintG,
+        int tintB
+    ) =>
+        ctx.Db.BiomeDef.Insert(
+            new BiomeDef
+            {
+                Id = (uint)biome,
+                Kind = biome,
+                Name = name,
+                TheName = theName,
+                BackTopR = topR,
+                BackTopG = topG,
+                BackTopB = topB,
+                BackBotR = botR,
+                BackBotG = botG,
+                BackBotB = botB,
+                VariantPrefix = variantPrefix,
+                TintR = tintR,
+                TintG = tintG,
+                TintB = tintB,
+            }
+        );
 
     // ----------------------------------------------------------------- skills
 

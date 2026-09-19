@@ -86,6 +86,16 @@ public static partial class Module
         Magical,
     }
 
+    [SpacetimeDB.Type]
+    public enum WorldBiome
+    {
+        Plains,
+        Caves,
+        Volcano,
+        Swamp,
+        SnowyTundra,
+    }
+
     /// Lets the client pick an animation for a log line without parsing prose.
     [SpacetimeDB.Type]
     public enum LogKind
@@ -114,7 +124,7 @@ public static partial class Module
         public uint TurnIndex;
         /// EntityId of whoever is acting right now; 0 when nobody is.
         public ulong ActiveEntityId;
-        /// 1-based battle stage. 0 in the lobby. Cap is MaxStageCount in Rules.
+        /// 1-based battle stage. 0 in the lobby. Endless: no cap.
         [Default(0u)]
         public uint StageNumber;
         /// Set during StageTransition: true if the next beat is a rest stop.
@@ -123,6 +133,32 @@ public static partial class Module
         /// Living combatant that receives every enemy attack this round (Grand Undertaking).
         [Default(0ul)]
         public ulong AttackRedirectEntityId;
+        public WorldBiome CurrentBiome;
+        /// Biome of the next battle. Clients read this for the stage-cleared "Next:" line.
+        public WorldBiome NextBiome;
+    }
+
+    /// One row per biome: display name, log phrasing, and backdrop colors.
+    [SpacetimeDB.Table(Accessor = "BiomeDef", Public = true)]
+    public partial struct BiomeDef
+    {
+        [PrimaryKey]
+        public uint Id;
+        public WorldBiome Kind;
+        public string Name;
+        /// Used in "Entering the Caves" / "Next: the Caves".
+        public string TheName;
+        public int BackTopR;
+        public int BackTopG;
+        public int BackTopB;
+        public int BackBotR;
+        public int BackBotG;
+        public int BackBotB;
+        [Default("")]
+        public string VariantPrefix;
+        public int TintR;
+        public int TintG;
+        public int TintB;
     }
 
     /// A seat in the party. Owns exactly one Entity row once the player joins.

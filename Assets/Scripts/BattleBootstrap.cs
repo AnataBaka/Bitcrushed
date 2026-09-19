@@ -58,7 +58,7 @@ public class BattleBootstrap : MonoBehaviour
         EnsureConnection();
 
         var canvas = BuildCanvas();
-        BuildBackdrop(canvas);
+        var backdrop = BiomeBackdropView.Create(canvas);
 
         var connectionLabel = UiFactory.Label(
             canvas,
@@ -137,7 +137,8 @@ public class BattleBootstrap : MonoBehaviour
             inventory,
             turnList,
             banner,
-            escape
+            escape,
+            backdrop
         );
     }
 
@@ -190,28 +191,6 @@ public class BattleBootstrap : MonoBehaviour
         }
 
         manager.Configure(serverUrl, databaseName);
-    }
-
-    /// Opaque full-canvas gradient so the camera clear color never shows through.
-    /// Anchored to stretch at any aspect; raycasts off so it never eats clicks.
-    static void BuildBackdrop(Transform canvas)
-    {
-        if (Camera.main != null)
-        {
-            Camera.main.clearFlags = CameraClearFlags.SolidColor;
-            Camera.main.backgroundColor = new Color(0.04f, 0.05f, 0.08f, 1f);
-        }
-
-        var backdrop = UiFactory.Panel(canvas, "Backdrop", Color.white);
-        backdrop.sprite = PlaceholderArt.VerticalGradient(
-            new Color(0.10f, 0.12f, 0.16f, 1f),
-            new Color(0.04f, 0.05f, 0.07f, 1f)
-        );
-        backdrop.type = Image.Type.Simple;
-        backdrop.preserveAspect = false;
-        backdrop.raycastTarget = false;
-        UiFactory.Anchor(backdrop.rectTransform, Vector2.zero, Vector2.one);
-        backdrop.rectTransform.SetAsFirstSibling();
     }
 
     static Transform BuildCanvas()
