@@ -54,6 +54,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<PlayerItem, uint> ItemDefId { get; }
         public global::SpacetimeDB.Col<PlayerItem, uint> Quantity { get; }
         public global::SpacetimeDB.Col<PlayerItem, EquipSlot> EquippedSlot { get; }
+        public global::SpacetimeDB.Col<PlayerItem, uint> HealthPips { get; }
 
         public PlayerItemCols(string tableName)
         {
@@ -62,6 +63,7 @@ namespace SpacetimeDB.Types
             ItemDefId = new global::SpacetimeDB.Col<PlayerItem, uint>(tableName, "item_def_id");
             Quantity = new global::SpacetimeDB.Col<PlayerItem, uint>(tableName, "quantity");
             EquippedSlot = new global::SpacetimeDB.Col<PlayerItem, EquipSlot>(tableName, "equipped_slot");
+            HealthPips = new global::SpacetimeDB.Col<PlayerItem, uint>(tableName, "health_pips");
         }
     }
 

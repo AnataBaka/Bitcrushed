@@ -26,6 +26,16 @@ public static partial class Module
     public const uint ClashDamageBonus = 1;
     public const uint SpriteVariantCount = 8;
     public const uint BagCapacity = 12;
+    public const uint ArmorPipMin = 1;
+
+    public static uint ArmorPipCap(ArmorSlot slot) => slot switch
+    {
+        ArmorSlot.Helmet => 5,
+        ArmorSlot.Chestplate => 6,
+        ArmorSlot.Leggings => 5,
+        ArmorSlot.Boots => 4,
+        _ => 0,
+    };
 
     /// <summary>
     /// XP required to go from `level` to `level + 1` is `level * 100`.
