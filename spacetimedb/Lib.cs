@@ -352,7 +352,7 @@ public static partial class Module
 
     private static void SpawnEncounter(ReducerContext ctx, uint floor, Biome biome, bool boss)
     {
-        var enemyCount = boss ? 1u : RollInclusive(ctx.Rng, 2, 3);
+        var enemyCount = 1u;
         for (uint slot = 0; slot < enemyCount; slot++)
         {
             var isBoss = boss && slot == 0;
