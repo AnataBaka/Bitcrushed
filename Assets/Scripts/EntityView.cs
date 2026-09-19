@@ -35,6 +35,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     bool _dying;
     bool _deadPose;
     bool _spriteMode;
+    bool _flipX;
+    string _spriteClass;
     SpriteFlipbook _flipbook;
     Coroutine _hit;
     Coroutine _death;
@@ -42,14 +44,14 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     /// Where the card sits when nothing is animating.
     public Vector2 Home => _home;
 
-    /// True once this card is drawing Knight_1 frames instead of a placeholder.
-    public bool UsesKnightSprites => _spriteMode;
+    /// True once this card is drawing class sprites instead of a placeholder.
+    public bool UsesClassSprites => _spriteMode;
 
     /// The body graphic, used to center hit VFX on the enemy that was struck.
     public RectTransform ShapeRect => _shape != null ? _shape.rectTransform : _root;
 
-    /// True while a lunge, walk-in strike, or death clip owns the card.
-    public bool Busy => _lunging || _striking || _dying;
+    /// True while a lunge, walk-in strike, hurt clip, or death clip owns the card.
+    public bool Busy => _lunging || _striking || _dying || _hit != null;
 
     public static EntityView Create(Transform parent, string name, Vector2 size, bool showMana)
     {
@@ -185,10 +187,10 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     public const float LungeSeconds = 0.32f;
 
     /// Steps most of the way toward the target and back. Used by placeholder
-    /// combatants; Knights run all the way in and swing instead.
+    /// combatants; Knight and Ninja run all the way in and swing instead.
     public void PlayLunge(Vector2 targetPosition) => StartCoroutine(LungeRoutine(targetPosition));
 
-    /// Run to the enemy, play the chosen Knight_1 attack clip, then run home.
+    /// Run to the enemy, play the chosen attack clip, then run home.
     public IEnumerator PlayStrike(
         Vector2 targetPosition,
         Action onImpact,
@@ -196,7 +198,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         float attackFps
     )
     {
-        if (!_spriteMode || _flipbook == null || !KnightSpriteLibrary.Ready)
+        if (!_spriteMode || _flipbook == null)
         {
             PlayLunge(targetPosition);
             yield return new WaitForSeconds(0.14f);
@@ -213,12 +215,18 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         var outbound = MoveSeconds(start, reach);
         var inbound = MoveSeconds(reach, start);
 
+        var run = ClassSpriteArt.Run(_spriteClass);
+        var idle = ClassSpriteArt.Idle(_spriteClass);
         var clip = attackFrames != null && attackFrames.Length > 0
             ? attackFrames
-            : KnightSpriteLibrary.Attack1;
-        var fps = attackFps > 0f ? attackFps : KnightSpriteLibrary.AttackFps;
+            : ClassSpriteArt.AttackClipFor(_spriteClass, null);
+        var fps = attackFps > 0f ? attackFps : ClassSpriteArt.AttackFps;
 
-        _flipbook.Play(KnightSpriteLibrary.Run, KnightSpriteLibrary.RunFps, true);
+        if (run != null && run.Length > 0)
+        {
+            _flipbook.Play(run, ClassSpriteArt.RunFps, true);
+        }
+
         yield return Slide(start, reach, outbound);
 
         _flipbook.Play(clip, fps, false);
@@ -235,23 +243,23 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             yield return null;
         }
 
-        if (!_deadPose && !_dying && _flipbook != null)
+        if (!_deadPose && !_dying && _flipbook != null && run != null && run.Length > 0)
         {
-            _flipbook.Play(KnightSpriteLibrary.Run, KnightSpriteLibrary.RunFps, true);
+            _flipbook.Play(run, ClassSpriteArt.RunFps, true);
         }
 
         yield return Slide(reach, _home, inbound);
         _root.anchoredPosition = _home;
 
-        if (!_deadPose && !_dying && _flipbook != null)
+        if (!_deadPose && !_dying && _flipbook != null && idle != null && idle.Length > 0)
         {
-            _flipbook.Play(KnightSpriteLibrary.Idle, KnightSpriteLibrary.IdleFps, true);
+            _flipbook.Play(idle, ClassSpriteArt.IdleFps, true);
         }
 
         _striking = false;
     }
 
-    /// Plays the Knight_1 death clip and holds the last frame. No-op for placeholders.
+    /// Plays the class death clip and holds the last frame. No-op for placeholders.
     public void PlayDeath()
     {
         if (!_spriteMode || _dying || _deadPose)
@@ -274,13 +282,14 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         {
             StopCoroutine(_hit);
             _hit = null;
-            _shape.transform.localScale = Vector3.one;
+            ApplyFacingScale(1f);
             _root.anchoredPosition = _home;
         }
 
-        if (_flipbook != null && KnightSpriteLibrary.Dying != null && KnightSpriteLibrary.Dying.Length > 0)
+        var dying = ClassSpriteArt.Dying(_spriteClass);
+        if (_flipbook != null && dying != null && dying.Length > 0)
         {
-            yield return _flipbook.PlayOnce(KnightSpriteLibrary.Dying, KnightSpriteLibrary.DeadFps);
+            yield return _flipbook.PlayOnce(dying, ClassSpriteArt.DeadFps);
             _flipbook.HoldLast();
         }
 
@@ -321,13 +330,13 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
     }
 
-    /// Squash-and-flash on the receiving end of a hit.
+    /// Hurt clip for Knight / Ninja; squash-and-flash for placeholder shapes.
     public void PlayHit()
     {
         if (_hit != null)
         {
             StopCoroutine(_hit);
-            _shape.transform.localScale = Vector3.one;
+            ApplyFacingScale(1f);
         }
 
         _hit = StartCoroutine(HitRoutine());
@@ -335,6 +344,30 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
 
     IEnumerator HitRoutine()
     {
+        var hurt = _spriteMode ? ClassSpriteArt.Hurt(_spriteClass) : null;
+        if (_spriteMode && _flipbook != null && hurt != null && hurt.Length > 0)
+        {
+            ApplyFacingScale(1f);
+            _shape.color = new Color(1f, 0.7f, 0.65f, 1f);
+            yield return _flipbook.PlayOnce(hurt, ClassSpriteArt.HurtFps);
+
+            if (!_deadPose && !_dying)
+            {
+                _shape.color = Color.white;
+                if (!_striking)
+                {
+                    var idle = ClassSpriteArt.Idle(_spriteClass);
+                    if (idle != null && idle.Length > 0)
+                    {
+                        _flipbook.Play(idle, ClassSpriteArt.IdleFps, true);
+                    }
+                }
+            }
+
+            _hit = null;
+            yield break;
+        }
+
         var shape = _shape.transform;
         var elapsed = 0f;
         const float duration = 0.22f;
@@ -344,18 +377,29 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             elapsed += Time.deltaTime;
             var t = Mathf.Clamp01(elapsed / duration);
             var bump = 1f + (Mathf.Sin(t * Mathf.PI) * 0.22f);
-            shape.localScale = new Vector3(bump, bump, 1f);
+            ApplyFacingScale(bump);
             _shape.color = Color.Lerp(Color.white, new Color(1f, 0.55f, 0.5f), 1f - t);
             yield return null;
         }
 
-        shape.localScale = Vector3.one;
+        ApplyFacingScale(1f);
         if (!_deadPose && !_dying)
         {
             _shape.color = Color.white;
         }
 
         _hit = null;
+    }
+
+    Vector3 FacingScale(float bump) =>
+        new Vector3(_flipX ? -bump : bump, bump, 1f);
+
+    void ApplyFacingScale(float bump)
+    {
+        if (_shape != null)
+        {
+            _shape.transform.localScale = FacingScale(bump);
+        }
     }
 
     public void Bind(
@@ -411,13 +455,17 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
 
     void ApplyVisual(Entity entity, bool isEnemy)
     {
-        KnightSpriteLibrary.EnsureLoaded();
-        if (!isEnemy && KnightSpriteLibrary.Matches(entity.ClassName))
+        ClassSpriteArt.EnsureLoaded();
+        if (!isEnemy && ClassSpriteArt.HasSprites(entity.ClassName))
         {
-            EnableKnightSprite();
-            if (!_striking && !_dying && !_deadPose && _flipbook != null)
+            EnableClassSprite(entity.ClassName);
+            if (!_striking && !_dying && !_deadPose && _hit == null && _flipbook != null)
             {
-                _flipbook.Play(KnightSpriteLibrary.Idle, KnightSpriteLibrary.IdleFps, true);
+                var idle = ClassSpriteArt.Idle(_spriteClass);
+                if (idle != null && idle.Length > 0)
+                {
+                    _flipbook.Play(idle, ClassSpriteArt.IdleFps, true);
+                }
             }
 
             if (_hit == null && !_dying && !_deadPose)
@@ -447,8 +495,12 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
     }
 
-    void EnableKnightSprite()
+    void EnableClassSprite(string className)
     {
+        _spriteClass = className;
+        _flipX = ClassSpriteArt.FlipX(className);
+        ApplyFacingScale(1f);
+
         if (_spriteMode)
         {
             return;

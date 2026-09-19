@@ -583,7 +583,7 @@ public class BattleHud : MonoBehaviour
         }
 
         // "CRITICAL HIT!" reuses LogKind.Attack but is not a strike of its own.
-        if (KnightSpriteLibrary.ActionNameFromLog(row.Message) == null)
+        if (ClassSpriteArt.ActionNameFromLog(row.Message) == null)
         {
             return;
         }
@@ -602,8 +602,9 @@ public class BattleHud : MonoBehaviour
             && target != null
         )
         {
-            var actionName = KnightSpriteLibrary.ActionNameFromLog(row.Message);
+            var actionName = ClassSpriteArt.ActionNameFromLog(row.Message);
             var actorEntity = GameManager.FindEntity(row.ActorEntityId);
+            var className = actorEntity != null ? actorEntity.ClassName : null;
 
             void Impact()
             {
@@ -611,10 +612,9 @@ public class BattleHud : MonoBehaviour
                 {
                     target.PlayHit();
                     if (
-                        actorEntity != null
-                        && actorEntity.ClassName == KnightSpriteLibrary.ClassName
+                        className != null
                         && row.Damage > 0
-                        && KnightSpriteLibrary.TryHitEffect(actionName, out var effect)
+                        && ClassSpriteArt.TryHitEffect(className, actionName, out var effect)
                     )
                     {
                         CombatVfx.Spawn(_field, target.ShapeRect, effect);
@@ -628,13 +628,13 @@ public class BattleHud : MonoBehaviour
                 }
             }
 
-            if (actor.UsesKnightSprites)
+            if (actor.UsesClassSprites)
             {
                 yield return actor.PlayStrike(
                     target.Home,
                     Impact,
-                    KnightSpriteLibrary.AttackClipFor(actionName),
-                    KnightSpriteLibrary.AttackFps
+                    ClassSpriteArt.AttackClipFor(className, actionName),
+                    ClassSpriteArt.AttackFps
                 );
             }
             else

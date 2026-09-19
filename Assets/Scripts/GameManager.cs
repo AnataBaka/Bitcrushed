@@ -12,11 +12,13 @@ public class GameManager : MonoBehaviour
     public const uint SessionId = 1;
     public const int FinishTheJobTurnRequirement = 4;
 
-    [SerializeField]
-    string serverUrl = "https://maincloud.spacetimedb.com";
+    /// Hard-coded so a leftover Inspector / scene value cannot keep the client
+    /// on Maincloud after switching to a local host.
+    public const string DefaultServerUrl = "http://127.0.0.1:3000";
+    public const string DefaultDatabaseName = "hophacks-party-vp2";
 
-    [SerializeField]
-    string databaseName = "hophacks-party-vp2";
+    string serverUrl = DefaultServerUrl;
+    string databaseName = DefaultDatabaseName;
 
     // Tokens are namespaced per server+database so switching between the local
     // server and Maincloud never reuses a token signed by the wrong key (which
@@ -44,8 +46,18 @@ public class GameManager : MonoBehaviour
 
     public void Configure(string url, string database)
     {
-        serverUrl = url;
-        databaseName = database;
+        serverUrl = string.IsNullOrEmpty(url) ? DefaultServerUrl : url;
+        databaseName = string.IsNullOrEmpty(database) ? DefaultDatabaseName : database;
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        Instance = null;
+        Conn = null;
+        LocalIdentity = default;
+        StateChanged = null;
+        LogAppended = null;
     }
 
     void Awake()
@@ -58,6 +70,8 @@ public class GameManager : MonoBehaviour
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
+        serverUrl = DefaultServerUrl;
+        databaseName = DefaultDatabaseName;
 
         _networkManager = GetComponent<SpacetimeDBNetworkManager>();
         if (_networkManager == null)

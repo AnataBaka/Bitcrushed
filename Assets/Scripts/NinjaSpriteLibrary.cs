@@ -1,15 +1,14 @@
 using UnityEngine;
 
-/// Knight_1 frame folders under Assets/Sprites.
-public static class KnightSpriteLibrary
+/// Ninja frame folders under Assets/Sprites/Ninja.
+public static class NinjaSpriteLibrary
 {
-    public const string ClassName = "Knight";
+    public const string ClassName = "Ninja";
 
     public static Sprite[] Idle { get; private set; }
     public static Sprite[] Run { get; private set; }
     public static Sprite[] Attack1 { get; private set; }
     public static Sprite[] Attack2 { get; private set; }
-    public static Sprite[] Attack3 { get; private set; }
     public static Sprite[] Hurt { get; private set; }
     public static Sprite[] Dying { get; private set; }
 
@@ -22,8 +21,6 @@ public static class KnightSpriteLibrary
         && Attack1.Length > 0
         && Attack2 != null
         && Attack2.Length > 0
-        && Attack3 != null
-        && Attack3.Length > 0
         && Hurt != null
         && Hurt.Length > 0
         && Dying != null
@@ -38,7 +35,6 @@ public static class KnightSpriteLibrary
         Run = null;
         Attack1 = null;
         Attack2 = null;
-        Attack3 = null;
         Hurt = null;
         Dying = null;
     }
@@ -50,27 +46,23 @@ public static class KnightSpriteLibrary
             return;
         }
 
-        Idle = SpriteFrameLoader.LoadFolder("Sprites/Knight_1/Idle", FilterMode.Point);
-        Run = SpriteFrameLoader.LoadFolder("Sprites/Knight_1/Run", FilterMode.Point);
-        Attack1 = SpriteFrameLoader.LoadFolder("Sprites/Knight_1/Attack_1", FilterMode.Point);
-        Attack2 = SpriteFrameLoader.LoadFolder("Sprites/Knight_1/Attack_2", FilterMode.Point);
-        Attack3 = SpriteFrameLoader.LoadFolder("Sprites/Knight_1/Attack_3", FilterMode.Point);
-        Hurt = SpriteFrameLoader.LoadFolder("Sprites/Knight_1/Hurt", FilterMode.Point);
-        Dying = SpriteFrameLoader.LoadFolder("Sprites/Knight_1/Dying", FilterMode.Point);
+        Idle = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Idle", FilterMode.Point);
+        Run = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Run", FilterMode.Point);
+        Attack1 = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Attack_1", FilterMode.Point);
+        Attack2 = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Attack_2", FilterMode.Point);
+        Hurt = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Hurt", FilterMode.Point);
+        Dying = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Dying", FilterMode.Point);
     }
 
-    /// Bash / Rush / Sword Swing → Attack_1; Cleave / Triple Slash / Furioso →
-    /// Attack_2; Bludgeon → Attack_3.
+    /// Vertical Cut / Quick Cut → Attack_1; Spear / Overthrow → Attack_2.
     public static Sprite[] AttackClipFor(string actionName)
     {
         switch (actionName)
         {
-            case "Cleave":
-            case "Triple Slash":
-            case "Furioso":
+            case "Spear":
+            case "Overthrow":
                 return Attack2;
-            case "Bludgeon":
-                return Attack3;
+            case "Vertical Cut":
             default:
                 return Attack1;
         }
@@ -80,20 +72,14 @@ public static class KnightSpriteLibrary
     {
         switch (actionName)
         {
-            case "Bash":
-            case "Rush":
-            case "Sword Swing":
+            case "Spear":
                 kind = HitEffectKind.Impact;
                 return true;
-            case "Cleave":
+            case "Overthrow":
                 kind = HitEffectKind.Explosion2;
                 return true;
-            case "Bludgeon":
-            case "Triple Slash":
+            case "Vertical Cut":
                 kind = HitEffectKind.BigHit;
-                return true;
-            case "Furioso":
-                kind = HitEffectKind.BloodImpact;
                 return true;
             default:
                 kind = default;

@@ -7,12 +7,6 @@ using UnityEngine.UI;
 /// end-of-battle overlay. Nothing needs to be assembled by hand in the editor.
 public class BattleBootstrap : MonoBehaviour
 {
-    [SerializeField]
-    string serverUrl = "https://maincloud.spacetimedb.com";
-
-    [SerializeField]
-    string databaseName = "hophacks-party-vp2";
-
     static bool _built;
 
     /// Statics survive Play sessions when domain reload is disabled, which would
@@ -187,7 +181,7 @@ public class BattleBootstrap : MonoBehaviour
             manager = go.AddComponent<GameManager>();
         }
 
-        manager.Configure(serverUrl, databaseName);
+        manager.Configure(GameManager.DefaultServerUrl, GameManager.DefaultDatabaseName);
     }
 
     /// Opaque full-canvas gradient so the camera clear color never shows through.

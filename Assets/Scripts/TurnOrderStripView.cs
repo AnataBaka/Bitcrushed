@@ -150,16 +150,22 @@ public class TurnOrderStripView : MonoBehaviour
             color = PlaceholderArt.ClassColor(entity.ClassName);
         }
 
-        KnightSpriteLibrary.EnsureLoaded();
-        if (!isEnemy && KnightSpriteLibrary.Matches(entity.ClassName) && KnightSpriteLibrary.Idle.Length > 0)
+        ClassSpriteArt.EnsureLoaded();
+        var idle = !isEnemy && ClassSpriteArt.HasSprites(entity.ClassName)
+            ? ClassSpriteArt.Idle(entity.ClassName)
+            : null;
+        if (idle != null && idle.Length > 0)
         {
-            slot.Shape.sprite = KnightSpriteLibrary.Idle[0];
+            slot.Shape.sprite = idle[0];
             slot.Shape.color = Color.white;
+            var flip = ClassSpriteArt.FlipX(entity.ClassName);
+            slot.Shape.rectTransform.localScale = new Vector3(flip ? -1f : 1f, 1f, 1f);
         }
         else
         {
             slot.Shape.sprite = PlaceholderArt.Shape(shape, color);
             slot.Shape.color = Color.white;
+            slot.Shape.rectTransform.localScale = Vector3.one;
         }
         slot.Label.text = ShortLabel(entity.Name);
 
