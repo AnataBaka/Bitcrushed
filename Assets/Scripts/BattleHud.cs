@@ -1,7 +1,11 @@
+using System.Collections;
 using System.Collections.Generic;
 using SpacetimeDB.Types;
 using UnityEngine;
 using UnityEngine.UI;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 /// Draws the battle from table state and forwards clicks to reducers.
 /// Holds no rules: it never computes damage, legality or turn order.
@@ -9,70 +13,153 @@ public class BattleHud : MonoBehaviour
 {
     static readonly Vector2[] PlayerSlots =
     {
-        new Vector2(330f, 120f),
-        new Vector2(510f, 290f),
-        new Vector2(690f, 460f),
+        new Vector2(250f, 50f),
+        new Vector2(530f, 300f),
+        new Vector2(810f, 550f),
     };
 
     static readonly Vector2[] EnemySlots =
     {
-        new Vector2(1580f, 130f),
-        new Vector2(1460f, 390f),
+        new Vector2(1680f, 30f),
+        new Vector2(1420f, 220f),
+        new Vector2(1680f, 410f),
+        new Vector2(1420f, 600f),
     };
 
-    static readonly Vector2 PlayerCardSize = new Vector2(300f, 215f);
-    static readonly Vector2 EnemyCardSize = new Vector2(340f, 240f);
+    static readonly Vector2 PlayerCardSize = new Vector2(250f, 190f);
+    static readonly Vector2 EnemyCardSize = new Vector2(220f, 155f);
 
     RectTransform _field;
     BattleLogView _log;
     ActionMenuView _menu;
+    EquipmentPanelView _equipment;
     RectTransform _overlay;
     Text _overlayText;
+    Text _overlaySubtext;
+    GameObject _resetButton;
     Text _connectionLabel;
+    Text _stageLabel;
+    StatPopupView _popup;
+    TurnOrderStripView _turnStrip;
+    EscapeMenuView _escape;
+    LevelUpMenuView _levelUp;
 
     readonly Dictionary<ulong, EntityView> _views = new Dictionary<ulong, EntityView>();
     readonly List<ulong> _stale = new List<ulong>();
 
+    /// Hits waiting to be animated, oldest first.
+    readonly Queue<BattleLog> _pendingHits = new Queue<BattleLog>();
+    bool _animating;
+
     bool _targeting;
+
+    /// Which attack the player picked before choosing a target. 0 is the free swing.
+    uint _pendingSkillId;
 
     public void Init(
         RectTransform field,
         BattleLogView log,
         ActionMenuView menu,
+        EquipmentPanelView equipment,
         RectTransform overlay,
         Text overlayText,
-        Text connectionLabel
+        Text overlaySubtext,
+        GameObject resetButton,
+        Text connectionLabel,
+        Text stageLabel,
+        StatPopupView popup,
+        TurnOrderStripView turnStrip,
+        EscapeMenuView escape,
+        LevelUpMenuView levelUp
     )
     {
         _field = field;
         _log = log;
         _menu = menu;
+        _equipment = equipment;
         _overlay = overlay;
         _overlayText = overlayText;
+        _overlaySubtext = overlaySubtext;
+        _resetButton = resetButton;
         _connectionLabel = connectionLabel;
+        _stageLabel = stageLabel;
+        _popup = popup;
+        _turnStrip = turnStrip;
+        _escape = escape;
+        _levelUp = levelUp;
 
         _menu.OnJoin = GameManager.JoinGame;
-        _menu.OnStartBattle = GameManager.StartBattle;
+        _menu.OnReady = HandleReadyClicked;
         _menu.OnFocus = () =>
         {
-            _targeting = false;
+            ClearTargeting();
             GameManager.Focus();
         };
-        _menu.OnUseItem = item =>
+        _menu.OnUseItem = itemId =>
         {
-            _targeting = false;
-            GameManager.UseItem(item);
+            ClearTargeting();
+            GameManager.UseItem(itemId);
         };
-        _menu.OnSkillSelected = () => _targeting = true;
+        _menu.OnAttackSelected = HandleAttackSelected;
+
+        _equipment.OnEquip = GameManager.EquipItem;
+        _equipment.OnUnequip = GameManager.UnequipItem;
 
         Refresh();
     }
 
-    void OnEnable() => GameManager.StateChanged += Refresh;
+    void OnEnable()
+    {
+        GameManager.StateChanged += Refresh;
+        GameManager.LogAppended += HandleLogAppended;
+    }
 
-    void OnDisable() => GameManager.StateChanged -= Refresh;
+    void OnDisable()
+    {
+        GameManager.StateChanged -= Refresh;
+        GameManager.LogAppended -= HandleLogAppended;
+    }
 
     void Start() => Refresh();
+
+    void Update()
+    {
+        if (!_animating && _pendingHits.Count > 0)
+        {
+            StartCoroutine(PlayHit(_pendingHits.Dequeue()));
+        }
+
+        HandleInspectDismiss();
+        HandleTargetingCancel();
+        HandleEscapeMenu();
+    }
+
+    void HandleEscapeMenu()
+    {
+        if (_escape == null || !EscapePressedThisFrame())
+        {
+            return;
+        }
+
+        _escape.HandleEscape();
+    }
+
+    void HandleTargetingCancel()
+    {
+        if (!_targeting || (_escape != null && _escape.IsOpen))
+        {
+            return;
+        }
+
+        if (!RightPressedThisFrame())
+        {
+            return;
+        }
+
+        ClearTargeting();
+        _menu.ShowRoot();
+        Refresh();
+    }
 
     void Refresh()
     {
@@ -91,30 +178,100 @@ public class BattleHud : MonoBehaviour
         var me = GameManager.LocalEntity();
         var myTurn = GameManager.IsLocalTurn();
 
+        if (_stageLabel != null)
+        {
+            if (session != null && session.StageNumber > 0 && session.Phase != BattlePhase.Waiting)
+            {
+                var stageText = $"Stage {session.StageNumber}/10";
+                _stageLabel.text =
+                    session.Phase == BattlePhase.RestStop
+                        ? $"{stageText}  —  Rest Stop"
+                        : stageText;
+            }
+            else
+            {
+                _stageLabel.text = "";
+            }
+        }
+
         if (!myTurn)
         {
-            _targeting = false;
+            ClearTargeting();
         }
 
         SyncTeam(GameManager.TeamMembers(Team.Players), PlayerSlots, PlayerCardSize, true, me);
         SyncTeam(GameManager.TeamMembers(Team.Enemies), EnemySlots, EnemyCardSize, false, me);
         PruneMissing();
+        _popup?.Refresh();
+        _turnStrip?.Render(session);
+
+        var hadLevelUp = _levelUp != null && _levelUp.IsOpen;
+        _levelUp?.Render(session);
+        var levelLocked = _levelUp != null && _levelUp.IsOpen;
+        if (levelLocked && !hadLevelUp)
+        {
+            ClearTargeting();
+            _menu.ShowRoot();
+        }
 
         _log.SetLines(GameManager.LogLines(60));
-        _menu.Render(session, me, myTurn, _targeting);
+        _menu.Render(session, me, myTurn, _targeting, levelLocked);
+        _equipment.Render(
+            me,
+            session != null
+                && (
+                    session.Phase == BattlePhase.Waiting
+                    || session.Phase == BattlePhase.RestStop
+                )
+                && (me == null || me.Alive)
+        );
 
+        var transitioning =
+            session != null && session.Phase == BattlePhase.StageTransition;
         var finished =
             session != null
             && (session.Phase == BattlePhase.Victory || session.Phase == BattlePhase.Defeat);
-        _overlay.gameObject.SetActive(finished);
-        if (finished)
+        _overlay.gameObject.SetActive(finished || transitioning);
+        if (_resetButton != null)
         {
-            _overlayText.text =
-                session.Phase == BattlePhase.Victory ? "LEVEL COMPLETE" : "DEFEAT";
-            _overlayText.color =
-                session.Phase == BattlePhase.Victory
-                    ? new Color(0.55f, 0.90f, 0.55f)
-                    : new Color(0.92f, 0.45f, 0.45f);
+            _resetButton.SetActive(finished);
+        }
+
+        if (finished || transitioning)
+        {
+            _popup?.Close();
+            _overlay.SetAsLastSibling();
+            if (_levelUp != null && _levelUp.IsOpen)
+            {
+                _levelUp.transform.SetAsLastSibling();
+            }
+            _escape?.transform.SetAsLastSibling();
+            if (transitioning)
+            {
+                _overlayText.fontSize = 64;
+                _overlayText.text = $"STAGE {session.StageNumber} CLEARED";
+                _overlayText.color = new Color(0.95f, 0.86f, 0.45f);
+                if (_overlaySubtext != null)
+                {
+                    _overlaySubtext.text = session.UpcomingRestStop
+                        ? "Next: Rest Stop"
+                        : $"Next: Stage {session.StageNumber + 1}";
+                }
+            }
+            else
+            {
+                _overlayText.fontSize = 96;
+                _overlayText.text =
+                    session.Phase == BattlePhase.Victory ? "FINAL VICTORY" : "DEFEAT";
+                _overlayText.color =
+                    session.Phase == BattlePhase.Victory
+                        ? new Color(0.55f, 0.90f, 0.55f)
+                        : new Color(0.92f, 0.45f, 0.45f);
+                if (_overlaySubtext != null)
+                {
+                    _overlaySubtext.text = "";
+                }
+            }
         }
     }
 
@@ -132,24 +289,53 @@ public class BattleHud : MonoBehaviour
 
         foreach (var entity in entities)
         {
-            // Defeated combatants leave the screen.
-            if (!entity.Alive)
+            var hasView = _views.TryGetValue(entity.EntityId, out var view) && view != null;
+
+            // Defeated combatants keep an existing card so the killing blow can
+            // finish, but a later attack must never spawn a new one. AnimationsPending
+            // used to force a recreate, which is what flickered dead entities back in.
+            if (!entity.Alive && !hasView && entity.Faction == Team.Enemies)
             {
                 continue;
             }
 
-            if (!_views.TryGetValue(entity.EntityId, out var view) || view == null)
+            if (!hasView)
             {
                 view = EntityView.Create(_field, entity.Name, cardSize, showMana);
                 _views[entity.EntityId] = view;
             }
 
+            if (view == null)
+            {
+                continue;
+            }
+
             var index = (int)Mathf.Min(entity.Slot, slots.Length - 1);
             view.SetPosition(slots[index]);
 
-            var targetable = _targeting && myTurn && entity.Faction == Team.Enemies;
             var isLocal = me != null && me.EntityId == entity.EntityId;
-            view.Bind(entity, activeId == entity.EntityId, isLocal, targetable, HandleTargetClicked);
+            var pending = GameManager.Conn?.Db.SkillDef.Id.Find(_pendingSkillId);
+            var revive = GameManager.SkillTargetsFallenAlly(pending);
+            var targetable =
+                _targeting
+                && myTurn
+                && (
+                    revive
+                        ? entity.Faction == Team.Players && !entity.Alive && !isLocal
+                        : entity.Faction == Team.Enemies && entity.Alive
+                );
+            view.Bind(entity, activeId == entity.EntityId, isLocal, targetable, HandleEntityClicked);
+
+            var occupant = GameManager.FindPlayer(entity.EntityId);
+            view.SetReadyBanner(
+                session != null
+                    && (
+                        session.Phase == BattlePhase.Waiting
+                        || session.Phase == BattlePhase.RestStop
+                    )
+                    && occupant != null
+                    && occupant.Ready
+            );
         }
     }
 
@@ -159,8 +345,12 @@ public class BattleHud : MonoBehaviour
 
         foreach (var pair in _views)
         {
-            var entity = GameManager.Conn?.Db.Entity.EntityId.Find(pair.Key);
-            if (entity == null || !entity.Alive)
+            var entity = GameManager.FindEntity(pair.Key);
+            if (entity == null)
+            {
+                _stale.Add(pair.Key);
+            }
+            else if (!entity.Alive && !AnimationsPending() && entity.Faction == Team.Enemies)
             {
                 _stale.Add(pair.Key);
             }
@@ -177,14 +367,232 @@ public class BattleHud : MonoBehaviour
         }
     }
 
-    void HandleTargetClicked(ulong entityId)
+    bool AnimationsPending() => _animating || _pendingHits.Count > 0;
+
+    void HandleReadyClicked()
     {
-        if (!_targeting || !GameManager.IsLocalTurn())
+        var player = GameManager.LocalPlayer();
+        if (player == null)
         {
             return;
         }
 
+        GameManager.SetReady(!player.Ready);
+    }
+
+    void HandleAttackSelected(uint skillDefId)
+    {
+        _popup?.Close();
+        if (skillDefId == 0)
+        {
+            _pendingSkillId = 0;
+            _targeting = true;
+            Refresh();
+            return;
+        }
+
+        var skill = GameManager.Conn?.Db.SkillDef.Id.Find(skillDefId);
+
+        // Buffs have nobody to point at, so they resolve on the spot.
+        if (skill != null && skill.TargetCount == 0)
+        {
+            ClearTargeting();
+            GameManager.CastSkill(skillDefId, 0);
+            return;
+        }
+
+        _pendingSkillId = skillDefId;
+        _targeting = true;
+        Refresh();
+    }
+
+    void HandleEntityClicked(ulong entityId, Vector2 screenPoint)
+    {
+        var entity = GameManager.FindEntity(entityId);
+        if (entity == null)
+        {
+            return;
+        }
+
+        if (_targeting)
+        {
+            if (
+                (_levelUp != null && _levelUp.IsOpen)
+                || !GameManager.IsLocalTurn()
+            )
+            {
+                return;
+            }
+
+            var skillDefId = _pendingSkillId;
+            var skill = GameManager.Conn?.Db.SkillDef.Id.Find(skillDefId);
+            if (GameManager.SkillTargetsFallenAlly(skill))
+            {
+                if (entity.Faction != Team.Players || entity.Alive)
+                {
+                    return;
+                }
+
+                ClearTargeting();
+                GameManager.CastSkill(skillDefId, entityId);
+                return;
+            }
+
+            if (!entity.Alive || entity.Faction != Team.Enemies)
+            {
+                return;
+            }
+
+            ClearTargeting();
+
+            if (skillDefId == 0)
+            {
+                GameManager.Attack(entityId);
+                return;
+            }
+
+            GameManager.CastSkill(skillDefId, entityId);
+            return;
+        }
+
+        if (!entity.Alive)
+        {
+            return;
+        }
+
+        _popup?.Open(entityId, screenPoint);
+    }
+
+    void HandleInspectDismiss()
+    {
+        if (_escape != null && _escape.IsOpen)
+        {
+            return;
+        }
+
+        if (_popup == null || !_popup.IsOpen || !PointerPressedThisFrame())
+        {
+            return;
+        }
+
+        var screen = PointerScreenPoint();
+        if (_popup.ContainsScreenPoint(screen) || PointerOverEntity(screen))
+        {
+            return;
+        }
+
+        _popup.Close();
+    }
+
+    bool PointerOverEntity(Vector2 screen)
+    {
+        foreach (var pair in _views)
+        {
+            if (pair.Value != null && pair.Value.Rect != null
+                && RectTransformUtility.RectangleContainsScreenPoint(pair.Value.Rect, screen, null))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static Vector2 PointerScreenPoint()
+    {
+#if ENABLE_INPUT_SYSTEM
+        return Mouse.current == null ? (Vector2)Input.mousePosition : Mouse.current.position.ReadValue();
+#else
+        return Input.mousePosition;
+#endif
+    }
+
+    static bool PointerPressedThisFrame()
+    {
+#if ENABLE_INPUT_SYSTEM
+        return Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
+#else
+        return Input.GetMouseButtonDown(0);
+#endif
+    }
+
+    static bool RightPressedThisFrame()
+    {
+#if ENABLE_INPUT_SYSTEM
+        return Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame;
+#else
+        return Input.GetMouseButtonDown(1);
+#endif
+    }
+
+    static bool EscapePressedThisFrame()
+    {
+#if ENABLE_INPUT_SYSTEM
+        return Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
+#else
+        return Input.GetKeyDown(KeyCode.Escape);
+#endif
+    }
+
+    void ClearTargeting()
+    {
         _targeting = false;
-        GameManager.Attack(entityId);
+        _pendingSkillId = 0;
+    }
+
+    /// The module stamps every strike with its actor and target, so the log the
+    /// player reads is also the animation script.
+    void HandleLogAppended(BattleLog row)
+    {
+        // The initial subscription replays the whole log; only animate live rows.
+        if (GameManager.Instance == null || !GameManager.Instance.SubscriptionReady)
+        {
+            return;
+        }
+
+        if (row.Kind != LogKind.Attack)
+        {
+            return;
+        }
+
+        if (row.ActorEntityId == 0 || row.TargetEntityId == 0)
+        {
+            return;
+        }
+
+        if (row.ActorEntityId == row.TargetEntityId)
+        {
+            return;
+        }
+
+        _pendingHits.Enqueue(row);
+    }
+
+    IEnumerator PlayHit(BattleLog row)
+    {
+        _animating = true;
+
+        if (
+            _views.TryGetValue(row.ActorEntityId, out var actor)
+            && _views.TryGetValue(row.TargetEntityId, out var target)
+            && actor != null
+            && target != null
+        )
+        {
+            actor.PlayLunge(target.Home);
+            yield return new WaitForSeconds(0.14f);
+            target.PlayHit();
+            // Waiting on a fixed duration rather than the lunge coroutine keeps
+            // the queue moving even if the card is destroyed mid-strike.
+            yield return new WaitForSeconds(EntityView.LungeSeconds - 0.14f);
+        }
+
+        _animating = false;
+
+        // A defeated combatant only leaves once its last hit has played out.
+        if (_pendingHits.Count == 0)
+        {
+            Refresh();
+        }
     }
 }

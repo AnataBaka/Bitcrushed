@@ -64,6 +64,10 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Player, bool> Online { get; }
         public global::SpacetimeDB.Col<Player, PlayerClass> Class { get; }
         public global::SpacetimeDB.Col<Player, ulong> EntityId { get; }
+        public global::SpacetimeDB.Col<Player, bool> Ready { get; }
+        public global::SpacetimeDB.Col<Player, uint> CharacterLevel { get; }
+        public global::SpacetimeDB.Col<Player, uint> Xp { get; }
+        public global::SpacetimeDB.Col<Player, uint> UnspentStatPoints { get; }
 
         public PlayerCols(string tableName)
         {
@@ -72,6 +76,10 @@ namespace SpacetimeDB.Types
             Online = new global::SpacetimeDB.Col<Player, bool>(tableName, "online");
             Class = new global::SpacetimeDB.Col<Player, PlayerClass>(tableName, "class");
             EntityId = new global::SpacetimeDB.Col<Player, ulong>(tableName, "entity_id");
+            Ready = new global::SpacetimeDB.Col<Player, bool>(tableName, "ready");
+            CharacterLevel = new global::SpacetimeDB.Col<Player, uint>(tableName, "character_level");
+            Xp = new global::SpacetimeDB.Col<Player, uint>(tableName, "xp");
+            UnspentStatPoints = new global::SpacetimeDB.Col<Player, uint>(tableName, "unspent_stat_points");
         }
     }
 

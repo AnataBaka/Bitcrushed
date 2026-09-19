@@ -8,10 +8,10 @@ using UnityEngine.UI;
 public class BattleBootstrap : MonoBehaviour
 {
     [SerializeField]
-    string serverUrl = "http://127.0.0.1:3000";
+    string serverUrl = "https://maincloud.spacetimedb.com";
 
     [SerializeField]
-    string databaseName = "hophacks-party";
+    string databaseName = "hophacks-party-vp2";
 
     static bool _built;
 
@@ -58,7 +58,7 @@ public class BattleBootstrap : MonoBehaviour
         EnsureConnection();
 
         var canvas = BuildCanvas();
-        UiFactory.Panel(canvas, "Background", new Color(0.07f, 0.08f, 0.10f, 1f));
+        BuildBackdrop(canvas);
 
         var connectionLabel = UiFactory.Label(
             canvas,
@@ -74,6 +74,21 @@ public class BattleBootstrap : MonoBehaviour
         connectionLabel.rectTransform.sizeDelta = new Vector2(-32f, 24f);
         connectionLabel.rectTransform.anchoredPosition = new Vector2(0f, -6f);
 
+        var stageLabel = UiFactory.Label(
+            canvas,
+            "StageLabel",
+            "",
+            22,
+            TextAnchor.UpperCenter,
+            UiFactory.ActiveColor
+        );
+        stageLabel.fontStyle = FontStyle.Bold;
+        stageLabel.rectTransform.anchorMin = new Vector2(0f, 1f);
+        stageLabel.rectTransform.anchorMax = new Vector2(1f, 1f);
+        stageLabel.rectTransform.pivot = new Vector2(0.5f, 1f);
+        stageLabel.rectTransform.sizeDelta = new Vector2(-32f, 28f);
+        stageLabel.rectTransform.anchoredPosition = new Vector2(0f, -28f);
+
         // Battlefield fills everything above the bottom bar.
         var field = UiFactory.NewRect(canvas, "Field");
         UiFactory.Anchor(field, new Vector2(0f, 0.26f), new Vector2(1f, 1f));
@@ -81,10 +96,11 @@ public class BattleBootstrap : MonoBehaviour
         var bottom = UiFactory.NewRect(canvas, "BottomBar");
         UiFactory.Anchor(bottom, Vector2.zero, new Vector2(1f, 0.26f));
 
-        var equipment = BuildEquipmentPanel(bottom);
-        UiFactory.Anchor(equipment, new Vector2(0f, 0f), new Vector2(0.185f, 1f));
-        equipment.offsetMin = new Vector2(10f, 10f);
-        equipment.offsetMax = new Vector2(-5f, -10f);
+        var equipment = EquipmentPanelView.Create(bottom);
+        var equipmentRect = equipment.GetComponent<RectTransform>();
+        UiFactory.Anchor(equipmentRect, new Vector2(0f, 0f), new Vector2(0.185f, 1f));
+        equipmentRect.offsetMin = new Vector2(10f, 10f);
+        equipmentRect.offsetMax = new Vector2(-5f, -10f);
 
         var log = BattleLogView.Create(bottom);
         var logRect = log.GetComponent<RectTransform>();
@@ -98,10 +114,29 @@ public class BattleBootstrap : MonoBehaviour
         menuRect.offsetMin = new Vector2(5f, 10f);
         menuRect.offsetMax = new Vector2(-10f, -10f);
 
-        var overlay = BuildOverlay(canvas, out var overlayText);
+        var overlay = BuildOverlay(canvas, out var overlayText, out var overlaySubtext, out var resetButton);
+        var popup = StatPopupView.Create(canvas);
+        var turnStrip = TurnOrderStripView.Create(field);
+        var levelUp = LevelUpMenuView.Create(canvas);
+        var escape = EscapeMenuView.Create(canvas, popup);
 
         var hud = gameObject.AddComponent<BattleHud>();
-        hud.Init(field, log, menu, overlay, overlayText, connectionLabel);
+        hud.Init(
+            field,
+            log,
+            menu,
+            equipment,
+            overlay,
+            overlayText,
+            overlaySubtext,
+            resetButton,
+            connectionLabel,
+            stageLabel,
+            popup,
+            turnStrip,
+            escape,
+            levelUp
+        );
     }
 
     static void EnsureEventSystem()
@@ -155,6 +190,28 @@ public class BattleBootstrap : MonoBehaviour
         manager.Configure(serverUrl, databaseName);
     }
 
+    /// Opaque full-canvas gradient so the camera clear color never shows through.
+    /// Anchored to stretch at any aspect; raycasts off so it never eats clicks.
+    static void BuildBackdrop(Transform canvas)
+    {
+        if (Camera.main != null)
+        {
+            Camera.main.clearFlags = CameraClearFlags.SolidColor;
+            Camera.main.backgroundColor = new Color(0.04f, 0.05f, 0.08f, 1f);
+        }
+
+        var backdrop = UiFactory.Panel(canvas, "Backdrop", Color.white);
+        backdrop.sprite = PlaceholderArt.VerticalGradient(
+            new Color(0.10f, 0.12f, 0.16f, 1f),
+            new Color(0.04f, 0.05f, 0.07f, 1f)
+        );
+        backdrop.type = Image.Type.Simple;
+        backdrop.preserveAspect = false;
+        backdrop.raycastTarget = false;
+        UiFactory.Anchor(backdrop.rectTransform, Vector2.zero, Vector2.one);
+        backdrop.rectTransform.SetAsFirstSibling();
+    }
+
     static Transform BuildCanvas()
     {
         var go = new GameObject(
@@ -176,58 +233,12 @@ public class BattleBootstrap : MonoBehaviour
         return go.transform;
     }
 
-    static RectTransform BuildEquipmentPanel(Transform parent)
-    {
-        var panel = UiFactory.Panel(parent, "Equipment", UiFactory.PanelColor);
-
-        var title = UiFactory.Label(
-            panel.transform,
-            "Title",
-            "EQUIPMENT",
-            16,
-            TextAnchor.UpperLeft,
-            UiFactory.MutedColor
-        );
-        title.rectTransform.anchorMin = new Vector2(0f, 1f);
-        title.rectTransform.anchorMax = new Vector2(1f, 1f);
-        title.rectTransform.pivot = new Vector2(0.5f, 1f);
-        title.rectTransform.sizeDelta = new Vector2(-20f, 22f);
-        title.rectTransform.anchoredPosition = new Vector2(0f, -8f);
-
-        var grid = UiFactory.NewRect(panel.transform, "Slots");
-        grid.anchorMin = Vector2.zero;
-        grid.anchorMax = Vector2.one;
-        grid.offsetMin = new Vector2(12f, 12f);
-        grid.offsetMax = new Vector2(-12f, -34f);
-
-        var layout = grid.gameObject.AddComponent<GridLayoutGroup>();
-        layout.cellSize = new Vector2(70f, 70f);
-        layout.spacing = new Vector2(10f, 10f);
-        layout.childAlignment = TextAnchor.UpperLeft;
-
-        // Visual only: no equipment behaviour exists yet.
-        AddSlot(grid, "WPN");
-        AddSlot(grid, "AMU");
-        AddSlot(grid, "AMU");
-        AddSlot(grid, "AMU");
-        return panel.rectTransform;
-    }
-
-    static void AddSlot(Transform parent, string caption)
-    {
-        var slot = UiFactory.Panel(parent, $"Slot_{caption}", UiFactory.SlotColor);
-        var label = UiFactory.Label(
-            slot.transform,
-            "Label",
-            caption,
-            16,
-            TextAnchor.MiddleCenter,
-            UiFactory.MutedColor
-        );
-        UiFactory.Anchor(label.rectTransform, Vector2.zero, Vector2.one);
-    }
-
-    static RectTransform BuildOverlay(Transform parent, out Text overlayText)
+    static RectTransform BuildOverlay(
+        Transform parent,
+        out Text overlayText,
+        out Text overlaySubtext,
+        out GameObject resetButton
+    )
     {
         var panel = UiFactory.Panel(parent, "Overlay", new Color(0f, 0f, 0f, 0.82f));
         UiFactory.Anchor(panel.rectTransform, Vector2.zero, Vector2.one);
@@ -240,7 +251,17 @@ public class BattleBootstrap : MonoBehaviour
             TextAnchor.MiddleCenter,
             UiFactory.TextColor
         );
-        UiFactory.Anchor(overlayText.rectTransform, new Vector2(0f, 0.45f), new Vector2(1f, 0.75f));
+        UiFactory.Anchor(overlayText.rectTransform, new Vector2(0f, 0.48f), new Vector2(1f, 0.78f));
+
+        overlaySubtext = UiFactory.Label(
+            panel.transform,
+            "Next",
+            "",
+            32,
+            TextAnchor.MiddleCenter,
+            UiFactory.ActiveColor
+        );
+        UiFactory.Anchor(overlaySubtext.rectTransform, new Vector2(0.1f, 0.36f), new Vector2(0.9f, 0.48f));
 
         var reset = UiFactory.TextButton(panel.transform, "Reset", "Reset Stage (debug)", 22);
         var resetRect = reset.GetComponent<RectTransform>();
@@ -250,6 +271,7 @@ public class BattleBootstrap : MonoBehaviour
         resetRect.sizeDelta = new Vector2(320f, 56f);
         resetRect.anchoredPosition = Vector2.zero;
         reset.onClick.AddListener(GameManager.ResetStage);
+        resetButton = reset.gameObject;
 
         panel.gameObject.SetActive(false);
         return panel.rectTransform;
