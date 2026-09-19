@@ -15,5 +15,6 @@ namespace SpacetimeDB.Types
         Victory,
         Defeat,
         RestStop,
+        StageTransition,
     }
 }

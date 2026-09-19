@@ -23,6 +23,7 @@ public static partial class Module
                 TurnIndex = 0,
                 ActiveEntityId = 0,
                 StageNumber = 0,
+                UpcomingRestStop = false,
             }
         );
 
@@ -222,6 +223,8 @@ public static partial class Module
             ctx.Db.EnemyTurnTimer.ScheduledId.Delete(timer.ScheduledId);
         }
 
+        ClearStageTransitionTimers(ctx);
+
         foreach (var entry in ctx.Db.TurnOrder.Iter().ToList())
         {
             ctx.Db.TurnOrder.Idx.Delete(entry.Idx);
@@ -262,6 +265,7 @@ public static partial class Module
                 TurnIndex = 0,
                 ActiveEntityId = 0,
                 StageNumber = 0,
+                UpcomingRestStop = false,
             }
         );
         AddLog(ctx, "Stage reset. Waiting for players.");
@@ -732,6 +736,7 @@ public static partial class Module
                 Round = 1,
                 TurnIndex = 0,
                 ActiveEntityId = 0,
+                UpcomingRestStop = false,
             }
         );
 
@@ -777,13 +782,62 @@ public static partial class Module
                 {
                     Phase = BattlePhase.Victory,
                     ActiveEntityId = 0,
+                    UpcomingRestStop = false,
                 }
             );
             AddLog(ctx, "The party is victorious!");
             return;
         }
 
-        if (ShouldEnterRestStop(cleared))
+        EnterStageTransition(ctx, ShouldEnterRestStop(cleared));
+    }
+
+    static bool ShouldEnterRestStop(uint clearedStage) =>
+        RestStopEvery > 0 && clearedStage < MaxStageCount && clearedStage % RestStopEvery == 0;
+
+    static void EnterStageTransition(ReducerContext ctx, bool upcomingRestStop)
+    {
+        ClearReadyFlags(ctx);
+        ClearStageTransitionTimers(ctx);
+
+        var session = RequireSession(ctx);
+        ctx.Db.GameSession.Id.Update(
+            session with
+            {
+                Phase = BattlePhase.StageTransition,
+                Round = 0,
+                TurnIndex = 0,
+                ActiveEntityId = 0,
+                UpcomingRestStop = upcomingRestStop,
+            }
+        );
+
+        ctx.Db.StageTransitionTimer.Insert(
+            new StageTransitionTimer
+            {
+                ScheduledId = 0,
+                ScheduledAt = new ScheduleAt.Time(
+                    ctx.Timestamp + new TimeDuration(StageTransitionDelayMicros)
+                ),
+            }
+        );
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void AdvanceStageTransition(ReducerContext ctx, StageTransitionTimer timer)
+    {
+        if (ctx.Sender != ctx.DatabaseIdentity)
+        {
+            throw new Exception("AdvanceStageTransition may only be invoked by the scheduler.");
+        }
+
+        var session = RequireSession(ctx);
+        if (session.Phase != BattlePhase.StageTransition)
+        {
+            return;
+        }
+
+        if (session.UpcomingRestStop)
         {
             EnterRestStop(ctx);
             return;
@@ -792,8 +846,13 @@ public static partial class Module
         BeginNextStage(ctx);
     }
 
-    static bool ShouldEnterRestStop(uint clearedStage) =>
-        RestStopEvery > 0 && clearedStage < MaxStageCount && clearedStage % RestStopEvery == 0;
+    static void ClearStageTransitionTimers(ReducerContext ctx)
+    {
+        foreach (var timer in ctx.Db.StageTransitionTimer.Iter().ToList())
+        {
+            ctx.Db.StageTransitionTimer.ScheduledId.Delete(timer.ScheduledId);
+        }
+    }
 
     static void EnterRestStop(ReducerContext ctx)
     {
@@ -808,6 +867,7 @@ public static partial class Module
                 Round = 0,
                 TurnIndex = 0,
                 ActiveEntityId = 0,
+                UpcomingRestStop = false,
             }
         );
         AddLog(ctx, "Rest stop. HP and mana restored. Ready up to continue.");
@@ -1090,7 +1150,7 @@ public static partial class Module
         var session = RequireSession(ctx);
         if (session.Phase != BattlePhase.InBattle)
         {
-            return session.Phase is BattlePhase.Victory or BattlePhase.Defeat;
+            return session.Phase is BattlePhase.Victory or BattlePhase.Defeat or BattlePhase.StageTransition;
         }
 
         var playersAlive = LivingMembers(ctx, Team.Players).Count;
@@ -1110,6 +1170,7 @@ public static partial class Module
                 {
                     Phase = BattlePhase.Defeat,
                     ActiveEntityId = 0,
+                    UpcomingRestStop = false,
                 }
             );
             AddLog(ctx, "The whole party has fallen. Defeat.");

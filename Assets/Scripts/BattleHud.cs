@@ -13,21 +13,21 @@ public class BattleHud : MonoBehaviour
 {
     static readonly Vector2[] PlayerSlots =
     {
-        new Vector2(330f, 120f),
-        new Vector2(510f, 290f),
-        new Vector2(690f, 460f),
+        new Vector2(250f, 50f),
+        new Vector2(530f, 300f),
+        new Vector2(810f, 550f),
     };
 
     static readonly Vector2[] EnemySlots =
     {
-        new Vector2(1600f, 40f),
-        new Vector2(1440f, 200f),
-        new Vector2(1600f, 360f),
-        new Vector2(1440f, 520f),
+        new Vector2(1680f, 30f),
+        new Vector2(1420f, 220f),
+        new Vector2(1680f, 410f),
+        new Vector2(1420f, 600f),
     };
 
-    static readonly Vector2 PlayerCardSize = new Vector2(300f, 215f);
-    static readonly Vector2 EnemyCardSize = new Vector2(280f, 190f);
+    static readonly Vector2 PlayerCardSize = new Vector2(250f, 190f);
+    static readonly Vector2 EnemyCardSize = new Vector2(220f, 155f);
 
     RectTransform _field;
     BattleLogView _log;
@@ -35,6 +35,7 @@ public class BattleHud : MonoBehaviour
     EquipmentPanelView _equipment;
     RectTransform _overlay;
     Text _overlayText;
+    Text _overlaySubtext;
     Text _connectionLabel;
     Text _stageLabel;
     StatPopupView _popup;
@@ -58,6 +59,7 @@ public class BattleHud : MonoBehaviour
         EquipmentPanelView equipment,
         RectTransform overlay,
         Text overlayText,
+        Text overlaySubtext,
         Text connectionLabel,
         Text stageLabel,
         StatPopupView popup
@@ -69,6 +71,7 @@ public class BattleHud : MonoBehaviour
         _equipment = equipment;
         _overlay = overlay;
         _overlayText = overlayText;
+        _overlaySubtext = overlaySubtext;
         _connectionLabel = connectionLabel;
         _stageLabel = stageLabel;
         _popup = popup;
@@ -169,22 +172,45 @@ public class BattleHud : MonoBehaviour
                     session.Phase == BattlePhase.Waiting
                     || session.Phase == BattlePhase.RestStop
                 )
+                && (me == null || me.Alive)
         );
 
+        var transitioning =
+            session != null && session.Phase == BattlePhase.StageTransition;
         var finished =
             session != null
             && (session.Phase == BattlePhase.Victory || session.Phase == BattlePhase.Defeat);
-        _overlay.gameObject.SetActive(finished);
-        if (finished)
+        _overlay.gameObject.SetActive(finished || transitioning);
+        if (finished || transitioning)
         {
             _popup?.Close();
             _overlay.SetAsLastSibling();
-            _overlayText.text =
-                session.Phase == BattlePhase.Victory ? "FINAL VICTORY" : "DEFEAT";
-            _overlayText.color =
-                session.Phase == BattlePhase.Victory
-                    ? new Color(0.55f, 0.90f, 0.55f)
-                    : new Color(0.92f, 0.45f, 0.45f);
+            if (transitioning)
+            {
+                _overlayText.fontSize = 64;
+                _overlayText.text = $"STAGE {session.StageNumber} CLEARED";
+                _overlayText.color = new Color(0.95f, 0.86f, 0.45f);
+                if (_overlaySubtext != null)
+                {
+                    _overlaySubtext.text = session.UpcomingRestStop
+                        ? "Next: Rest Stop"
+                        : $"Next: Stage {session.StageNumber + 1}";
+                }
+            }
+            else
+            {
+                _overlayText.fontSize = 96;
+                _overlayText.text =
+                    session.Phase == BattlePhase.Victory ? "FINAL VICTORY" : "DEFEAT";
+                _overlayText.color =
+                    session.Phase == BattlePhase.Victory
+                        ? new Color(0.55f, 0.90f, 0.55f)
+                        : new Color(0.92f, 0.45f, 0.45f);
+                if (_overlaySubtext != null)
+                {
+                    _overlaySubtext.text = "";
+                }
+            }
         }
     }
 
@@ -310,7 +336,7 @@ public class BattleHud : MonoBehaviour
         Refresh();
     }
 
-    void HandleEntityClicked(ulong entityId)
+    void HandleEntityClicked(ulong entityId, Vector2 screenPoint)
     {
         var entity = GameManager.FindEntity(entityId);
         if (entity == null || !entity.Alive)
@@ -338,7 +364,7 @@ public class BattleHud : MonoBehaviour
             return;
         }
 
-        _popup?.Open(entityId, PointerScreenPoint());
+        _popup?.Open(entityId, screenPoint);
     }
 
     void HandleInspectDismiss()

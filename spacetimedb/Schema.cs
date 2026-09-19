@@ -28,6 +28,7 @@ public static partial class Module
         Victory,
         Defeat,
         RestStop,
+        StageTransition,
     }
 
     [SpacetimeDB.Type]
@@ -117,6 +118,9 @@ public static partial class Module
         /// 1-based battle stage. 0 in the lobby. Cap is MaxStageCount in Rules.
         [Default(0u)]
         public uint StageNumber;
+        /// Set during StageTransition: true if the next beat is a rest stop.
+        [Default(false)]
+        public bool UpcomingRestStop;
     }
 
     /// A seat in the party. Owns exactly one Entity row once the player joins.
@@ -231,6 +235,20 @@ public static partial class Module
         public ulong ScheduledId;
         public ScheduleAt ScheduledAt;
         public ulong EntityId;
+    }
+
+    /// One-shot timer that advances StageTransition after the cleared-stage pause.
+    [SpacetimeDB.Table(
+        Accessor = "StageTransitionTimer",
+        Scheduled = nameof(AdvanceStageTransition),
+        ScheduledAt = nameof(ScheduledAt)
+    )]
+    public partial struct StageTransitionTimer
+    {
+        [PrimaryKey]
+        [AutoInc]
+        public ulong ScheduledId;
+        public ScheduleAt ScheduledAt;
     }
 
     /// Catalog of every castable skill. Seeded once by Init.

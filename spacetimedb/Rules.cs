@@ -36,6 +36,8 @@ public static partial class Module
 
     // Enemy actions are spaced out so the battle log stays readable.
     public const long EnemyTurnDelayMicros = 2_000_000;
+    /// Pause on the cleared-stage screen before rest or the next battle.
+    public const long StageTransitionDelayMicros = 3_000_000;
 
     static readonly string[] PartyNames = { "Aria", "Bran", "Cael" };
 

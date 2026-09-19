@@ -114,11 +114,22 @@ public class BattleBootstrap : MonoBehaviour
         menuRect.offsetMin = new Vector2(5f, 10f);
         menuRect.offsetMax = new Vector2(-10f, -10f);
 
-        var overlay = BuildOverlay(canvas, out var overlayText);
+        var overlay = BuildOverlay(canvas, out var overlayText, out var overlaySubtext);
         var popup = StatPopupView.Create(canvas);
 
         var hud = gameObject.AddComponent<BattleHud>();
-        hud.Init(field, log, menu, equipment, overlay, overlayText, connectionLabel, stageLabel, popup);
+        hud.Init(
+            field,
+            log,
+            menu,
+            equipment,
+            overlay,
+            overlayText,
+            overlaySubtext,
+            connectionLabel,
+            stageLabel,
+            popup
+        );
     }
 
     static void EnsureEventSystem()
@@ -215,7 +226,7 @@ public class BattleBootstrap : MonoBehaviour
         return go.transform;
     }
 
-    static RectTransform BuildOverlay(Transform parent, out Text overlayText)
+    static RectTransform BuildOverlay(Transform parent, out Text overlayText, out Text overlaySubtext)
     {
         var panel = UiFactory.Panel(parent, "Overlay", new Color(0f, 0f, 0f, 0.82f));
         UiFactory.Anchor(panel.rectTransform, Vector2.zero, Vector2.one);
@@ -228,7 +239,17 @@ public class BattleBootstrap : MonoBehaviour
             TextAnchor.MiddleCenter,
             UiFactory.TextColor
         );
-        UiFactory.Anchor(overlayText.rectTransform, new Vector2(0f, 0.45f), new Vector2(1f, 0.75f));
+        UiFactory.Anchor(overlayText.rectTransform, new Vector2(0f, 0.48f), new Vector2(1f, 0.78f));
+
+        overlaySubtext = UiFactory.Label(
+            panel.transform,
+            "Next",
+            "",
+            32,
+            TextAnchor.MiddleCenter,
+            UiFactory.ActiveColor
+        );
+        UiFactory.Anchor(overlaySubtext.rectTransform, new Vector2(0.1f, 0.36f), new Vector2(0.9f, 0.48f));
 
         var reset = UiFactory.TextButton(panel.transform, "Reset", "Reset Stage (debug)", 22);
         var resetRect = reset.GetComponent<RectTransform>();

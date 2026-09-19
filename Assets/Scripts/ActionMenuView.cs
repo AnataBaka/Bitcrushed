@@ -173,6 +173,15 @@ public class ActionMenuView : MonoBehaviour
             return;
         }
 
+        if (session.Phase == BattlePhase.StageTransition)
+        {
+            _page = Page.Root;
+            ApplyPage();
+            _status.text = "Stage cleared";
+            SetPageInteractable(_root, false);
+            return;
+        }
+
         if (session.Phase != BattlePhase.InBattle)
         {
             _page = Page.Root;
