@@ -23,7 +23,8 @@ public static partial class Module
     public const int EnemyDodgeDivisor = 3;
     /// Archer passive: 0.1% dodge per Dexterity (10 basis points).
     public const int ArcherDodgeBpsPerDex = 10;
-    /// Knight passive: +0.5 damage per Strength, stored as tenths.
+    /// Archer passive: +0.2 damage per Dexterity, stored as tenths.
+    public const int ArcherDamageTenthsPerDex = 2;
     public const int KnightDamageTenthsPerStrength = 5;
     /// Mage passive: +0.2 spell damage per Intelligence, stored as tenths.
     public const int MageSpellDamageTenthsPerInt = 2;
@@ -256,10 +257,11 @@ public static partial class Module
 
     // ------------------------------------------------------------------- math
 
-    /// Flat class passives: Knight +0.5/STR on every attack, Mage +0.2/INT on spells.
+    /// Flat class passives: Knight +0.5/STR, Archer +0.2/DEX, Mage +0.2/INT on spells.
     public static int ClassPassiveDamage(
         PlayerClass playerClass,
         int strength,
+        int dexterity,
         int intelligence,
         bool isSpell
     )
@@ -268,6 +270,11 @@ public static partial class Module
         if (playerClass == PlayerClass.Knight)
         {
             tenths += KnightDamageTenthsPerStrength * Math.Max(0, strength);
+        }
+
+        if (playerClass == PlayerClass.Archer)
+        {
+            tenths += ArcherDamageTenthsPerDex * Math.Max(0, dexterity);
         }
 
         if (playerClass == PlayerClass.Mage && isSpell)
@@ -435,37 +442,35 @@ public static partial class Module
         return (uint)Math.Round(xp, MidpointRounding.AwayFromZero);
     }
 
-    /// EnemyHP(L) = 30 + 6*L where L is the floor/stage, not character level.
-    public static int EnemyHpForLevel(uint level)
+    /// Floor is the main driver. Player level adds a quarter-weight, capped at 35
+    /// so a cheat-level party does not spawn raid-boss stats.
+    public static double EnemyScaleLevel(uint floor, uint playerLevel)
     {
-        var n = level == 0 ? 1 : (int)level;
-        return Math.Max(1, 30 + 6 * n);
+        var f = floor == 0 ? 1 : (int)floor;
+        var level = playerLevel == 0 ? 1 : (int)playerLevel;
+        var capped = Math.Clamp(level, 1, 35);
+        return f + 0.25 * capped;
     }
 
-    /// 3-player baseline is EnemyHP(floor). Solo is 1/3, 2 players 2/3, etc.
-    public static int EnemyHpForFloor(uint floor, int playerCount)
+    /// EnemyHP = (30 + 6*blend) * (P/3). Blend is floor + 0.25*min(playerLevel, 35).
+    public static int EnemyHpForEncounter(uint floor, uint playerLevel, int playerCount)
     {
+        var baseline = 30 + 6 * EnemyScaleLevel(floor, playerLevel);
         var p = Math.Max(1, playerCount);
-        var scaled = EnemyHpForLevel(floor) * (p / 3.0);
-        return Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero));
+        return Math.Max(1, (int)Math.Round(baseline * (p / 3.0), MidpointRounding.AwayFromZero));
     }
 
-    /// EnemyATK(L) = 4 + 0.6*L where L is the floor/stage.
-    public static double EnemyAtkBaseline(uint level)
+    /// ATK is not cut by party size — starter armor is 5, so P/3 was zeroing solo hits.
+    public static int EnemyAtkForEncounter(uint floor, uint playerLevel)
     {
-        var n = level == 0 ? 1 : (int)level;
-        return 4 + 0.6 * n;
+        var atk = 4 + 0.6 * EnemyScaleLevel(floor, playerLevel);
+        return Math.Max(6, (int)Math.Round(atk, MidpointRounding.AwayFromZero));
     }
 
-    public static int EnemyAtkForLevel(uint level) =>
-        Math.Max(1, (int)Math.Round(EnemyAtkBaseline(level), MidpointRounding.AwayFromZero));
-
-    /// 3-player baseline is EnemyATK(floor). Solo is 1/3, 2 players 2/3, etc.
-    public static int EnemyAtkForFloor(uint floor, int playerCount)
+    public static int EnemyStrengthForEncounter(uint floor, uint playerLevel)
     {
-        var p = Math.Max(1, playerCount);
-        var scaled = EnemyAtkBaseline(floor) * (p / 3.0);
-        return Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero));
+        var strength = 2 + 0.3 * EnemyScaleLevel(floor, playerLevel);
+        return Math.Max(3, (int)Math.Round(strength, MidpointRounding.AwayFromZero));
     }
 
     /// Each kill grants `25 * stage` EXP to every living party member.
