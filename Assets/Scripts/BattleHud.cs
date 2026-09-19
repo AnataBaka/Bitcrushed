@@ -42,6 +42,7 @@ public class BattleHud : MonoBehaviour
     StatPopupView _popup;
     InventoryPopupView _inventory;
     TurnOrderListView _turnList;
+    LevelUpBannerView _banner;
     EscapeMenuView _escape;
 
     readonly Dictionary<ulong, EntityView> _views = new Dictionary<ulong, EntityView>();
@@ -70,6 +71,7 @@ public class BattleHud : MonoBehaviour
         StatPopupView popup,
         InventoryPopupView inventory,
         TurnOrderListView turnList,
+        LevelUpBannerView banner,
         EscapeMenuView escape
     )
     {
@@ -86,6 +88,7 @@ public class BattleHud : MonoBehaviour
         _popup = popup;
         _inventory = inventory;
         _turnList = turnList;
+        _banner = banner;
         _escape = escape;
 
         _menu.OnJoin = GameManager.JoinGame;
@@ -257,7 +260,13 @@ public class BattleHud : MonoBehaviour
             _popup?.Close();
             _inventory?.Close();
             _overlay.SetAsLastSibling();
-            _escape?.transform.SetAsLastSibling();
+        }
+
+        _banner?.Raise();
+        _escape?.transform.SetAsLastSibling();
+
+        if (finished || transitioning)
+        {
             if (transitioning)
             {
                 _overlayText.fontSize = 64;

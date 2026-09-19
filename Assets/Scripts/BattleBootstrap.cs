@@ -118,6 +118,7 @@ public class BattleBootstrap : MonoBehaviour
         var popup = StatPopupView.Create(canvas);
         var turnList = TurnOrderListView.Create(field);
         var inventory = InventoryPopupView.Create(canvas, equipment.BagButtonRect);
+        var banner = LevelUpBannerView.Create(canvas);
         var escape = EscapeMenuView.Create(canvas, popup);
 
         var hud = gameObject.AddComponent<BattleHud>();
@@ -135,6 +136,7 @@ public class BattleBootstrap : MonoBehaviour
             popup,
             inventory,
             turnList,
+            banner,
             escape
         );
     }
