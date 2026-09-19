@@ -8,10 +8,10 @@ using UnityEngine.UI;
 public class BattleBootstrap : MonoBehaviour
 {
     [SerializeField]
-    string serverUrl = "http://127.0.0.1:3000";
+    string serverUrl = "https://maincloud.spacetimedb.com";
 
     [SerializeField]
-    string databaseName = "hophacks-party";
+    string databaseName = "hophacks-party-vp";
 
     static bool _built;
 

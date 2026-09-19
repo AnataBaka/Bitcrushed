@@ -12,12 +12,17 @@ public class GameManager : MonoBehaviour
     public const uint SessionId = 1;
 
     [SerializeField]
-    string serverUrl = "http://127.0.0.1:3000";
+    string serverUrl = "https://maincloud.spacetimedb.com";
 
     [SerializeField]
-    string databaseName = "hophacks-party";
+    string databaseName = "hophacks-party-vp";
 
-    const string TokenPrefsKey = "hophacks.spacetimedb.token";
+    // Tokens are namespaced per server+database so switching between the local
+    // server and Maincloud never reuses a token signed by the wrong key (which
+    // the server rejects with a signing-key / 400 BAD REQUEST error).
+    string TokenPrefsKey => $"hophacks.spacetimedb.token::{serverUrl}::{databaseName}";
+
+    bool _clearedStaleToken;
 
     public static GameManager Instance { get; private set; }
     public static DbConnection Conn { get; private set; }
@@ -138,6 +143,23 @@ public class GameManager : MonoBehaviour
 
     void HandleConnectError(Exception ex)
     {
+        // A token cached for a different server is rejected by the signing-key
+        // check. Drop it and reconnect fresh exactly once before giving up.
+        if (
+            !_clearedStaleToken
+            && !string.IsNullOrEmpty(PlayerPrefs.GetString(TokenPrefsKey, string.Empty))
+        )
+        {
+            _clearedStaleToken = true;
+            PlayerPrefs.DeleteKey(TokenPrefsKey);
+            PlayerPrefs.Save();
+            Status = "Cached token rejected. Reconnecting fresh...";
+            Debug.LogWarning($"Clearing stale token and retrying: {ex.Message}");
+            Changed();
+            Connect();
+            return;
+        }
+
         Status = $"Connection error: {ex.Message}";
         Debug.LogError(ex);
         Changed();
