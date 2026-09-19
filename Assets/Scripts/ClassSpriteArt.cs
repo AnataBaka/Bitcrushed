@@ -17,17 +17,34 @@ public static class ClassSpriteArt
         NinjaSpriteLibrary.EnsureLoaded();
     }
 
-    public static bool HasSprites(string className) =>
-        className == KnightSpriteLibrary.ClassName && KnightSpriteLibrary.Ready
-        || className == NinjaSpriteLibrary.ClassName && NinjaSpriteLibrary.Ready;
+    public static string CanonicalClass(string className)
+    {
+        switch (className)
+        {
+            case "Warrior":
+                return KnightSpriteLibrary.ClassName;
+            case "Rogue":
+                return NinjaSpriteLibrary.ClassName;
+            default:
+                return className;
+        }
+    }
+
+    public static bool HasSprites(string className)
+    {
+        var canonical = CanonicalClass(className);
+        return canonical == KnightSpriteLibrary.ClassName && KnightSpriteLibrary.Ready
+            || canonical == NinjaSpriteLibrary.ClassName && NinjaSpriteLibrary.Ready;
+    }
 
     /// Ninja sheets face left; players stand on the left, so they flip toward
     /// the enemy line. Knight sheets already face right.
-    public static bool FlipX(string className) => className == NinjaSpriteLibrary.ClassName;
+    public static bool FlipX(string className) =>
+        CanonicalClass(className) == NinjaSpriteLibrary.ClassName;
 
     public static Sprite[] Idle(string className)
     {
-        if (className == NinjaSpriteLibrary.ClassName)
+        if (CanonicalClass(className) == NinjaSpriteLibrary.ClassName)
         {
             return NinjaSpriteLibrary.Idle;
         }
@@ -37,7 +54,7 @@ public static class ClassSpriteArt
 
     public static Sprite[] Run(string className)
     {
-        if (className == NinjaSpriteLibrary.ClassName)
+        if (CanonicalClass(className) == NinjaSpriteLibrary.ClassName)
         {
             return NinjaSpriteLibrary.Run;
         }
@@ -47,7 +64,7 @@ public static class ClassSpriteArt
 
     public static Sprite[] Hurt(string className)
     {
-        if (className == NinjaSpriteLibrary.ClassName)
+        if (CanonicalClass(className) == NinjaSpriteLibrary.ClassName)
         {
             return NinjaSpriteLibrary.Hurt;
         }
@@ -57,7 +74,7 @@ public static class ClassSpriteArt
 
     public static Sprite[] Dying(string className)
     {
-        if (className == NinjaSpriteLibrary.ClassName)
+        if (CanonicalClass(className) == NinjaSpriteLibrary.ClassName)
         {
             return NinjaSpriteLibrary.Dying;
         }
@@ -67,7 +84,7 @@ public static class ClassSpriteArt
 
     public static Sprite[] AttackClipFor(string className, string actionName)
     {
-        if (className == NinjaSpriteLibrary.ClassName)
+        if (CanonicalClass(className) == NinjaSpriteLibrary.ClassName)
         {
             return NinjaSpriteLibrary.AttackClipFor(actionName);
         }
@@ -77,12 +94,13 @@ public static class ClassSpriteArt
 
     public static bool TryHitEffect(string className, string actionName, out HitEffectKind kind)
     {
-        if (className == NinjaSpriteLibrary.ClassName)
+        var canonical = CanonicalClass(className);
+        if (canonical == NinjaSpriteLibrary.ClassName)
         {
             return NinjaSpriteLibrary.TryHitEffect(actionName, out kind);
         }
 
-        if (className == KnightSpriteLibrary.ClassName)
+        if (canonical == KnightSpriteLibrary.ClassName)
         {
             return KnightSpriteLibrary.TryHitEffect(actionName, out kind);
         }

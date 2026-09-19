@@ -13,21 +13,7 @@ public static class KnightSpriteLibrary
     public static Sprite[] Hurt { get; private set; }
     public static Sprite[] Dying { get; private set; }
 
-    public static bool Ready =>
-        Idle != null
-        && Idle.Length > 0
-        && Run != null
-        && Run.Length > 0
-        && Attack1 != null
-        && Attack1.Length > 0
-        && Attack2 != null
-        && Attack2.Length > 0
-        && Attack3 != null
-        && Attack3.Length > 0
-        && Hurt != null
-        && Hurt.Length > 0
-        && Dying != null
-        && Dying.Length > 0;
+    public static bool Ready => Idle != null && Idle.Length > 0 && Run != null && Run.Length > 0;
 
     public static bool Matches(string className) => Ready && className == ClassName;
 
@@ -57,7 +43,16 @@ public static class KnightSpriteLibrary
         Attack3 = SpriteFrameLoader.LoadFolder("Sprites/Knight_1/Attack_3", FilterMode.Point);
         Hurt = SpriteFrameLoader.LoadFolder("Sprites/Knight_1/Hurt", FilterMode.Point);
         Dying = SpriteFrameLoader.LoadFolder("Sprites/Knight_1/Dying", FilterMode.Point);
+
+        if (!Ready)
+        {
+            Debug.LogError(
+                $"Knight sprites incomplete. idle={Len(Idle)} run={Len(Run)} a1={Len(Attack1)} a2={Len(Attack2)} a3={Len(Attack3)} hurt={Len(Hurt)} die={Len(Dying)}"
+            );
+        }
     }
+
+    static int Len(Sprite[] frames) => frames == null ? 0 : frames.Length;
 
     /// Bash / Rush / Sword Swing → Attack_1; Cleave / Triple Slash / Furioso →
     /// Attack_2; Bludgeon → Attack_3.

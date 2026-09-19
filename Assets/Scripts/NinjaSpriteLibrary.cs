@@ -12,19 +12,7 @@ public static class NinjaSpriteLibrary
     public static Sprite[] Hurt { get; private set; }
     public static Sprite[] Dying { get; private set; }
 
-    public static bool Ready =>
-        Idle != null
-        && Idle.Length > 0
-        && Run != null
-        && Run.Length > 0
-        && Attack1 != null
-        && Attack1.Length > 0
-        && Attack2 != null
-        && Attack2.Length > 0
-        && Hurt != null
-        && Hurt.Length > 0
-        && Dying != null
-        && Dying.Length > 0;
+    public static bool Ready => Idle != null && Idle.Length > 0 && Run != null && Run.Length > 0;
 
     public static bool Matches(string className) => Ready && className == ClassName;
 
@@ -52,7 +40,16 @@ public static class NinjaSpriteLibrary
         Attack2 = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Attack_2", FilterMode.Point);
         Hurt = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Hurt", FilterMode.Point);
         Dying = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Dying", FilterMode.Point);
+
+        if (!Ready)
+        {
+            Debug.LogError(
+                $"Ninja sprites incomplete. idle={Len(Idle)} run={Len(Run)} a1={Len(Attack1)} a2={Len(Attack2)} hurt={Len(Hurt)} die={Len(Dying)}"
+            );
+        }
     }
+
+    static int Len(Sprite[] frames) => frames == null ? 0 : frames.Length;
 
     /// Vertical Cut / Quick Cut → Attack_1; Spear / Overthrow → Attack_2.
     public static Sprite[] AttackClipFor(string actionName)
