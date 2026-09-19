@@ -194,6 +194,11 @@ public static partial class Module
         }
 
         var player = RequirePlayer(ctx);
+        if (session.Phase == BattlePhase.RestStop && !IsLivingPlayer(ctx, player))
+        {
+            throw new Exception("Defeated players cannot ready up.");
+        }
+
         if (player.Ready == ready)
         {
             return;
@@ -664,19 +669,20 @@ public static partial class Module
         }
 
         var online = ctx.Db.Player.Iter().Where(p => p.Online).ToList();
-        if (online.Count == 0)
-        {
-            return;
-        }
-
-        if (online.Any(p => !p.Ready))
-        {
-            return;
-        }
-
         if (session.Phase == BattlePhase.RestStop)
         {
+            var living = online.Where(p => IsLivingPlayer(ctx, p)).ToList();
+            if (living.Count == 0 || living.Any(p => !p.Ready))
+            {
+                return;
+            }
+
             BeginNextStage(ctx);
+            return;
+        }
+
+        if (online.Count == 0 || online.Any(p => !p.Ready))
+        {
             return;
         }
 
@@ -695,6 +701,11 @@ public static partial class Module
         if (!EquipmentChangesAllowed(session.Phase))
         {
             throw new Exception("Cannot change equipment during battle.");
+        }
+
+        if (!IsLivingPlayer(ctx, RequirePlayer(ctx)))
+        {
+            throw new Exception("Defeated players cannot change equipment.");
         }
     }
 
@@ -806,7 +817,7 @@ public static partial class Module
     {
         foreach (var entity in ctx.Db.Entity.Iter().ToList())
         {
-            if (entity.Faction != Team.Players)
+            if (entity.Faction != Team.Players || !entity.Alive)
             {
                 continue;
             }
@@ -814,7 +825,6 @@ public static partial class Module
             ctx.Db.Entity.EntityId.Update(
                 entity with
                 {
-                    Alive = true,
                     Hp = entity.MaxHp,
                     Mana = entity.MaxMana,
                 }
@@ -863,23 +873,8 @@ public static partial class Module
     {
         foreach (var entity in ctx.Db.Entity.Iter().ToList())
         {
-            if (entity.Faction != Team.Players)
+            if (entity.Faction != Team.Players || !entity.Alive)
             {
-                continue;
-            }
-
-            if (!entity.Alive)
-            {
-                var revivedHp = Math.Max(1, entity.MaxHp / 2);
-                ctx.Db.Entity.EntityId.Update(
-                    entity with
-                    {
-                        Alive = true,
-                        Hp = revivedHp,
-                        Mana = entity.MaxMana,
-                    }
-                );
-                AddLog(ctx, $"{entity.Name} is revived at {revivedHp} HP.");
                 continue;
             }
 
@@ -1512,6 +1507,9 @@ public static partial class Module
             .Where(e => e.Faction == faction && e.Alive)
             .OrderBy(e => e.Slot)
             .ToList();
+
+    static bool IsLivingPlayer(ReducerContext ctx, Player player) =>
+        ctx.Db.Entity.EntityId.Find(player.EntityId) is Entity entity && entity.Alive;
 
     static GameSession RequireSession(ReducerContext ctx)
     {

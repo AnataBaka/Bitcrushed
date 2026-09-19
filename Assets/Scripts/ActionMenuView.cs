@@ -167,7 +167,8 @@ public class ActionMenuView : MonoBehaviour
                 && me == null
                 && session.PlayerCount < session.MaxPlayers;
             var localPlayer = GameManager.LocalPlayer();
-            _readyButton.interactable = localPlayer != null;
+            var canReady = localPlayer != null && (session.Phase != BattlePhase.RestStop || (me != null && me.Alive));
+            _readyButton.interactable = canReady;
             SetReadyCaption(localPlayer != null && localPlayer.Ready);
             return;
         }
