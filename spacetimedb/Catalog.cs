@@ -11,33 +11,33 @@ public static partial class Module
     private static void SeedSkills(ReducerContext ctx)
     {
         // Warrior: first three are starters. One more skill every 10 floors.
-        InsertPlayerSkill(ctx, "Bash", PlayerClass.Warrior, 0, 0, 5, 1, false, 0, 0, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Rush", PlayerClass.Warrior, 0, 0, 3, 1, true, 0, 0, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Enrage", PlayerClass.Warrior, 0, 10, 0, 0, false, 2, 0, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Berserker Rage", PlayerClass.Warrior, 10, 20, 0, 0, false, 4, 1, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Cleave", PlayerClass.Warrior, 20, 10, 7, 3, false, 0, 0, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Bludgeon", PlayerClass.Warrior, 30, 0, 30, 1, false, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Bash", PlayerClass.Warrior, 0, 8, 5, 1, false, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Rush", PlayerClass.Warrior, 0, 10, 3, 1, true, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Enrage", PlayerClass.Warrior, 0, 12, 0, 0, false, 2, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Berserker Rage", PlayerClass.Warrior, 10, 18, 0, 0, false, 4, 1, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Cleave", PlayerClass.Warrior, 20, 14, 7, 3, false, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Bludgeon", PlayerClass.Warrior, 30, 20, 30, 1, false, 0, 0, DamageType.Physical);
 
-        InsertPlayerSkill(ctx, "Aimed Shot", PlayerClass.Archer, 0, 0, 5, 1, false, 0, 0, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Quickdraw", PlayerClass.Archer, 0, 0, 3, 1, true, 0, 0, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Rain of Arrows", PlayerClass.Archer, 0, 10, 4, 3, false, 0, 0, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Piercing Shot", PlayerClass.Archer, 10, 10, 12, 1, false, 0, 0, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Volley", PlayerClass.Archer, 20, 15, 8, 3, false, 0, 0, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Snipe", PlayerClass.Archer, 30, 20, 28, 1, false, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Aimed Shot", PlayerClass.Archer, 0, 8, 5, 1, false, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Quickdraw", PlayerClass.Archer, 0, 10, 3, 1, true, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Rain of Arrows", PlayerClass.Archer, 0, 14, 4, 3, false, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Piercing Shot", PlayerClass.Archer, 10, 12, 12, 1, false, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Volley", PlayerClass.Archer, 20, 16, 8, 3, false, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Snipe", PlayerClass.Archer, 30, 22, 28, 1, false, 0, 0, DamageType.Physical);
 
-        InsertPlayerSkill(ctx, "Spark", PlayerClass.Mage, 0, 0, 5, 1, false, 0, 0, DamageType.Magical);
-        InsertPlayerSkill(ctx, "Arcane Pulse", PlayerClass.Mage, 0, 10, 8, 1, false, 0, 0, DamageType.Magical);
-        InsertPlayerSkill(ctx, "Frost Nova", PlayerClass.Mage, 0, 10, 4, 3, false, 0, 0, DamageType.Magical);
-        InsertPlayerSkill(ctx, "Fireball", PlayerClass.Mage, 10, 15, 14, 1, false, 0, 0, DamageType.Magical);
-        InsertPlayerSkill(ctx, "Blizzard", PlayerClass.Mage, 20, 15, 8, 3, false, 0, 0, DamageType.Magical);
-        InsertPlayerSkill(ctx, "Meteor", PlayerClass.Mage, 30, 25, 32, 1, false, 0, 0, DamageType.Magical);
+        InsertPlayerSkill(ctx, "Spark", PlayerClass.Mage, 0, 12, 5, 1, false, 0, 0, DamageType.Magical);
+        InsertPlayerSkill(ctx, "Arcane Pulse", PlayerClass.Mage, 0, 16, 8, 1, false, 0, 0, DamageType.Magical);
+        InsertPlayerSkill(ctx, "Frost Nova", PlayerClass.Mage, 0, 18, 4, 3, false, 0, 0, DamageType.Magical);
+        InsertPlayerSkill(ctx, "Fireball", PlayerClass.Mage, 10, 20, 14, 1, false, 0, 0, DamageType.Magical);
+        InsertPlayerSkill(ctx, "Blizzard", PlayerClass.Mage, 20, 22, 8, 3, false, 0, 0, DamageType.Magical);
+        InsertPlayerSkill(ctx, "Meteor", PlayerClass.Mage, 30, 28, 32, 1, false, 0, 0, DamageType.Magical);
 
-        InsertPlayerSkill(ctx, "Stab", PlayerClass.Rogue, 0, 0, 5, 1, false, 0, 0, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Ambush", PlayerClass.Rogue, 0, 0, 3, 1, true, 0, 0, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Fan of Knives", PlayerClass.Rogue, 0, 10, 4, 3, false, 0, 0, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Backstab", PlayerClass.Rogue, 10, 10, 12, 1, false, 0, 0, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Shadowstep", PlayerClass.Rogue, 20, 15, 8, 1, true, 0, 0, DamageType.Physical);
-        InsertPlayerSkill(ctx, "Assassinate", PlayerClass.Rogue, 30, 20, 28, 1, false, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Stab", PlayerClass.Rogue, 0, 8, 5, 1, false, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Ambush", PlayerClass.Rogue, 0, 10, 3, 1, true, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Fan of Knives", PlayerClass.Rogue, 0, 14, 4, 3, false, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Backstab", PlayerClass.Rogue, 10, 12, 12, 1, false, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Shadowstep", PlayerClass.Rogue, 20, 16, 8, 1, true, 0, 0, DamageType.Physical);
+        InsertPlayerSkill(ctx, "Assassinate", PlayerClass.Rogue, 30, 22, 28, 1, false, 0, 0, DamageType.Physical);
 
         InsertEnemySkill(ctx, "Strike", Biome.Forest, 0, 4, 1, DamageType.Physical);
         InsertEnemySkill(ctx, "Howl", Biome.Forest, 5, 0, 0, DamageType.Physical);

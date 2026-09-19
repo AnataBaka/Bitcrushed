@@ -66,11 +66,10 @@ public static partial class Module
             throw new Exception("Party is full.");
         }
 
-        var classChoice = (PlayerClass)ctx.Rng.Next(0, 4);
+        var classChoice = RollClass(ctx);
         var slot = FindFreeSlot(ctx);
         var rolled = RollStarterStats(ctx.Rng, classChoice);
         var weapon = RequireItemDefByName(ctx, StarterWeaponName(classChoice));
-        var healthPotion = RequireItemDefByName(ctx, "Health Potion");
 
         var maxHealth = ClassMaxHealth(classChoice);
         var maxMana = SaturatingAdd(ClassBaseMana(classChoice), rolled.Intelligence);
@@ -111,7 +110,7 @@ public static partial class Module
         });
 
         GiveItem(ctx, player.Identity, weapon.Id, 1);
-        GiveItem(ctx, player.Identity, healthPotion.Id, 1);
+        GiveHealthPotions(ctx, player.Identity, 1);
         EquipFromCatalog(ctx, player.Identity, weapon);
         GrantClassSkills(ctx, player.Identity, classChoice, 0);
 
@@ -173,6 +172,7 @@ public static partial class Module
     public static void ResetEncounter(ReducerContext ctx)
     {
         RequirePlayer(ctx);
+        SyncSkillManaCosts(ctx);
         foreach (var player in ctx.Db.Player.Iter().ToList())
         {
             RerollPlayer(ctx, player);
@@ -1375,7 +1375,7 @@ public static partial class Module
 
     private static void RerollPlayer(ReducerContext ctx, Player player)
     {
-        var classChoice = (PlayerClass)ctx.Rng.Next(0, 4);
+        var classChoice = RollClass(ctx);
         DeletePlayerOwnedRows(ctx, player.Identity);
         var rolled = RollStarterStats(ctx.Rng, classChoice);
         var maxHealth = ClassMaxHealth(classChoice);
@@ -1414,12 +1414,90 @@ public static partial class Module
         });
 
         var weapon = RequireItemDefByName(ctx, StarterWeaponName(classChoice));
-        var healthPotion = RequireItemDefByName(ctx, "Health Potion");
         GiveItem(ctx, player.Identity, weapon.Id, 1);
-        GiveItem(ctx, player.Identity, healthPotion.Id, 1);
+        GiveHealthPotions(ctx, player.Identity, 1);
         EquipFromCatalog(ctx, player.Identity, weapon);
         GrantClassSkills(ctx, player.Identity, classChoice, 0);
     }
+
+    private static PlayerClass RollClass(ReducerContext ctx)
+    {
+        var classes = new[]
+        {
+            PlayerClass.Warrior,
+            PlayerClass.Archer,
+            PlayerClass.Mage,
+            PlayerClass.Rogue,
+        };
+        var mix = ctx.Timestamp.MicrosecondsSinceUnixEpoch
+            ^ (ulong)(uint)ctx.Rng.Next()
+            ^ (ulong)(uint)ctx.Rng.Next()
+            ^ (ulong)ctx.Sender.GetHashCode();
+        return classes[(int)(mix % 4)];
+    }
+
+    private static void GiveHealthPotions(ReducerContext ctx, Identity owner, uint quantity)
+    {
+        var potion = RequireItemDefByName(ctx, "Health Potion");
+        foreach (var item in ctx.Db.PlayerItem.Owner.Filter(owner).ToList())
+        {
+            if (ctx.Db.ItemDef.Id.Find(item.ItemDefId) is ItemDef def && def.Name == "Health Potion")
+            {
+                ctx.Db.PlayerItem.Id.Delete(item.Id);
+            }
+        }
+
+        if (quantity > 0)
+        {
+            GiveItem(ctx, owner, potion.Id, quantity);
+        }
+    }
+
+    private static void SyncSkillManaCosts(ReducerContext ctx)
+    {
+        foreach (var skill in ctx.Db.SkillDef.Iter().ToList())
+        {
+            if (skill.IsEnemySkill)
+            {
+                continue;
+            }
+
+            var cost = SkillManaCost(skill.Name);
+            if (skill.ManaCost != cost)
+            {
+                ctx.Db.SkillDef.Id.Update(skill with { ManaCost = cost });
+            }
+        }
+    }
+
+    private static uint SkillManaCost(string name) => name switch
+    {
+        "Bash" => 8,
+        "Rush" => 10,
+        "Enrage" => 12,
+        "Berserker Rage" => 18,
+        "Cleave" => 14,
+        "Bludgeon" => 20,
+        "Aimed Shot" => 8,
+        "Quickdraw" => 10,
+        "Rain of Arrows" => 14,
+        "Piercing Shot" => 12,
+        "Volley" => 16,
+        "Snipe" => 22,
+        "Spark" => 12,
+        "Arcane Pulse" => 16,
+        "Frost Nova" => 18,
+        "Fireball" => 20,
+        "Blizzard" => 22,
+        "Meteor" => 28,
+        "Stab" => 8,
+        "Ambush" => 10,
+        "Fan of Knives" => 14,
+        "Backstab" => 12,
+        "Shadowstep" => 16,
+        "Assassinate" => 22,
+        _ => 8,
+    };
 
     private static void GiveItem(ReducerContext ctx, Identity owner, uint itemDefId, uint quantity)
     {
