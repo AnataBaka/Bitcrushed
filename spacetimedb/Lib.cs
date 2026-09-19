@@ -1568,10 +1568,10 @@ public static partial class Module
             PlayerClass.Mage,
             PlayerClass.Rogue,
         };
-        var mix = ctx.Timestamp.MicrosecondsSinceUnixEpoch
+        var mix = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch
             ^ (ulong)(uint)ctx.Rng.Next()
             ^ (ulong)(uint)ctx.Rng.Next()
-            ^ (ulong)ctx.Sender.GetHashCode();
+            ^ (ulong)(uint)ctx.Sender.GetHashCode();
         return classes[(int)(mix % 4)];
     }
 
