@@ -161,7 +161,11 @@ public class ActionMenuView : MonoBehaviour
                 session.Phase == BattlePhase.RestStop
                     ? "Rest Stop"
                     : $"Lobby {session.PlayerCount}/{session.MaxPlayers}";
-            _joinButton.interactable = me == null && session.PlayerCount < session.MaxPlayers;
+            _joinButton.gameObject.SetActive(session.Phase == BattlePhase.Waiting);
+            _joinButton.interactable =
+                session.Phase == BattlePhase.Waiting
+                && me == null
+                && session.PlayerCount < session.MaxPlayers;
             var localPlayer = GameManager.LocalPlayer();
             _readyButton.interactable = localPlayer != null;
             SetReadyCaption(localPlayer != null && localPlayer.Ready);

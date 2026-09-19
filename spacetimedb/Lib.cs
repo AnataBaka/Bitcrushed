@@ -83,7 +83,7 @@ public static partial class Module
             throw new Exception("Party is Full");
         }
 
-        if (!IsReadyUpPhase(session.Phase))
+        if (session.Phase != BattlePhase.Waiting)
         {
             throw new Exception("The battle has already started.");
         }
