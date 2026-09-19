@@ -10,6 +10,7 @@ using UnityEngine;
 public class GameManager : MonoBehaviour
 {
     public const uint SessionId = 1;
+    public const int FinishTheJobTurnRequirement = 4;
 
     [SerializeField]
     string serverUrl = "https://maincloud.spacetimedb.com";
@@ -416,7 +417,7 @@ public class GameManager : MonoBehaviour
                 return false;
             }
 
-            if (session == null || session.Round < 8)
+            if (session == null || session.Round < FinishTheJobTurnRequirement)
             {
                 return false;
             }

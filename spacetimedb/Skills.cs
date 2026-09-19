@@ -134,9 +134,10 @@ public static partial class Module
                 break;
             case SkillNames.Restring:
                 QueueDodgeBonus(ctx, caster.EntityId, 15);
+                QueueStrength(ctx, caster.EntityId, 4);
                 AddLog(
                     ctx,
-                    $"{caster.Name} uses {skill.Name} and gains +15% dodge next turn.",
+                    $"{caster.Name} uses {skill.Name}, gains +15% dodge and 4 Enraged next turn.",
                     LogKind.Focus,
                     caster.EntityId,
                     caster.EntityId
@@ -313,7 +314,7 @@ public static partial class Module
 
             if (RequireSession(ctx).Round < FinishTheJobTurnRequirement)
             {
-                throw new Exception("Finish the Job requires 8 turns to have passed.");
+                throw new Exception("Finish the Job requires 4 turns to have passed.");
             }
         }
 
