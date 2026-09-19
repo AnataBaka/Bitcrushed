@@ -34,12 +34,15 @@ public static class NinjaSpriteLibrary
             return;
         }
 
-        Idle = SpriteFrameLoader.MirrorX(SpriteFrameLoader.LoadFolder("Sprites/Ninja/Idle", FilterMode.Point));
-        Run = SpriteFrameLoader.MirrorX(SpriteFrameLoader.LoadFolder("Sprites/Ninja/Run", FilterMode.Point));
-        Attack1 = SpriteFrameLoader.MirrorX(SpriteFrameLoader.LoadFolder("Sprites/Ninja/Attack_1", FilterMode.Point));
-        Attack2 = SpriteFrameLoader.MirrorX(SpriteFrameLoader.LoadFolder("Sprites/Ninja/Attack_2", FilterMode.Point));
-        Hurt = SpriteFrameLoader.MirrorX(SpriteFrameLoader.LoadFolder("Sprites/Ninja/Hurt", FilterMode.Point));
-        Dying = SpriteFrameLoader.MirrorX(SpriteFrameLoader.LoadFolder("Sprites/Ninja/Dying", FilterMode.Point));
+        // Same load path as Knight: the Ninja PNGs already face right. The
+        // sheets are 96px with a tighter crop, so they are padded to the
+        // Knight 128px canvas to match on-screen size.
+        Idle = PadLikeKnight("Sprites/Ninja/Idle");
+        Run = PadLikeKnight("Sprites/Ninja/Run");
+        Attack1 = PadLikeKnight("Sprites/Ninja/Attack_1");
+        Attack2 = PadLikeKnight("Sprites/Ninja/Attack_2");
+        Hurt = PadLikeKnight("Sprites/Ninja/Hurt");
+        Dying = PadLikeKnight("Sprites/Ninja/Dying");
 
         if (!Ready)
         {
@@ -48,6 +51,12 @@ public static class NinjaSpriteLibrary
             );
         }
     }
+
+    static Sprite[] PadLikeKnight(string folder) =>
+        SpriteFrameLoader.PadToSquare(
+            SpriteFrameLoader.LoadFolder(folder, FilterMode.Point),
+            KnightSpriteLibrary.CanvasSize
+        );
 
     static int Len(Sprite[] frames) => frames == null ? 0 : frames.Length;
 

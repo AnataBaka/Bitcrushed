@@ -195,25 +195,26 @@ public static class SpriteFrameLoader
         return sprite;
     }
 
-    /// Horizontally mirrors frames so left-facing sheets can look toward the
-    /// enemy line. Copies into a new readable texture.
-    public static Sprite[] MirrorX(Sprite[] frames)
+    /// Centers frames on a square canvas so packs with a tighter crop (Ninja
+    /// 96px) draw at the same on-screen size as Knight_1 (128px). Does not
+    /// flip or scale the pixels.
+    public static Sprite[] PadToSquare(Sprite[] frames, int size)
     {
-        if (frames == null || frames.Length == 0)
+        if (frames == null || frames.Length == 0 || size <= 0)
         {
             return frames;
         }
 
-        var mirrored = new Sprite[frames.Length];
+        var padded = new Sprite[frames.Length];
         for (var i = 0; i < frames.Length; i++)
         {
-            mirrored[i] = MirrorX(frames[i]);
+            padded[i] = PadToSquare(frames[i], size);
         }
 
-        return mirrored;
+        return padded;
     }
 
-    static Sprite MirrorX(Sprite sprite)
+    static Sprite PadToSquare(Sprite sprite, int size)
     {
         if (sprite == null || sprite.texture == null)
         {
@@ -226,26 +227,28 @@ public static class SpriteFrameLoader
             return sprite;
         }
 
-        var width = source.width;
-        var height = source.height;
-        var pixels = source.GetPixels32();
-        var flipped = new Color32[pixels.Length];
-        for (var y = 0; y < height; y++)
+        if (source.width == size && source.height == size)
         {
-            var row = y * width;
-            for (var x = 0; x < width; x++)
-            {
-                flipped[row + x] = pixels[row + (width - 1 - x)];
-            }
+            UnityEngine.Object.Destroy(source);
+            return sprite;
         }
 
-        var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+        if (source.width > size || source.height > size)
+        {
+            UnityEngine.Object.Destroy(source);
+            return sprite;
+        }
+
+        var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
         {
             name = sprite.name,
             filterMode = sprite.texture.filterMode,
             wrapMode = TextureWrapMode.Clamp,
         };
-        texture.SetPixels32(flipped);
+        texture.SetPixels32(new Color32[size * size]);
+        var x = (size - source.width) / 2;
+        var y = (size - source.height) / 2;
+        texture.SetPixels(x, y, source.width, source.height, source.GetPixels());
         texture.Apply(false, false);
         UnityEngine.Object.Destroy(source);
 

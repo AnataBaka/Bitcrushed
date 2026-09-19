@@ -37,7 +37,7 @@ public static class ClassSpriteArt
             || canonical == NinjaSpriteLibrary.ClassName && NinjaSpriteLibrary.Ready;
     }
 
-    /// Ninja sheets already face right after load-time mirroring.
+    /// Knight_1 and Ninja source PNGs both face right. Do not flip either.
     public static bool FlipX(string className) => false;
 
     public static float TravelSpeed(string className) =>
