@@ -278,17 +278,23 @@ public static partial class Module
                 EnterFinishTheJob(ctx, caster);
                 break;
             case SkillNames.Overthrow:
-                GainStrengthNow(ctx, caster.EntityId, OverthrowEnragedStacks);
                 AddLog(
                     ctx,
-                    $"{caster.Name} uses {skill.Name} and gains {OverthrowEnragedStacks} Enraged for this turn.",
+                    $"{caster.Name} uses {skill.Name} and applies {OverthrowEnragedStacks} Enraged to this attack.",
                     LogKind.Focus,
                     caster.EntityId,
                     caster.EntityId
                 );
                 foreach (var enemy in LivingMembers(ctx, Team.Enemies))
                 {
-                    Strike(ctx, caster, enemy.EntityId, skill.Name, OverthrowDamage, isSkill: true);
+                    Strike(
+                        ctx,
+                        caster,
+                        enemy.EntityId,
+                        skill.Name,
+                        OverthrowDamage + OverthrowEnragedStacks,
+                        isSkill: true
+                    );
                     QueueWeak(ctx, enemy.EntityId, OverthrowWeakStacks);
                     QueueFragile(ctx, enemy.EntityId, OverthrowFragileStacks);
                 }
