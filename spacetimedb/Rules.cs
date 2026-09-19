@@ -71,6 +71,8 @@ public static partial class Module
     public const int VerticalCutBaseManaCost = 80;
     public const int SkillManaDiscountPerUse = 15;
     public const int MagicBulletStageCount = 7;
+    /// Burn stack (per-tick damage) caps at 25. Extra applications still add duration.
+    public const int BurnStackCap = 25;
 
     /// Main stat rolls 3-6, the other three roll 1-3.
     public const int MainStatMin = 3;
@@ -334,6 +336,9 @@ public static partial class Module
 
     public static int EffectiveSpeed(Entity entity) =>
         entity.CombatSpeed != 0 ? entity.CombatSpeed : entity.Speed;
+
+    public static bool HasForcedFirstSpeed(Entity entity) =>
+        entity.GoFirstNextRound || EffectiveSpeed(entity) >= RushNextTurnSpeed;
 
     /// Ninja passive: +1 skill base power per Speed above the target, capped at +5.
     public static int NinjaSpeedPowerBonus(int ninjaSpeed, int targetSpeed) =>

@@ -757,13 +757,16 @@ public static partial class Module
             return;
         }
 
-        ctx.Db.Entity.EntityId.Update(
-            entity with { BurnStack = entity.BurnStack + stack, BurnCount = entity.BurnCount + count }
-        );
+        var nextStack = Math.Min(BurnStackCap, entity.BurnStack + Math.Max(0, stack));
+        var nextCount = entity.BurnCount + Math.Max(0, count);
+        ctx.Db.Entity.EntityId.Update(entity with { BurnStack = nextStack, BurnCount = nextCount });
         var updated = ctx.Db.Entity.EntityId.Find(entityId) ?? entity;
+        var capped = entity.BurnStack + stack > BurnStackCap;
         AddLog(
             ctx,
-            $"{updated.Name} is burned (stack {updated.BurnStack}, {updated.BurnCount} turns).",
+            capped
+                ? $"{updated.Name} is burned (stack {updated.BurnStack} capped, {updated.BurnCount} turns)."
+                : $"{updated.Name} is burned (stack {updated.BurnStack}, {updated.BurnCount} turns).",
             LogKind.Attack,
             0,
             updated.EntityId

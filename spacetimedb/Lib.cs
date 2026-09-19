@@ -1218,7 +1218,8 @@ public static partial class Module
         var ordered = ctx
             .Db.Entity.Iter()
             .Where(e => e.Alive)
-            .OrderByDescending(e => e.GoFirstNextRound)
+            .OrderByDescending(e => HasForcedFirstSpeed(e))
+            .ThenByDescending(e => HasKnightHighPriority(ctx, e))
             .ThenByDescending(e => EffectiveSpeed(e))
             .ThenBy(e => e.Faction == Team.Players ? ClassTurnPriority(ClassOf(ctx, e)) : 2)
             .ThenBy(e => e.Faction == Team.Players ? 0 : 1)
@@ -1261,6 +1262,14 @@ public static partial class Module
 
     static int PendingCombatSpeed(Entity entity) =>
         entity.NextTurnSpeedSet != 0 ? entity.NextTurnSpeedSet : entity.Speed + entity.NextTurnSpeedDelta;
+
+    /// Knights act first unless Rush / Ninja first-action jumped the queue, or
+    /// Gallant Pride set their Speed to 1.
+    static bool HasKnightHighPriority(ReducerContext ctx, Entity entity) =>
+        entity.Faction == Team.Players
+        && ClassOf(ctx, entity) == PlayerClass.Knight
+        && !HasForcedFirstSpeed(entity)
+        && EffectiveSpeed(entity) > 1;
 
     static void RefreshRoundStatuses(ReducerContext ctx)
     {
