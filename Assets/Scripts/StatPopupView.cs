@@ -209,14 +209,18 @@ public class StatPopupView : MonoBehaviour
 
         var barHost = UiFactory.NewRect(row, "BarHost");
         var hostElement = barHost.gameObject.AddComponent<LayoutElement>();
-        hostElement.minWidth = 48f;
+        hostElement.minWidth = ValueWidth;
+        hostElement.preferredWidth = ValueWidth;
         hostElement.flexibleWidth = 1f;
         hostElement.minHeight = 14f;
         hostElement.preferredHeight = 14f;
-        fill = UiFactory.Bar(barHost, "Bar", color, out var overlay);
-        overlay.gameObject.SetActive(false);
+        fill = UiFactory.Bar(barHost, "Bar", color, out value);
+        value.alignment = TextAnchor.MiddleRight;
+        value.fontSize = 15;
+        value.horizontalOverflow = HorizontalWrapMode.Overflow;
+        value.rectTransform.offsetMin = new Vector2(4f, 0f);
+        value.rectTransform.offsetMax = new Vector2(-2f, 0f);
 
-        value = MakeValue(row);
         MakePlusSpacer(row);
     }
 
