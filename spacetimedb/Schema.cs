@@ -296,8 +296,6 @@ public static partial class Module
         [Default(0)]
         public int FinishTheJobPower;
         [Default(false)]
-        public bool NecromancyUsed;
-        [Default(false)]
         public bool SkipNextTurn;
         [Default(false)]
         public bool GrandUndertakingPending;

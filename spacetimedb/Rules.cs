@@ -63,7 +63,6 @@ public static partial class Module
     public const int BludgeonFragileBps = 15000;
     public const int GrandUndertakingEnemyHpBps = 5000;
     public const int GrandUndertakingAllyHpBps = 1000;
-    public const int NecromancyReviveHpBps = 1500;
     public const int NinjaSpeedPowerCap = 5;
     public const int FinishTheJobTurnRequirement = 8;
     public const int RushNextTurnSpeed = 99999;
@@ -228,7 +227,6 @@ public static partial class Module
         public const string Pray = "Pray";
         public const string MagicBullet = "Magic Bullet";
         public const string GrandUndertaking = "Grand Undertaking";
-        public const string Necromancy = "Necromancy";
 
         public const string Spear = "Spear";
         public const string VerticalCut = "Vertical Cut";

@@ -109,8 +109,6 @@ namespace SpacetimeDB.Types
         public bool FinishTheJobStance;
         [DataMember(Name = "finish_the_job_power")]
         public int FinishTheJobPower;
-        [DataMember(Name = "necromancy_used")]
-        public bool NecromancyUsed;
         [DataMember(Name = "skip_next_turn")]
         public bool SkipNextTurn;
         [DataMember(Name = "grand_undertaking_pending")]
@@ -177,7 +175,6 @@ namespace SpacetimeDB.Types
             bool FinishTheJobUsed,
             bool FinishTheJobStance,
             int FinishTheJobPower,
-            bool NecromancyUsed,
             bool SkipNextTurn,
             bool GrandUndertakingPending,
             string VariantPrefix,
@@ -236,7 +233,6 @@ namespace SpacetimeDB.Types
             this.FinishTheJobUsed = FinishTheJobUsed;
             this.FinishTheJobStance = FinishTheJobStance;
             this.FinishTheJobPower = FinishTheJobPower;
-            this.NecromancyUsed = NecromancyUsed;
             this.SkipNextTurn = SkipNextTurn;
             this.GrandUndertakingPending = GrandUndertakingPending;
             this.VariantPrefix = VariantPrefix;

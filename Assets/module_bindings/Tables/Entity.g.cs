@@ -87,7 +87,6 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Entity, bool> FinishTheJobUsed { get; }
         public global::SpacetimeDB.Col<Entity, bool> FinishTheJobStance { get; }
         public global::SpacetimeDB.Col<Entity, int> FinishTheJobPower { get; }
-        public global::SpacetimeDB.Col<Entity, bool> NecromancyUsed { get; }
         public global::SpacetimeDB.Col<Entity, bool> SkipNextTurn { get; }
         public global::SpacetimeDB.Col<Entity, bool> GrandUndertakingPending { get; }
         public global::SpacetimeDB.Col<Entity, string> VariantPrefix { get; }
@@ -147,7 +146,6 @@ namespace SpacetimeDB.Types
             FinishTheJobUsed = new global::SpacetimeDB.Col<Entity, bool>(tableName, "finish_the_job_used");
             FinishTheJobStance = new global::SpacetimeDB.Col<Entity, bool>(tableName, "finish_the_job_stance");
             FinishTheJobPower = new global::SpacetimeDB.Col<Entity, int>(tableName, "finish_the_job_power");
-            NecromancyUsed = new global::SpacetimeDB.Col<Entity, bool>(tableName, "necromancy_used");
             SkipNextTurn = new global::SpacetimeDB.Col<Entity, bool>(tableName, "skip_next_turn");
             GrandUndertakingPending = new global::SpacetimeDB.Col<Entity, bool>(tableName, "grand_undertaking_pending");
             VariantPrefix = new global::SpacetimeDB.Col<Entity, string>(tableName, "variant_prefix");

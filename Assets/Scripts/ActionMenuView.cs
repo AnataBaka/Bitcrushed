@@ -344,8 +344,6 @@ public class ActionMenuView : MonoBehaviour
                 .Append(':')
                 .Append(me.FinishTheJobStance)
                 .Append(':')
-                .Append(me.NecromancyUsed)
-                .Append(':')
                 .Append(me.MagicBulletStage);
         }
 

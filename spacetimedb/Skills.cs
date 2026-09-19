@@ -6,13 +6,8 @@ using SpacetimeDB;
 /// unlock level; the named effects live here so each skill can keep its own rules.
 public static partial class Module
 {
-    public static bool SkillTargetsFallenAlly(string skillName) =>
-        skillName == SkillNames.Necromancy;
-
     public static bool SkillNeedsEnemyTarget(SkillDef skill) =>
-        !skill.IsEnemySkill
-        && skill.TargetCount > 0
-        && !SkillTargetsFallenAlly(skill.Name);
+        !skill.IsEnemySkill && skill.TargetCount > 0;
 
     static void ExecutePlayerSkill(
         ReducerContext ctx,
@@ -260,9 +255,6 @@ public static partial class Module
             case SkillNames.GrandUndertaking:
                 BeginGrandUndertaking(ctx, caster);
                 break;
-            case SkillNames.Necromancy:
-                ReviveAlly(ctx, caster, targetEntityId);
-                break;
             case SkillNames.Spear:
                 Strike(ctx, caster, targetEntityId, skill.Name, 12, isSkill: true);
                 DiscountNinjaSkill(ctx, caster.EntityId, SkillNames.Spear);
@@ -320,17 +312,6 @@ public static partial class Module
         if (skill.Name == SkillNames.Overthrow && !caster.FinishTheJobStance)
         {
             throw new Exception("Overthrow is only usable after Finish the Job.");
-        }
-
-        if (skill.Name == SkillNames.Necromancy)
-        {
-            if (caster.NecromancyUsed)
-            {
-                throw new Exception("Necromancy can only be used once.");
-            }
-
-            RequireFallenAlly(ctx, caster, targetEntityId);
-            return;
         }
 
         if (SkillNeedsEnemyTarget(skill))
@@ -511,33 +492,6 @@ public static partial class Module
         {
             ctx.Db.GameSession.Id.Update(session with { AttackRedirectEntityId = 0 });
         }
-    }
-
-    static void ReviveAlly(ReducerContext ctx, Entity caster, ulong targetEntityId)
-    {
-        var target = RequireFallenAlly(ctx, caster, targetEntityId);
-        var hp = Math.Max(1, ScaleByBps(target.MaxHp, NecromancyReviveHpBps));
-        var revived = target with
-        {
-            Hp = Math.Min(target.MaxHp, hp),
-            Alive = true,
-            MagicBulletStage = 1,
-        };
-        ctx.Db.Entity.EntityId.Update(revived);
-
-        if (ctx.Db.Entity.EntityId.Find(caster.EntityId) is Entity freshCaster)
-        {
-            ctx.Db.Entity.EntityId.Update(freshCaster with { NecromancyUsed = true });
-        }
-
-        AddLog(
-            ctx,
-            $"{caster.Name} uses Necromancy and revives {target.Name} with {revived.Hp} HP.",
-            LogKind.Heal,
-            caster.EntityId,
-            target.EntityId,
-            healing: revived.Hp
-        );
     }
 
     static void EnterFinishTheJob(ReducerContext ctx, Entity caster)
@@ -760,31 +714,6 @@ public static partial class Module
         ctx.Db.Entity.EntityId.Update(
             entity with { Mana = Math.Min(entity.MaxMana, entity.Mana + amount) }
         );
-    }
-
-    static Entity RequireFallenAlly(ReducerContext ctx, Entity caster, ulong targetEntityId)
-    {
-        if (ctx.Db.Entity.EntityId.Find(targetEntityId) is not Entity target)
-        {
-            throw new Exception("That target does not exist.");
-        }
-
-        if (target.Faction != caster.Faction)
-        {
-            throw new Exception("Necromancy can only revive an ally.");
-        }
-
-        if (target.Alive)
-        {
-            throw new Exception("That ally is still standing.");
-        }
-
-        if (target.EntityId == caster.EntityId)
-        {
-            throw new Exception("Necromancy cannot revive its caster.");
-        }
-
-        return target;
     }
 
     static bool TryPlayerIdentity(ReducerContext ctx, ulong entityId, out Identity identity)

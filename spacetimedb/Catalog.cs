@@ -255,16 +255,6 @@ public static partial class Module
             15
         );
         AddBuffSkill(ctx, SkillNames.GrandUndertaking, PlayerClass.Mage, 100, 30);
-        AddPlayerSkill(
-            ctx,
-            SkillNames.Necromancy,
-            PlayerClass.Mage,
-            150,
-            0,
-            1,
-            DamageType.Magical,
-            35
-        );
 
         AddPlayerSkill(ctx, SkillNames.Spear, PlayerClass.Ninja, 45, 12, 1, DamageType.Physical, 1);
         AddPlayerSkill(

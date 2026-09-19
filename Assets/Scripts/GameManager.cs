@@ -543,11 +543,6 @@ public class GameManager : MonoBehaviour
             return false;
         }
 
-        if (skill.Name == "Necromancy" && caster.NecromancyUsed)
-        {
-            return false;
-        }
-
         return true;
     }
 

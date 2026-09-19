@@ -90,11 +90,6 @@ public static class SkillInspect
             return $"Locked until round 8 (now round {round}).";
         }
 
-        if (skill.Name == "Necromancy")
-        {
-            return "Already used this battle.";
-        }
-
         return "Currently unusable.";
     }
 
@@ -192,10 +187,6 @@ public static class SkillInspect
             case "Grand Undertaking":
                 damage = "50% enemy max HP / 10% ally max HP";
                 description = "Redirect all enemy attacks to you this turn. At the start of the next round, hit all enemies for 50% of their max HP and all allies for 10% of theirs, then skip your following turn.";
-                return;
-            case "Necromancy":
-                damage = "None";
-                description = "Revive one fallen ally at 15% of their max HP. Once per battle. Target a defeated ally.";
                 return;
             case "Spear":
                 damage = "12 to one enemy";
