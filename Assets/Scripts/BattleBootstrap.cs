@@ -98,13 +98,13 @@ public class BattleBootstrap : MonoBehaviour
 
         var equipment = EquipmentPanelView.Create(bottom);
         var equipmentRect = equipment.GetComponent<RectTransform>();
-        UiFactory.Anchor(equipmentRect, new Vector2(0f, 0f), new Vector2(0.185f, 1f));
+        UiFactory.Anchor(equipmentRect, new Vector2(0f, 0f), new Vector2(0.20f, 1f));
         equipmentRect.offsetMin = new Vector2(10f, 10f);
         equipmentRect.offsetMax = new Vector2(-5f, -10f);
 
         var log = BattleLogView.Create(bottom);
         var logRect = log.GetComponent<RectTransform>();
-        UiFactory.Anchor(logRect, new Vector2(0.185f, 0f), new Vector2(0.75f, 1f));
+        UiFactory.Anchor(logRect, new Vector2(0.20f, 0f), new Vector2(0.75f, 1f));
         logRect.offsetMin = new Vector2(5f, 10f);
         logRect.offsetMax = new Vector2(-5f, -10f);
 

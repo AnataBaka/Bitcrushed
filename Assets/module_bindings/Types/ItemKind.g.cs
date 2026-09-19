@@ -13,5 +13,6 @@ namespace SpacetimeDB.Types
         Weapon,
         Armor,
         Consumable,
+        Amulet,
     }
 }

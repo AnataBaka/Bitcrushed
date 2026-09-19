@@ -16,5 +16,6 @@ namespace SpacetimeDB.Types
         Chestplate,
         Leggings,
         Boots,
+        Amulet,
     }
 }

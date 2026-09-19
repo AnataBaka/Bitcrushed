@@ -405,7 +405,20 @@ public class GameManager : MonoBehaviour
             return Math.Max(0, 80 - caster.VerticalCutDiscount);
         }
 
-        return skill.ManaCost;
+        var cost = skill.ManaCost;
+        if (skill.ForClass == PlayerClass.Mage && LocalHasAmulet("Emerald Pendant"))
+        {
+            cost = Math.Max(0, cost - 5);
+        }
+
+        return cost;
+    }
+
+    public static bool LocalHasAmulet(string name)
+    {
+        var worn = EquippedIn(EquipSlot.Amulet);
+        var def = worn == null ? null : ItemDefOf(worn);
+        return def != null && def.Name == name;
     }
 
     public static bool SkillReadyToCast(SkillDef skill, Entity caster, GameSession session)

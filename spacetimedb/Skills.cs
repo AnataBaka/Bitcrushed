@@ -227,9 +227,18 @@ public static partial class Module
 
                 break;
             case SkillNames.Fireball:
-                if (Strike(ctx, caster, targetEntityId, skill.Name, 2, isSkill: true).Connected)
+                if (
+                    Strike(
+                        ctx,
+                        caster,
+                        targetEntityId,
+                        skill.Name,
+                        2 + BurnSpellPowerBonus(ctx, caster),
+                        isSkill: true
+                    ).Connected
+                )
                 {
-                    ApplyBurn(ctx, targetEntityId, 5, 6);
+                    ApplyBurn(ctx, targetEntityId, 5, 6, BurnCapOf(ctx, caster));
                 }
 
                 break;
@@ -441,7 +450,8 @@ public static partial class Module
             var connected = false;
             for (var hit = 0; hit < def.Hits; hit++)
             {
-                if (Strike(ctx, caster, target.EntityId, SkillNames.MagicBullet, def.Damage, isSkill: true)
+                var bulletPower = def.Damage + (def.BurnStack > 0 ? BurnSpellPowerBonus(ctx, caster) : 0);
+                if (Strike(ctx, caster, target.EntityId, SkillNames.MagicBullet, bulletPower, isSkill: true)
                     .Connected)
                 {
                     connected = true;
@@ -455,7 +465,7 @@ public static partial class Module
 
             if (def.BurnStack > 0)
             {
-                ApplyBurn(ctx, target.EntityId, def.BurnStack, def.BurnCount);
+                ApplyBurn(ctx, target.EntityId, def.BurnStack, def.BurnCount, BurnCapOf(ctx, caster));
             }
 
             if (def.SpeedDelta != 0 && ctx.Db.Entity.EntityId.Find(target.EntityId) is Entity living)
@@ -750,18 +760,19 @@ public static partial class Module
         }
     }
 
-    static void ApplyBurn(ReducerContext ctx, ulong entityId, int stack, int count)
+    static void ApplyBurn(ReducerContext ctx, ulong entityId, int stack, int count, int cap = BurnStackCap)
     {
         if (ctx.Db.Entity.EntityId.Find(entityId) is not Entity entity || !entity.Alive)
         {
             return;
         }
 
-        var nextStack = Math.Min(BurnStackCap, entity.BurnStack + Math.Max(0, stack));
+        var burnCap = cap < BurnStackCap ? BurnStackCap : cap;
+        var nextStack = Math.Min(burnCap, entity.BurnStack + Math.Max(0, stack));
         var nextCount = entity.BurnCount + Math.Max(0, count);
         ctx.Db.Entity.EntityId.Update(entity with { BurnStack = nextStack, BurnCount = nextCount });
         var updated = ctx.Db.Entity.EntityId.Find(entityId) ?? entity;
-        var capped = entity.BurnStack + stack > BurnStackCap;
+        var capped = entity.BurnStack + stack > burnCap;
         AddLog(
             ctx,
             capped
