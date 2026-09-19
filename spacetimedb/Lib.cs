@@ -1146,13 +1146,6 @@ public static partial class Module
         var strength = attacker.Strength + attacker.StrengthBuff;
         var raw = DealtDamage(characterDamage, strength, attacker.Atk);
 
-        // The faster combatant wins the clash and gets a small bonus.
-        var clashed = attacker.Speed > target.Speed;
-        if (clashed)
-        {
-            raw += ClashDamageBonus;
-        }
-
         var dodged = ctx.Rng.Next(1, 101) <= DodgeChance(target.Dexterity);
         var damage = dodged ? 0 : AfterDefense(raw, target.Defense);
 
@@ -1172,10 +1165,9 @@ public static partial class Module
         }
         else
         {
-            var clashText = clashed ? " Clash!" : "";
             AddLog(
                 ctx,
-                $"{attacker.Name} uses {actionName} on {target.Name} for {damage} damage.{clashText}",
+                $"{attacker.Name} uses {actionName} on {target.Name} for {damage} damage.",
                 LogKind.Attack,
                 attacker.EntityId,
                 target.EntityId,

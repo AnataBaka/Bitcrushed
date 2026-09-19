@@ -18,8 +18,6 @@ public static partial class Module
 
     /// Dexterity doubles as the dodge chance, capped so nobody is untouchable.
     public const int MaxDodgePercent = 25;
-    /// A faster attacker wins the clash and hits slightly harder.
-    public const int ClashDamageBonus = 1;
 
     /// Main stat rolls 3-6, the other three roll 1-3.
     public const int MainStatMin = 3;
