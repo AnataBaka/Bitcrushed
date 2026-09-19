@@ -12,17 +12,17 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void JoinGameHandler(ReducerEventContext ctx);
-        public event JoinGameHandler? OnJoinGame;
+        public delegate void EquipItemHandler(ReducerEventContext ctx, uint itemInstanceId);
+        public event EquipItemHandler? OnEquipItem;
 
-        public void JoinGame()
+        public void EquipItem(uint itemInstanceId)
         {
-            conn.InternalCallReducer(new Reducer.JoinGame());
+            conn.InternalCallReducer(new Reducer.EquipItem(itemInstanceId));
         }
 
-        public bool InvokeJoinGame(ReducerEventContext ctx, Reducer.JoinGame args)
+        public bool InvokeEquipItem(ReducerEventContext ctx, Reducer.EquipItem args)
         {
-            if (OnJoinGame == null)
+            if (OnEquipItem == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -34,8 +34,9 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
-            OnJoinGame(
-                ctx
+            OnEquipItem(
+                ctx,
+                args.ItemInstanceId
             );
             return true;
         }
@@ -45,9 +46,21 @@ namespace SpacetimeDB.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class JoinGame : Reducer, IReducerArgs
+        public sealed partial class EquipItem : Reducer, IReducerArgs
         {
-            string IReducerArgs.ReducerName => "join_game";
+            [DataMember(Name = "item_instance_id")]
+            public uint ItemInstanceId;
+
+            public EquipItem(uint ItemInstanceId)
+            {
+                this.ItemInstanceId = ItemInstanceId;
+            }
+
+            public EquipItem()
+            {
+            }
+
+            string IReducerArgs.ReducerName => "equip_item";
         }
     }
 }

@@ -43,6 +43,13 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<GameSession, uint> PlayerCount { get; }
         public global::SpacetimeDB.Col<GameSession, uint> MaxPlayers { get; }
         public global::SpacetimeDB.Col<GameSession, GamePhase> Phase { get; }
+        public global::SpacetimeDB.Col<GameSession, uint> Floor { get; }
+        public global::SpacetimeDB.Col<GameSession, Biome> Biome { get; }
+        public global::SpacetimeDB.Col<GameSession, bool> IsBossFloor { get; }
+        public global::SpacetimeDB.Col<GameSession, uint> RoundNumber { get; }
+        public global::SpacetimeDB.Col<GameSession, uint> TurnNumber { get; }
+        public global::SpacetimeDB.Col<GameSession, CombatantKind> ActiveKind { get; }
+        public global::SpacetimeDB.Col<GameSession, uint> ActiveCombatantId { get; }
 
         public GameSessionCols(string tableName)
         {
@@ -50,6 +57,13 @@ namespace SpacetimeDB.Types
             PlayerCount = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "player_count");
             MaxPlayers = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "max_players");
             Phase = new global::SpacetimeDB.Col<GameSession, GamePhase>(tableName, "phase");
+            Floor = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "floor");
+            Biome = new global::SpacetimeDB.Col<GameSession, Biome>(tableName, "biome");
+            IsBossFloor = new global::SpacetimeDB.Col<GameSession, bool>(tableName, "is_boss_floor");
+            RoundNumber = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "round_number");
+            TurnNumber = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "turn_number");
+            ActiveKind = new global::SpacetimeDB.Col<GameSession, CombatantKind>(tableName, "active_kind");
+            ActiveCombatantId = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "active_combatant_id");
         }
     }
 

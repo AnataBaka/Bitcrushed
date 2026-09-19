@@ -8,11 +8,10 @@ using System;
 namespace SpacetimeDB.Types
 {
     [SpacetimeDB.Type]
-    public enum GamePhase
+    public enum Biome
     {
-        Waiting,
-        Combat,
-        FloorClear,
-        Defeat,
+        Forest,
+        Ocean,
+        Hell,
     }
 }

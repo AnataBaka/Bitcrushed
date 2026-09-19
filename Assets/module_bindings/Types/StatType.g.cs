@@ -8,11 +8,11 @@ using System;
 namespace SpacetimeDB.Types
 {
     [SpacetimeDB.Type]
-    public enum GamePhase
+    public enum StatType
     {
-        Waiting,
-        Combat,
-        FloorClear,
-        Defeat,
+        Strength,
+        Dexterity,
+        Intelligence,
+        Speed,
     }
 }

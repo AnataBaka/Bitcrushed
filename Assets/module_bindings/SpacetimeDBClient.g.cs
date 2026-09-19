@@ -27,8 +27,16 @@ namespace SpacetimeDB.Types
     {
         public RemoteTables(DbConnection conn)
         {
+            AddTable(CombatEvent = new(conn));
+            AddTable(Enemy = new(conn));
+            AddTable(EnemySkill = new(conn));
             AddTable(GameSession = new(conn));
+            AddTable(ItemDef = new(conn));
             AddTable(Player = new(conn));
+            AddTable(PlayerItem = new(conn));
+            AddTable(PlayerSkill = new(conn));
+            AddTable(SkillDef = new(conn));
+            AddTable(TurnOrder = new(conn));
         }
     }
 
@@ -525,16 +533,32 @@ namespace SpacetimeDB.Types
 
         internal static string[] AllTablesSqlQueries() => new string[]
         {
+            new QueryBuilder().From.CombatEvent().ToSql(),
+            new QueryBuilder().From.Enemy().ToSql(),
+            new QueryBuilder().From.EnemySkill().ToSql(),
             new QueryBuilder().From.GameSession().ToSql(),
+            new QueryBuilder().From.ItemDef().ToSql(),
             new QueryBuilder().From.Player().ToSql(),
+            new QueryBuilder().From.PlayerItem().ToSql(),
+            new QueryBuilder().From.PlayerSkill().ToSql(),
+            new QueryBuilder().From.SkillDef().ToSql(),
+            new QueryBuilder().From.TurnOrder().ToSql(),
         }
         ;
     }
 
     public sealed class From
     {
+        public global::SpacetimeDB.Table<CombatEvent, CombatEventCols, CombatEventIxCols> CombatEvent() => new("combat_event", new CombatEventCols("combat_event"), new CombatEventIxCols("combat_event"));
+        public global::SpacetimeDB.Table<Enemy, EnemyCols, EnemyIxCols> Enemy() => new("enemy", new EnemyCols("enemy"), new EnemyIxCols("enemy"));
+        public global::SpacetimeDB.Table<EnemySkill, EnemySkillCols, EnemySkillIxCols> EnemySkill() => new("enemy_skill", new EnemySkillCols("enemy_skill"), new EnemySkillIxCols("enemy_skill"));
         public global::SpacetimeDB.Table<GameSession, GameSessionCols, GameSessionIxCols> GameSession() => new("game_session", new GameSessionCols("game_session"), new GameSessionIxCols("game_session"));
+        public global::SpacetimeDB.Table<ItemDef, ItemDefCols, ItemDefIxCols> ItemDef() => new("item_def", new ItemDefCols("item_def"), new ItemDefIxCols("item_def"));
         public global::SpacetimeDB.Table<Player, PlayerCols, PlayerIxCols> Player() => new("player", new PlayerCols("player"), new PlayerIxCols("player"));
+        public global::SpacetimeDB.Table<PlayerItem, PlayerItemCols, PlayerItemIxCols> PlayerItem() => new("player_item", new PlayerItemCols("player_item"), new PlayerItemIxCols("player_item"));
+        public global::SpacetimeDB.Table<PlayerSkill, PlayerSkillCols, PlayerSkillIxCols> PlayerSkill() => new("player_skill", new PlayerSkillCols("player_skill"), new PlayerSkillIxCols("player_skill"));
+        public global::SpacetimeDB.Table<SkillDef, SkillDefCols, SkillDefIxCols> SkillDef() => new("skill_def", new SkillDefCols("skill_def"), new SkillDefIxCols("skill_def"));
+        public global::SpacetimeDB.Table<TurnOrder, TurnOrderCols, TurnOrderIxCols> TurnOrder() => new("turn_order", new TurnOrderCols("turn_order"), new TurnOrderIxCols("turn_order"));
     }
 
     public sealed class TypedSubscriptionBuilder
@@ -616,9 +640,13 @@ namespace SpacetimeDB.Types
             var eventContext = (ReducerEventContext)context;
             return reducer switch
             {
-                Reducer.ChangeClass args => Reducers.InvokeChangeClass(eventContext, args),
+                Reducer.AdvanceFloor args => Reducers.InvokeAdvanceFloor(eventContext, args),
+                Reducer.AllocateStat args => Reducers.InvokeAllocateStat(eventContext, args),
+                Reducer.EquipItem args => Reducers.InvokeEquipItem(eventContext, args),
                 Reducer.JoinGame args => Reducers.InvokeJoinGame(eventContext, args),
                 Reducer.LeaveGame args => Reducers.InvokeLeaveGame(eventContext, args),
+                Reducer.StartRun args => Reducers.InvokeStartRun(eventContext, args),
+                Reducer.SubmitAction args => Reducers.InvokeSubmitAction(eventContext, args),
                 _ => throw new ArgumentOutOfRangeException("Reducer", $"Unknown reducer {reducer}")
             };
         }

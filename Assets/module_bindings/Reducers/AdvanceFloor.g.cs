@@ -12,17 +12,17 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void ChangeClassHandler(ReducerEventContext ctx, SpacetimeDB.Types.PlayerClass classChoice);
-        public event ChangeClassHandler? OnChangeClass;
+        public delegate void AdvanceFloorHandler(ReducerEventContext ctx);
+        public event AdvanceFloorHandler? OnAdvanceFloor;
 
-        public void ChangeClass(SpacetimeDB.Types.PlayerClass classChoice)
+        public void AdvanceFloor()
         {
-            conn.InternalCallReducer(new Reducer.ChangeClass(classChoice));
+            conn.InternalCallReducer(new Reducer.AdvanceFloor());
         }
 
-        public bool InvokeChangeClass(ReducerEventContext ctx, Reducer.ChangeClass args)
+        public bool InvokeAdvanceFloor(ReducerEventContext ctx, Reducer.AdvanceFloor args)
         {
-            if (OnChangeClass == null)
+            if (OnAdvanceFloor == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -34,9 +34,8 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
-            OnChangeClass(
-                ctx,
-                args.ClassChoice
+            OnAdvanceFloor(
+                ctx
             );
             return true;
         }
@@ -46,21 +45,9 @@ namespace SpacetimeDB.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class ChangeClass : Reducer, IReducerArgs
+        public sealed partial class AdvanceFloor : Reducer, IReducerArgs
         {
-            [DataMember(Name = "class_choice")]
-            public PlayerClass ClassChoice;
-
-            public ChangeClass(PlayerClass ClassChoice)
-            {
-                this.ClassChoice = ClassChoice;
-            }
-
-            public ChangeClass()
-            {
-            }
-
-            string IReducerArgs.ReducerName => "change_class";
+            string IReducerArgs.ReducerName => "advance_floor";
         }
     }
 }

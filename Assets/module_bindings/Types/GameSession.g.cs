@@ -21,18 +21,46 @@ namespace SpacetimeDB.Types
         public uint MaxPlayers;
         [DataMember(Name = "phase")]
         public GamePhase Phase;
+        [DataMember(Name = "floor")]
+        public uint Floor;
+        [DataMember(Name = "biome")]
+        public Biome Biome;
+        [DataMember(Name = "is_boss_floor")]
+        public bool IsBossFloor;
+        [DataMember(Name = "round_number")]
+        public uint RoundNumber;
+        [DataMember(Name = "turn_number")]
+        public uint TurnNumber;
+        [DataMember(Name = "active_kind")]
+        public CombatantKind ActiveKind;
+        [DataMember(Name = "active_combatant_id")]
+        public uint ActiveCombatantId;
 
         public GameSession(
             uint Id,
             uint PlayerCount,
             uint MaxPlayers,
-            GamePhase Phase
+            GamePhase Phase,
+            uint Floor,
+            Biome Biome,
+            bool IsBossFloor,
+            uint RoundNumber,
+            uint TurnNumber,
+            CombatantKind ActiveKind,
+            uint ActiveCombatantId
         )
         {
             this.Id = Id;
             this.PlayerCount = PlayerCount;
             this.MaxPlayers = MaxPlayers;
             this.Phase = Phase;
+            this.Floor = Floor;
+            this.Biome = Biome;
+            this.IsBossFloor = IsBossFloor;
+            this.RoundNumber = RoundNumber;
+            this.TurnNumber = TurnNumber;
+            this.ActiveKind = ActiveKind;
+            this.ActiveCombatantId = ActiveCombatantId;
         }
 
         public GameSession()

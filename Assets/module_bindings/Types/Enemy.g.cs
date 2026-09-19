@@ -11,26 +11,24 @@ namespace SpacetimeDB.Types
 {
     [SpacetimeDB.Type]
     [DataContract]
-    public sealed partial class Player
+    public sealed partial class Enemy
     {
-        [DataMember(Name = "identity")]
-        public SpacetimeDB.Identity Identity;
+        [DataMember(Name = "id")]
+        public uint Id;
         [DataMember(Name = "slot")]
         public uint Slot;
-        [DataMember(Name = "online")]
-        public bool Online;
-        [DataMember(Name = "class")]
-        public PlayerClass Class;
         [DataMember(Name = "name")]
         public string Name;
         [DataMember(Name = "sprite_id")]
         public uint SpriteId;
-        [DataMember(Name = "level")]
-        public uint Level;
-        [DataMember(Name = "xp")]
-        public uint Xp;
-        [DataMember(Name = "unspent_stat_points")]
-        public uint UnspentStatPoints;
+        [DataMember(Name = "biome")]
+        public Biome Biome;
+        [DataMember(Name = "trait_name")]
+        public string TraitName;
+        [DataMember(Name = "is_boss")]
+        public bool IsBoss;
+        [DataMember(Name = "floor")]
+        public uint Floor;
         [DataMember(Name = "max_health")]
         public uint MaxHealth;
         [DataMember(Name = "curr_health")]
@@ -47,18 +45,8 @@ namespace SpacetimeDB.Types
         public uint Dexterity;
         [DataMember(Name = "intelligence")]
         public uint Intelligence;
-        [DataMember(Name = "base_speed")]
-        public uint BaseSpeed;
-        [DataMember(Name = "base_strength")]
-        public uint BaseStrength;
-        [DataMember(Name = "base_dexterity")]
-        public uint BaseDexterity;
-        [DataMember(Name = "base_intelligence")]
-        public uint BaseIntelligence;
         [DataMember(Name = "atk")]
         public uint Atk;
-        [DataMember(Name = "base_defense")]
-        public uint BaseDefense;
         [DataMember(Name = "defense")]
         public uint Defense;
         [DataMember(Name = "strength_buff")]
@@ -69,25 +57,18 @@ namespace SpacetimeDB.Types
         public uint NextTurnSpeedOverride;
         [DataMember(Name = "go_first_next_round")]
         public bool GoFirstNextRound;
-        [DataMember(Name = "is_defending")]
-        public bool IsDefending;
         [DataMember(Name = "alive")]
         public bool Alive;
-        [DataMember(Name = "equipped_weapon_def_id")]
-        public uint EquippedWeaponDefId;
-        [DataMember(Name = "equipped_armor_def_id")]
-        public uint EquippedArmorDefId;
 
-        public Player(
-            SpacetimeDB.Identity Identity,
+        public Enemy(
+            uint Id,
             uint Slot,
-            bool Online,
-            PlayerClass Class,
             string Name,
             uint SpriteId,
-            uint Level,
-            uint Xp,
-            uint UnspentStatPoints,
+            Biome Biome,
+            string TraitName,
+            bool IsBoss,
+            uint Floor,
             uint MaxHealth,
             uint CurrHealth,
             uint MaxMana,
@@ -96,32 +77,23 @@ namespace SpacetimeDB.Types
             uint Strength,
             uint Dexterity,
             uint Intelligence,
-            uint BaseSpeed,
-            uint BaseStrength,
-            uint BaseDexterity,
-            uint BaseIntelligence,
             uint Atk,
-            uint BaseDefense,
             uint Defense,
             uint StrengthBuff,
             uint NextTurnStrengthBonus,
             uint NextTurnSpeedOverride,
             bool GoFirstNextRound,
-            bool IsDefending,
-            bool Alive,
-            uint EquippedWeaponDefId,
-            uint EquippedArmorDefId
+            bool Alive
         )
         {
-            this.Identity = Identity;
+            this.Id = Id;
             this.Slot = Slot;
-            this.Online = Online;
-            this.Class = Class;
             this.Name = Name;
             this.SpriteId = SpriteId;
-            this.Level = Level;
-            this.Xp = Xp;
-            this.UnspentStatPoints = UnspentStatPoints;
+            this.Biome = Biome;
+            this.TraitName = TraitName;
+            this.IsBoss = IsBoss;
+            this.Floor = Floor;
             this.MaxHealth = MaxHealth;
             this.CurrHealth = CurrHealth;
             this.MaxMana = MaxMana;
@@ -130,26 +102,19 @@ namespace SpacetimeDB.Types
             this.Strength = Strength;
             this.Dexterity = Dexterity;
             this.Intelligence = Intelligence;
-            this.BaseSpeed = BaseSpeed;
-            this.BaseStrength = BaseStrength;
-            this.BaseDexterity = BaseDexterity;
-            this.BaseIntelligence = BaseIntelligence;
             this.Atk = Atk;
-            this.BaseDefense = BaseDefense;
             this.Defense = Defense;
             this.StrengthBuff = StrengthBuff;
             this.NextTurnStrengthBonus = NextTurnStrengthBonus;
             this.NextTurnSpeedOverride = NextTurnSpeedOverride;
             this.GoFirstNextRound = GoFirstNextRound;
-            this.IsDefending = IsDefending;
             this.Alive = Alive;
-            this.EquippedWeaponDefId = EquippedWeaponDefId;
-            this.EquippedArmorDefId = EquippedArmorDefId;
         }
 
-        public Player()
+        public Enemy()
         {
             this.Name = "";
+            this.TraitName = "";
         }
     }
 }

@@ -99,6 +99,18 @@ public class GameManager : MonoBehaviour
         conn.Db.Player.OnDelete += (_, _) => PartyChanged?.Invoke();
         conn.Db.GameSession.OnInsert += (_, _) => PartyChanged?.Invoke();
         conn.Db.GameSession.OnUpdate += (_, _, _) => PartyChanged?.Invoke();
+        conn.Db.Enemy.OnInsert += (_, _) => PartyChanged?.Invoke();
+        conn.Db.Enemy.OnUpdate += (_, _, _) => PartyChanged?.Invoke();
+        conn.Db.Enemy.OnDelete += (_, _) => PartyChanged?.Invoke();
+        conn.Db.TurnOrder.OnInsert += (_, _) => PartyChanged?.Invoke();
+        conn.Db.TurnOrder.OnUpdate += (_, _, _) => PartyChanged?.Invoke();
+        conn.Db.TurnOrder.OnDelete += (_, _) => PartyChanged?.Invoke();
+        conn.Db.CombatEvent.OnInsert += (_, _) => PartyChanged?.Invoke();
+        conn.Db.PlayerSkill.OnInsert += (_, _) => PartyChanged?.Invoke();
+        conn.Db.PlayerSkill.OnUpdate += (_, _, _) => PartyChanged?.Invoke();
+        conn.Db.PlayerItem.OnInsert += (_, _) => PartyChanged?.Invoke();
+        conn.Db.PlayerItem.OnUpdate += (_, _, _) => PartyChanged?.Invoke();
+        conn.Db.PlayerItem.OnDelete += (_, _) => PartyChanged?.Invoke();
         conn.OnUnhandledReducerError += HandleReducerError;
 
         conn.SubscriptionBuilder()
@@ -114,7 +126,7 @@ public class GameManager : MonoBehaviour
     void HandleSubscriptionApplied(SubscriptionEventContext _)
     {
         SubscriptionReady = true;
-        Status = "Subscribed. Pick a class to join.";
+        Status = "Subscribed. Join to roll a random starter.";
         PartyChanged?.Invoke();
     }
 
@@ -155,7 +167,7 @@ public class GameManager : MonoBehaviour
         return Conn?.Db.Player.Slot.Find(slot);
     }
 
-    public void Join(PlayerClass classChoice)
+    public void Join()
     {
         if (!IsConnected())
         {
@@ -163,8 +175,8 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        Conn.Reducers.JoinGame(classChoice);
-        Status = $"Joining as {classChoice}...";
+        Conn.Reducers.JoinGame();
+        Status = "Joining with a random class...";
     }
 
     public void Leave()
@@ -179,7 +191,7 @@ public class GameManager : MonoBehaviour
         Status = "Leaving the party...";
     }
 
-    public void ChangeClass(PlayerClass classChoice)
+    public void StartRun()
     {
         if (!IsConnected())
         {
@@ -187,8 +199,56 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        Conn.Reducers.ChangeClass(classChoice);
-        Status = $"Changing class to {classChoice}...";
+        Conn.Reducers.StartRun();
+        Status = "Starting tower run...";
+    }
+
+    public void AdvanceFloor()
+    {
+        if (!IsConnected())
+        {
+            Status = "Not connected.";
+            return;
+        }
+
+        Conn.Reducers.AdvanceFloor();
+        Status = "Advancing to the next floor...";
+    }
+
+    public void SubmitAction(CombatActionType action, uint skillDefId = 0, uint targetEnemyId = 0, uint itemInstanceId = 0)
+    {
+        if (!IsConnected())
+        {
+            Status = "Not connected.";
+            return;
+        }
+
+        Conn.Reducers.SubmitAction(action, skillDefId, targetEnemyId, itemInstanceId);
+        Status = $"Submitting {action}...";
+    }
+
+    public void AllocateStat(StatType stat, uint points = 1)
+    {
+        if (!IsConnected())
+        {
+            Status = "Not connected.";
+            return;
+        }
+
+        Conn.Reducers.AllocateStat(stat, points);
+        Status = $"Allocating {points} {stat}...";
+    }
+
+    public void EquipItem(uint itemInstanceId)
+    {
+        if (!IsConnected())
+        {
+            Status = "Not connected.";
+            return;
+        }
+
+        Conn.Reducers.EquipItem(itemInstanceId);
+        Status = "Equipping item...";
     }
 
     public static string ShortIdentity(Identity identity)

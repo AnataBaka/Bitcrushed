@@ -53,14 +53,34 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Player, uint> Slot { get; }
         public global::SpacetimeDB.Col<Player, bool> Online { get; }
         public global::SpacetimeDB.Col<Player, PlayerClass> Class { get; }
-        public global::SpacetimeDB.Col<Player, uint> MaxHealthPoints { get; }
-        public global::SpacetimeDB.Col<Player, uint> CurrHealthPoints { get; }
+        public global::SpacetimeDB.Col<Player, string> Name { get; }
+        public global::SpacetimeDB.Col<Player, uint> SpriteId { get; }
+        public global::SpacetimeDB.Col<Player, uint> Level { get; }
+        public global::SpacetimeDB.Col<Player, uint> Xp { get; }
+        public global::SpacetimeDB.Col<Player, uint> UnspentStatPoints { get; }
+        public global::SpacetimeDB.Col<Player, uint> MaxHealth { get; }
+        public global::SpacetimeDB.Col<Player, uint> CurrHealth { get; }
         public global::SpacetimeDB.Col<Player, uint> MaxMana { get; }
         public global::SpacetimeDB.Col<Player, uint> CurrMana { get; }
         public global::SpacetimeDB.Col<Player, uint> Speed { get; }
         public global::SpacetimeDB.Col<Player, uint> Strength { get; }
         public global::SpacetimeDB.Col<Player, uint> Dexterity { get; }
         public global::SpacetimeDB.Col<Player, uint> Intelligence { get; }
+        public global::SpacetimeDB.Col<Player, uint> BaseSpeed { get; }
+        public global::SpacetimeDB.Col<Player, uint> BaseStrength { get; }
+        public global::SpacetimeDB.Col<Player, uint> BaseDexterity { get; }
+        public global::SpacetimeDB.Col<Player, uint> BaseIntelligence { get; }
+        public global::SpacetimeDB.Col<Player, uint> Atk { get; }
+        public global::SpacetimeDB.Col<Player, uint> BaseDefense { get; }
+        public global::SpacetimeDB.Col<Player, uint> Defense { get; }
+        public global::SpacetimeDB.Col<Player, uint> StrengthBuff { get; }
+        public global::SpacetimeDB.Col<Player, uint> NextTurnStrengthBonus { get; }
+        public global::SpacetimeDB.Col<Player, uint> NextTurnSpeedOverride { get; }
+        public global::SpacetimeDB.Col<Player, bool> GoFirstNextRound { get; }
+        public global::SpacetimeDB.Col<Player, bool> IsDefending { get; }
+        public global::SpacetimeDB.Col<Player, bool> Alive { get; }
+        public global::SpacetimeDB.Col<Player, uint> EquippedWeaponDefId { get; }
+        public global::SpacetimeDB.Col<Player, uint> EquippedArmorDefId { get; }
 
         public PlayerCols(string tableName)
         {
@@ -68,14 +88,34 @@ namespace SpacetimeDB.Types
             Slot = new global::SpacetimeDB.Col<Player, uint>(tableName, "slot");
             Online = new global::SpacetimeDB.Col<Player, bool>(tableName, "online");
             Class = new global::SpacetimeDB.Col<Player, PlayerClass>(tableName, "class");
-            MaxHealthPoints = new global::SpacetimeDB.Col<Player, uint>(tableName, "max_health_points");
-            CurrHealthPoints = new global::SpacetimeDB.Col<Player, uint>(tableName, "curr_health_points");
+            Name = new global::SpacetimeDB.Col<Player, string>(tableName, "name");
+            SpriteId = new global::SpacetimeDB.Col<Player, uint>(tableName, "sprite_id");
+            Level = new global::SpacetimeDB.Col<Player, uint>(tableName, "level");
+            Xp = new global::SpacetimeDB.Col<Player, uint>(tableName, "xp");
+            UnspentStatPoints = new global::SpacetimeDB.Col<Player, uint>(tableName, "unspent_stat_points");
+            MaxHealth = new global::SpacetimeDB.Col<Player, uint>(tableName, "max_health");
+            CurrHealth = new global::SpacetimeDB.Col<Player, uint>(tableName, "curr_health");
             MaxMana = new global::SpacetimeDB.Col<Player, uint>(tableName, "max_mana");
             CurrMana = new global::SpacetimeDB.Col<Player, uint>(tableName, "curr_mana");
             Speed = new global::SpacetimeDB.Col<Player, uint>(tableName, "speed");
             Strength = new global::SpacetimeDB.Col<Player, uint>(tableName, "strength");
             Dexterity = new global::SpacetimeDB.Col<Player, uint>(tableName, "dexterity");
             Intelligence = new global::SpacetimeDB.Col<Player, uint>(tableName, "intelligence");
+            BaseSpeed = new global::SpacetimeDB.Col<Player, uint>(tableName, "base_speed");
+            BaseStrength = new global::SpacetimeDB.Col<Player, uint>(tableName, "base_strength");
+            BaseDexterity = new global::SpacetimeDB.Col<Player, uint>(tableName, "base_dexterity");
+            BaseIntelligence = new global::SpacetimeDB.Col<Player, uint>(tableName, "base_intelligence");
+            Atk = new global::SpacetimeDB.Col<Player, uint>(tableName, "atk");
+            BaseDefense = new global::SpacetimeDB.Col<Player, uint>(tableName, "base_defense");
+            Defense = new global::SpacetimeDB.Col<Player, uint>(tableName, "defense");
+            StrengthBuff = new global::SpacetimeDB.Col<Player, uint>(tableName, "strength_buff");
+            NextTurnStrengthBonus = new global::SpacetimeDB.Col<Player, uint>(tableName, "next_turn_strength_bonus");
+            NextTurnSpeedOverride = new global::SpacetimeDB.Col<Player, uint>(tableName, "next_turn_speed_override");
+            GoFirstNextRound = new global::SpacetimeDB.Col<Player, bool>(tableName, "go_first_next_round");
+            IsDefending = new global::SpacetimeDB.Col<Player, bool>(tableName, "is_defending");
+            Alive = new global::SpacetimeDB.Col<Player, bool>(tableName, "alive");
+            EquippedWeaponDefId = new global::SpacetimeDB.Col<Player, uint>(tableName, "equipped_weapon_def_id");
+            EquippedArmorDefId = new global::SpacetimeDB.Col<Player, uint>(tableName, "equipped_armor_def_id");
         }
     }
 
