@@ -493,17 +493,19 @@ public static partial class Module
 
     /// Equipping is allowed outside your turn: it is loadout management, not an action.
     [SpacetimeDB.Reducer]
-    public static void EquipItem(ReducerContext ctx, ulong playerItemId)
+    public static void EquipItem(ReducerContext ctx, uint slotIndex)
     {
         var player = RequirePlayer(ctx);
         RejectEquipmentChangeInBattle(ctx);
 
-        if (
-            ctx.Db.PlayerItem.Id.Find(playerItemId) is not PlayerItem instance
-            || instance.Owner != ctx.Sender
-        )
+        if (slotIndex >= InventoryCapacity)
         {
-            throw new Exception("That item is not in your bag.");
+            throw new Exception("That inventory slot does not exist.");
+        }
+
+        if (InventoryAt(ctx, ctx.Sender, slotIndex) is not PlayerItem instance)
+        {
+            throw new Exception("That slot is empty.");
         }
 
         if (ctx.Db.ItemDef.Id.Find(instance.ItemDefId) is not ItemDef def)
@@ -522,32 +524,67 @@ public static partial class Module
         }
 
         var slot = SlotFor(def);
-        if (slot == EquipSlot.Bag)
+        if (slot is not (EquipSlot.Weapon or EquipSlot.Amulet))
         {
             throw new Exception($"{def.Name} has no equipment slot.");
         }
 
-        if (instance.EquippedSlot != EquipSlot.Bag)
-        {
-            throw new Exception($"{def.Name} is already equipped.");
-        }
-
-        // Whatever is in that slot goes back to the bag, so nothing is destroyed.
+        PlayerItem? previous = null;
         foreach (var other in ctx.Db.PlayerItem.Owner.Filter(ctx.Sender).ToList())
         {
             if (other.Id != instance.Id && other.EquippedSlot == slot)
             {
-                ctx.Db.PlayerItem.Id.Update(other with { EquippedSlot = EquipSlot.Bag });
+                previous = other;
+                break;
             }
         }
 
-        ctx.Db.PlayerItem.Id.Update(instance with { EquippedSlot = slot });
+        ctx.Db.PlayerItem.Id.Update(
+            instance with { EquippedSlot = slot, InventoryIndex = InventoryNone }
+        );
+
+        if (previous is PlayerItem worn)
+        {
+            ctx.Db.PlayerItem.Id.Update(
+                worn with { EquippedSlot = EquipSlot.Inventory, InventoryIndex = slotIndex }
+            );
+        }
+
         RecomputeStats(ctx, ctx.Sender);
 
         var entity = ctx.Db.Entity.EntityId.Find(player.EntityId);
         AddLog(
             ctx,
             $"{entity?.Name ?? "Someone"} equips {def.Name}.",
+            LogKind.Equip,
+            player.EntityId,
+            player.EntityId
+        );
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void DropItem(ReducerContext ctx, uint slotIndex)
+    {
+        var player = RequirePlayer(ctx);
+        RejectEquipmentChangeInBattle(ctx);
+
+        if (slotIndex >= InventoryCapacity)
+        {
+            throw new Exception("That inventory slot does not exist.");
+        }
+
+        if (InventoryAt(ctx, ctx.Sender, slotIndex) is not PlayerItem instance)
+        {
+            throw new Exception("That slot is empty.");
+        }
+
+        var def = ctx.Db.ItemDef.Id.Find(instance.ItemDefId);
+        ctx.Db.PlayerItem.Id.Delete(instance.Id);
+
+        var entity = ctx.Db.Entity.EntityId.Find(player.EntityId);
+        AddLog(
+            ctx,
+            $"{entity?.Name ?? "Someone"} drops {def?.Name ?? "an item"}.",
             LogKind.Equip,
             player.EntityId,
             player.EntityId
@@ -568,17 +605,16 @@ public static partial class Module
             throw new Exception("That item is not yours.");
         }
 
-        if (instance.EquippedSlot == EquipSlot.Bag)
+        if (instance.EquippedSlot is not (EquipSlot.Weapon or EquipSlot.Amulet))
         {
             throw new Exception("That item is not equipped.");
         }
 
-        if (BagCount(ctx, ctx.Sender) >= BagCapacity)
+        if (!TryPlaceExistingItemInInventory(ctx, instance))
         {
-            throw new Exception("Bag is full.");
+            throw new Exception("Inventory is full.");
         }
 
-        ctx.Db.PlayerItem.Id.Update(instance with { EquippedSlot = EquipSlot.Bag });
         RecomputeStats(ctx, ctx.Sender);
 
         var def = ctx.Db.ItemDef.Id.Find(instance.ItemDefId);
@@ -590,6 +626,19 @@ public static partial class Module
             player.EntityId,
             player.EntityId
         );
+    }
+
+    static PlayerItem? InventoryAt(ReducerContext ctx, Identity owner, uint slotIndex)
+    {
+        foreach (var item in ctx.Db.PlayerItem.Owner.Filter(owner))
+        {
+            if (item.EquippedSlot == EquipSlot.Inventory && item.InventoryIndex == slotIndex)
+            {
+                return item;
+            }
+        }
+
+        return null;
     }
 
     /// Rebuilds effective stats from base rolls plus everything worn. Called after

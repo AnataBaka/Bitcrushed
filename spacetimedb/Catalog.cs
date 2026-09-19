@@ -471,6 +471,24 @@ public static partial class Module
         return true;
     }
 
+    static bool TryPlaceExistingItemInInventory(ReducerContext ctx, PlayerItem instance)
+    {
+        var index = FirstFreeInventoryIndex(ctx, instance.Owner);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        ctx.Db.PlayerItem.Id.Update(
+            instance with
+            {
+                EquippedSlot = EquipSlot.Inventory,
+                InventoryIndex = (uint)index,
+            }
+        );
+        return true;
+    }
+
     static int FirstFreeInventoryIndex(ReducerContext ctx, Identity owner)
     {
         var taken = new bool[InventoryCapacity];
