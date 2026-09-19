@@ -9,6 +9,16 @@ public enum ShapeKind
     Triangle,
     Diamond,
     Mound,
+
+    // Equipment and item icons.
+    Blade,
+    Rod,
+    Bow,
+    Helm,
+    Vest,
+    Legs,
+    Boot,
+    Flask,
 }
 
 /// Every sprite and font in the battle scene is produced here at runtime so the
@@ -143,10 +153,90 @@ public static class PlaceholderArt
                 return (dx * dx) + (dy * dy) <= 1f;
             }
 
+            // Icons below are assembled from a few implicit primitives each. They
+            // only have to read as a silhouette at 40-60 px.
+            case ShapeKind.Blade:
+            {
+                var grip = Band(u, 0.5f, 0.05f) && v >= 0.06f && v <= 0.26f;
+                var guard = Band(u, 0.5f, 0.28f) && v >= 0.26f && v <= 0.34f;
+                var taper = v <= 0.86f ? 0.11f : 0.11f * ((1f - v) / 0.14f);
+                var blade = Band(u, 0.5f, taper) && v >= 0.34f;
+                return grip || guard || blade;
+            }
+
+            case ShapeKind.Rod:
+                return (Band(u, 0.5f, 0.07f) && v <= 0.78f) || Disc(u, v, 0.5f, 0.85f, 0.14f);
+
+            case ShapeKind.Bow:
+            {
+                var d = Dist(u, v, 0.26f, 0.5f);
+                var limb = d >= 0.36f && d <= 0.48f && u >= 0.26f;
+                var strung = Band(u, 0.30f, 0.025f) && v >= 0.16f && v <= 0.84f;
+                return limb || strung;
+            }
+
+            case ShapeKind.Helm:
+            {
+                var dome = Disc(u, v, 0.5f, 0.52f, 0.38f) && v >= 0.46f;
+                var brim = u >= 0.12f && u <= 0.88f && v >= 0.34f && v <= 0.46f;
+                return dome || brim;
+            }
+
+            case ShapeKind.Vest:
+            {
+                if (v < 0.12f || v > 0.88f)
+                {
+                    return false;
+                }
+
+                // Straight body that flares into shoulders near the top.
+                var halfWidth = v > 0.70f ? 0.40f : 0.30f;
+                var neck = v > 0.78f && Band(u, 0.5f, 0.12f);
+                return Band(u, 0.5f, halfWidth) && !neck;
+            }
+
+            case ShapeKind.Legs:
+            {
+                var waist = u >= 0.18f && u <= 0.82f && v >= 0.68f && v <= 0.88f;
+                var legs =
+                    v >= 0.10f
+                    && v <= 0.68f
+                    && (Band(u, 0.33f, 0.14f) || Band(u, 0.67f, 0.14f));
+                return waist || legs;
+            }
+
+            case ShapeKind.Boot:
+            {
+                var shaft = u >= 0.34f && u <= 0.62f && v >= 0.26f && v <= 0.88f;
+                var foot = u >= 0.20f && u <= 0.80f && v >= 0.10f && v <= 0.30f;
+                return shaft || foot;
+            }
+
+            case ShapeKind.Flask:
+            {
+                var body = Disc(u, v, 0.5f, 0.33f, 0.30f);
+                var neck = Band(u, 0.5f, 0.11f) && v >= 0.50f && v <= 0.82f;
+                var cork = Band(u, 0.5f, 0.16f) && v >= 0.82f && v <= 0.93f;
+                return body || neck || cork;
+            }
+
             default:
                 return false;
         }
     }
+
+    static bool Band(float value, float centre, float halfWidth) =>
+        halfWidth > 0f && Mathf.Abs(value - centre) <= halfWidth;
+
+    static float Dist(float u, float v, float cx, float cy)
+    {
+        var dx = u - cx;
+        var dy = v - cy;
+        return Mathf.Sqrt((dx * dx) + (dy * dy));
+    }
+
+    static bool Disc(float u, float v, float cx, float cy, float radius) =>
+        Dist(u, v, cx, cy) <= radius;
 
     public static Color ClassColor(string className)
     {
