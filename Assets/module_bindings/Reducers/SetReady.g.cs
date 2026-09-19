@@ -12,17 +12,17 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void StartBattleHandler(ReducerEventContext ctx);
-        public event StartBattleHandler? OnStartBattle;
+        public delegate void SetReadyHandler(ReducerEventContext ctx, bool ready);
+        public event SetReadyHandler? OnSetReady;
 
-        public void StartBattle()
+        public void SetReady(bool ready)
         {
-            conn.InternalCallReducer(new Reducer.StartBattle());
+            conn.InternalCallReducer(new Reducer.SetReady(ready));
         }
 
-        public bool InvokeStartBattle(ReducerEventContext ctx, Reducer.StartBattle args)
+        public bool InvokeSetReady(ReducerEventContext ctx, Reducer.SetReady args)
         {
-            if (OnStartBattle == null)
+            if (OnSetReady == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -34,8 +34,9 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
-            OnStartBattle(
-                ctx
+            OnSetReady(
+                ctx,
+                args.Ready
             );
             return true;
         }
@@ -45,9 +46,21 @@ namespace SpacetimeDB.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class StartBattle : Reducer, IReducerArgs
+        public sealed partial class SetReady : Reducer, IReducerArgs
         {
-            string IReducerArgs.ReducerName => "start_battle";
+            [DataMember(Name = "ready")]
+            public bool Ready;
+
+            public SetReady(bool Ready)
+            {
+                this.Ready = Ready;
+            }
+
+            public SetReady()
+            {
+            }
+
+            string IReducerArgs.ReducerName => "set_ready";
         }
     }
 }

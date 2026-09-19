@@ -36,6 +36,7 @@ public static partial class Module
         {
             ctx.Db.Player.Identity.Update(player with { Online = true });
             Log.Info($"Player in slot {player.Slot} reconnected.");
+            TryStartIfAllReady(ctx);
         }
         else
         {
@@ -57,7 +58,10 @@ public static partial class Module
         if (!ctx.Db.Player.Iter().Any(p => p.Online))
         {
             ResetStageState(ctx);
+            return;
         }
+
+        TryStartIfAllReady(ctx);
     }
 
     // ------------------------------------------------------------------ lobby
@@ -130,6 +134,7 @@ public static partial class Module
                 Online = true,
                 Class = playerClass,
                 EntityId = entity.EntityId,
+                Ready = false,
             }
         );
 
@@ -145,10 +150,7 @@ public static partial class Module
             $"{name} rolled STR {rolled.Strength} / DEX {rolled.Dexterity} / INT {rolled.Intelligence} / SPD {rolled.Speed}."
         );
 
-        if (playerCount >= MaxPartySize)
-        {
-            BeginBattle(ctx);
-        }
+        TryStartIfAllReady(ctx);
     }
 
     [SpacetimeDB.Reducer]
@@ -173,24 +175,28 @@ public static partial class Module
         var playerCount = session.PlayerCount == 0 ? 0 : session.PlayerCount - 1;
         ctx.Db.GameSession.Id.Update(session with { PlayerCount = playerCount });
         AddLog(ctx, $"A player in slot {player.Slot} left the party.");
+
+        TryStartIfAllReady(ctx);
     }
 
-    /// Starts the fight without a full party. Handy for testing with 1-2 clients.
+    /// Lobby ready-up. A player may un-ready until the fight actually starts.
     [SpacetimeDB.Reducer]
-    public static void StartBattle(ReducerContext ctx)
+    public static void SetReady(ReducerContext ctx, bool ready)
     {
         var session = RequireSession(ctx);
         if (session.Phase != BattlePhase.Waiting)
         {
-            throw new Exception("The battle has already started.");
+            throw new Exception("Ready state can only change in the lobby.");
         }
 
-        if (session.PlayerCount == 0)
+        var player = RequirePlayer(ctx);
+        if (player.Ready == ready)
         {
-            throw new Exception("At least one player must join first.");
+            return;
         }
 
-        BeginBattle(ctx);
+        ctx.Db.Player.Identity.Update(player with { Ready = ready });
+        TryStartIfAllReady(ctx);
     }
 
     /// Wipes the stage back to an empty lobby. Testing affordance only.
@@ -390,6 +396,7 @@ public static partial class Module
     public static void EquipItem(ReducerContext ctx, ulong playerItemId)
     {
         var player = RequirePlayer(ctx);
+        RejectEquipmentChangeInBattle(ctx);
 
         if (
             ctx.Db.PlayerItem.Id.Find(playerItemId) is not PlayerItem instance
@@ -451,6 +458,7 @@ public static partial class Module
     public static void UnequipItem(ReducerContext ctx, ulong playerItemId)
     {
         var player = RequirePlayer(ctx);
+        RejectEquipmentChangeInBattle(ctx);
 
         if (
             ctx.Db.PlayerItem.Id.Find(playerItemId) is not PlayerItem instance
@@ -639,6 +647,43 @@ public static partial class Module
     }
 
     // ------------------------------------------------------------ battle rules
+
+    /// Starts the fight once every currently connected lobby player is ready.
+    /// Offline seats do not count, so a disconnect can unblock the rest.
+    static void TryStartIfAllReady(ReducerContext ctx)
+    {
+        var session = RequireSession(ctx);
+        if (session.Phase != BattlePhase.Waiting)
+        {
+            return;
+        }
+
+        var online = ctx.Db.Player.Iter().Where(p => p.Online).ToList();
+        if (online.Count == 0)
+        {
+            return;
+        }
+
+        if (online.Any(p => !p.Ready))
+        {
+            return;
+        }
+
+        BeginBattle(ctx);
+    }
+
+    /// Single phase gate for loadout changes. Rest station can allow battle
+    /// equipping later by changing this one predicate.
+    static bool EquipmentChangesAllowed(BattlePhase phase) => phase != BattlePhase.InBattle;
+
+    static void RejectEquipmentChangeInBattle(ReducerContext ctx)
+    {
+        var session = RequireSession(ctx);
+        if (!EquipmentChangesAllowed(session.Phase))
+        {
+            throw new Exception("Cannot change equipment during battle.");
+        }
+    }
 
     static void BeginBattle(ReducerContext ctx)
     {

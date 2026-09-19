@@ -215,6 +215,9 @@ public class GameManager : MonoBehaviour
         return player == null ? null : Conn.Db.Entity.EntityId.Find(player.EntityId);
     }
 
+    public static Player FindPlayer(ulong entityId) =>
+        Conn == null ? null : Conn.Db.Player.EntityId.Find(entityId);
+
     public static Entity FindEntity(ulong entityId) =>
         Conn == null ? null : Conn.Db.Entity.EntityId.Find(entityId);
 
@@ -341,15 +344,15 @@ public class GameManager : MonoBehaviour
         Conn.Reducers.JoinGame();
     }
 
-    public static void StartBattle()
+    public static void SetReady(bool ready)
     {
         if (!IsConnected())
         {
-            Debug.LogWarning("StartBattle ignored: not connected yet.");
+            Debug.LogWarning("SetReady ignored: not connected yet.");
             return;
         }
 
-        Conn.Reducers.StartBattle();
+        Conn.Reducers.SetReady(ready);
     }
 
     public static void Attack(ulong targetEntityId) => Conn?.Reducers.Attack(targetEntityId);

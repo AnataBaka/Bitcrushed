@@ -19,6 +19,7 @@ public class EntityView : MonoBehaviour
     Text _hpText;
     Text _manaText;
     Text _tagText;
+    Text _readyBanner;
     Button _button;
     RectTransform _manaRow;
 
@@ -69,6 +70,21 @@ public class EntityView : MonoBehaviour
         view._tagText.rectTransform.pivot = new Vector2(0.5f, 0f);
         view._tagText.rectTransform.sizeDelta = new Vector2(0f, 20f);
         view._tagText.rectTransform.anchoredPosition = new Vector2(0f, 2f);
+
+        view._readyBanner = UiFactory.Label(
+            card.transform,
+            "ReadyBanner",
+            "",
+            18,
+            TextAnchor.MiddleCenter,
+            new Color(0.35f, 0.88f, 0.42f, 1f)
+        );
+        view._readyBanner.fontStyle = FontStyle.Bold;
+        view._readyBanner.rectTransform.anchorMin = new Vector2(0f, 1f);
+        view._readyBanner.rectTransform.anchorMax = new Vector2(1f, 1f);
+        view._readyBanner.rectTransform.pivot = new Vector2(0.5f, 0f);
+        view._readyBanner.rectTransform.sizeDelta = new Vector2(0f, 24f);
+        view._readyBanner.rectTransform.anchoredPosition = new Vector2(0f, 22f);
 
         // Name + bars stack under the shape.
         var footer = UiFactory.NewRect(card.transform, "Footer");
@@ -257,6 +273,17 @@ public class EntityView : MonoBehaviour
         }
 
         _button.interactable = targetable;
+    }
+
+    /// Driven from Player.Ready + lobby phase, never from local click state.
+    public void SetReadyBanner(bool visible)
+    {
+        if (_readyBanner == null)
+        {
+            return;
+        }
+
+        _readyBanner.text = visible ? "READY" : "";
     }
 
     void HandleClick() => _onClick?.Invoke(EntityId);

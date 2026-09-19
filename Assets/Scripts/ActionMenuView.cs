@@ -21,7 +21,7 @@ public class ActionMenuView : MonoBehaviour
     }
 
     public Action OnJoin;
-    public Action OnStartBattle;
+    public Action OnReady;
     public Action OnFocus;
 
     /// Raised with the bag item the player picked.
@@ -38,7 +38,7 @@ public class ActionMenuView : MonoBehaviour
     RectTransform _items;
 
     Button _joinButton;
-    Button _startButton;
+    Button _readyButton;
 
     Page _page = Page.Root;
     ulong _pageOwner;
@@ -76,14 +76,14 @@ public class ActionMenuView : MonoBehaviour
         view._items = MakePage(panel.transform, "ItemsPage", 6f);
 
         view._joinButton = UiFactory.TextButton(view._lobby, "Join", "Join Party");
-        view._startButton = UiFactory.TextButton(view._lobby, "Start", "Start Battle");
+        view._readyButton = UiFactory.TextButton(view._lobby, "Ready", "Ready Up");
 
         var attack = UiFactory.TextButton(view._root, "Attack", "Attack");
         var items = UiFactory.TextButton(view._root, "Items", "Items");
         var focus = UiFactory.TextButton(view._root, "Focus", "Focus");
 
         view._joinButton.onClick.AddListener(() => view.OnJoin?.Invoke());
-        view._startButton.onClick.AddListener(() => view.OnStartBattle?.Invoke());
+        view._readyButton.onClick.AddListener(() => view.OnReady?.Invoke());
 
         attack.onClick.AddListener(() => view.Go(Page.Skills));
         items.onClick.AddListener(() => view.Go(Page.Items));
@@ -138,7 +138,8 @@ public class ActionMenuView : MonoBehaviour
             ApplyPage();
             _status.text = "Waiting for server...";
             _joinButton.interactable = false;
-            _startButton.interactable = false;
+            _readyButton.interactable = false;
+            SetReadyCaption(false);
             return;
         }
 
@@ -158,7 +159,9 @@ public class ActionMenuView : MonoBehaviour
             ApplyPage();
             _status.text = $"Lobby {session.PlayerCount}/{session.MaxPlayers}";
             _joinButton.interactable = me == null && session.PlayerCount < session.MaxPlayers;
-            _startButton.interactable = me != null && session.PlayerCount > 0;
+            var localPlayer = GameManager.LocalPlayer();
+            _readyButton.interactable = localPlayer != null;
+            SetReadyCaption(localPlayer != null && localPlayer.Ready);
             return;
         }
 
@@ -210,6 +213,15 @@ public class ActionMenuView : MonoBehaviour
         foreach (var button in _itemButtons)
         {
             button.interactable = canAct;
+        }
+    }
+
+    void SetReadyCaption(bool ready)
+    {
+        var label = _readyButton.GetComponentInChildren<Text>();
+        if (label != null)
+        {
+            label.text = ready ? "Cancel Ready" : "Ready Up";
         }
     }
 

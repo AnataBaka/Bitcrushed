@@ -23,13 +23,16 @@ namespace SpacetimeDB.Types
         public PlayerClass Class;
         [DataMember(Name = "entity_id")]
         public ulong EntityId;
+        [DataMember(Name = "ready")]
+        public bool Ready;
 
         public Player(
             SpacetimeDB.Identity Identity,
             uint Slot,
             bool Online,
             PlayerClass Class,
-            ulong EntityId
+            ulong EntityId,
+            bool Ready
         )
         {
             this.Identity = Identity;
@@ -37,6 +40,7 @@ namespace SpacetimeDB.Types
             this.Online = Online;
             this.Class = Class;
             this.EntityId = EntityId;
+            this.Ready = Ready;
         }
 
         public Player()
