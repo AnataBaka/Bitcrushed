@@ -38,3 +38,12 @@ dotnet run --project spacetimedb/tools/clientcheck -- hophacks-merge http://127.
 It plays the same battle as `playtest.py` and additionally asserts that battle log
 rows arrive live carrying the actor, target and damage that the HUD's lunge and
 hit animations are driven from.
+
+## Compiling the client without a Unity licence
+
+`tools/compile-client.sh` at the repository root compiles the client scripts with
+Roslyn against the assemblies a Unity editor install ships. Useful on a machine
+that has the editor unpacked but no licence, since the editor refuses to open a
+project without one. Read the header of the script for the paths it expects. It
+approximates a player build's define set, so it is a sanity check rather than a
+replacement for an editor compile.
