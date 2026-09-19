@@ -7,6 +7,7 @@ public static partial class Module
 {
     public const uint SessionId = 1;
     public const uint MaxPartySize = 3;
+    public const int EnemyScalePartyBaseline = 3;
     public const uint MaxEnemySlots = 4;
     public const uint MaxStageCount = 10;
     public const uint RestStopEvery = 3;
@@ -444,6 +445,15 @@ public static partial class Module
     {
         var n = level == 0 ? 1 : (int)level;
         return Math.Max(1, (int)Math.Round(4 + 0.6 * n, MidpointRounding.AwayFromZero));
+    }
+
+    /// Existing enemy formulas were balanced for a 3-player party. Scale both
+    /// HP and ATK by P/3 so solo and larger parties keep the same time-to-kill.
+    public static int ScaleEnemyStatForParty(int baseline, int playerCount)
+    {
+        var p = Math.Max(1, playerCount);
+        var scaled = baseline * (p / (double)EnemyScalePartyBaseline);
+        return Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero));
     }
 
     /// Each kill grants `25 * stage` EXP to every living party member.

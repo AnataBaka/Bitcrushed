@@ -38,6 +38,7 @@ public class ActionMenuView : MonoBehaviour
     RectTransform _skills;
     ScrollRect _skillsScroll;
     RectTransform _items;
+    SkillTooltipView _skillTooltip;
 
     Button _joinButton;
     Button _readyButton;
@@ -76,6 +77,9 @@ public class ActionMenuView : MonoBehaviour
         view._root = MakePage(panel.transform, "RootPage", 10f);
         view._skillsPage = MakeScrollPage(panel.transform, "SkillsPage", 6f, out view._skills, out view._skillsScroll);
         view._items = MakePage(panel.transform, "ItemsPage", 6f);
+
+        var canvas = panel.GetComponentInParent<Canvas>();
+        view._skillTooltip = SkillTooltipView.Create(canvas != null ? canvas.transform : parent);
 
         view._joinButton = UiFactory.TextButton(view._lobby, "Join", "Join Party");
         view._readyButton = UiFactory.TextButton(view._lobby, "Ready", "Ready Up");
@@ -174,6 +178,11 @@ public class ActionMenuView : MonoBehaviour
     void Go(Page page)
     {
         _page = page;
+        if (page != Page.Skills)
+        {
+            _skillTooltip?.Hide();
+        }
+
         ApplyPage();
     }
 
@@ -195,6 +204,10 @@ public class ActionMenuView : MonoBehaviour
         _root.gameObject.SetActive(_page == Page.Root);
         _skillsPage.gameObject.SetActive(_page == Page.Skills);
         _items.gameObject.SetActive(_page == Page.Items);
+        if (_page != Page.Skills)
+        {
+            _skillTooltip?.Hide();
+        }
     }
 
     public void Render(GameSession session, Entity me, bool myTurn, bool targeting, bool actionsLocked = false)
@@ -349,6 +362,7 @@ public class ActionMenuView : MonoBehaviour
         }
 
         _skillsSignature = signature.ToString();
+        _skillTooltip?.Hide();
         ClearPage(_skills, _skillButtons);
 
         if (me != null)
@@ -361,6 +375,7 @@ public class ActionMenuView : MonoBehaviour
                 SubButtonHeight
             );
             basic.onClick.AddListener(() => Select(0u));
+            BindSkillHover(basic, null, basicAttack: true);
             _skillButtons.Add(basic);
         }
 
@@ -368,7 +383,7 @@ public class ActionMenuView : MonoBehaviour
         {
             var id = skill.Id;
             var cost = GameManager.EffectiveManaCost(skill, me);
-            var caption = GameManager.SkillCaption(skill, me);
+            var caption = GameManager.SkillCaption(skill, me, session);
 
             var button = UiFactory.TextButton(
                 _skills,
@@ -378,6 +393,7 @@ public class ActionMenuView : MonoBehaviour
                 SubButtonHeight
             );
             button.onClick.AddListener(() => Select(id));
+            BindSkillHover(button, skill, basicAttack: false);
 
             var element = button.gameObject.AddComponent<ActionCost>();
             element.ManaCost = cost;
@@ -469,6 +485,17 @@ public class ActionMenuView : MonoBehaviour
         }
 
         return cost.Ready && me.Mana >= cost.ManaCost;
+    }
+
+    void BindSkillHover(Button button, SkillDef skill, bool basicAttack)
+    {
+        if (_skillTooltip == null)
+        {
+            return;
+        }
+
+        var hover = button.gameObject.AddComponent<SkillHoverTip>();
+        hover.Bind(_skillTooltip, skill, basicAttack);
     }
 
     static void ClearPage(RectTransform page, List<Button> tracked)

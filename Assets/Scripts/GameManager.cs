@@ -435,7 +435,7 @@ public class GameManager : MonoBehaviour
         return true;
     }
 
-    public static string SkillCaption(SkillDef skill, Entity caster)
+    public static string SkillCaption(SkillDef skill, Entity caster, GameSession session = null)
     {
         var cost = EffectiveManaCost(skill, caster);
         var hits = skill.HitCount > 1 ? $" x{skill.HitCount}" : "";
@@ -446,9 +446,12 @@ public class GameManager : MonoBehaviour
             name = $"Magic Bullet {ToRoman(stage)}";
         }
 
+        var locked = !SkillReadyToCast(skill, caster, session);
+        var lockTag = locked ? "  locked" : "";
+
         if (skill.TargetCount == 0)
         {
-            return $"{name}  ({cost} mp)";
+            return $"{name}  ({cost} mp){lockTag}";
         }
 
         var spread = skill.TargetCount > 1 ? $" x{skill.TargetCount}" : hits;
@@ -457,10 +460,10 @@ public class GameManager : MonoBehaviour
             spread = $" x{skill.TargetCount} x{skill.HitCount}";
         }
 
-        return $"{name}{spread}  ({cost} mp)";
+        return $"{name}{spread}  ({cost} mp){lockTag}";
     }
 
-    static string ToRoman(int value) =>
+    public static string ToRoman(int value) =>
         value switch
         {
             1 => "I",

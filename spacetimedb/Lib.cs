@@ -1118,10 +1118,11 @@ public static partial class Module
     {
         EnsureEnemyCatalog(ctx);
         var level = PartyCombatLevel(ctx);
+        var players = PartyEncounterSize(ctx);
         var pool = EnemyPool;
         var count = ctx.Rng.Next(1, (int)MaxEnemySlots + 1);
-        var maxHp = EnemyHpForLevel(level);
-        var atk = EnemyAtkForLevel(level);
+        var maxHp = ScaleEnemyStatForParty(EnemyHpForLevel(level), players);
+        var atk = ScaleEnemyStatForParty(EnemyAtkForLevel(level), players);
 
         for (uint slot = 0; slot < (uint)count; slot++)
         {
@@ -1184,6 +1185,17 @@ public static partial class Module
         }
 
         return level;
+    }
+
+    static int PartyEncounterSize(ReducerContext ctx)
+    {
+        var joined = (int)RequireSession(ctx).PlayerCount;
+        if (joined > 0)
+        {
+            return joined;
+        }
+
+        return Math.Max(1, LivingMembers(ctx, Team.Players).Count);
     }
 
     /// Fastest combatant first. Rush / Grand Undertaking jump the queue for one round.
