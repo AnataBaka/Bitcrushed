@@ -1146,7 +1146,7 @@ public static partial class Module
         var strength = attacker.Strength + attacker.StrengthBuff;
         var raw = DealtDamage(characterDamage, strength, attacker.Atk);
 
-        var dodged = ctx.Rng.Next(1, 101) <= DodgeChance(target.Dexterity);
+        var dodged = ctx.Rng.Next(1, 101) <= DodgeChance(target.Dexterity, target.Faction);
         var damage = dodged ? 0 : AfterDefense(raw, target.Defense);
 
         var hp = Math.Max(0, target.Hp - damage);

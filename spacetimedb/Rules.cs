@@ -18,6 +18,8 @@ public static partial class Module
 
     /// Dexterity doubles as the dodge chance, capped so nobody is untouchable.
     public const int MaxDodgePercent = 25;
+    /// Enemy dodge is this many times smaller than the shared Dexterity formula.
+    public const int EnemyDodgeDivisor = 3;
 
     /// Main stat rolls 3-6, the other three roll 1-3.
     public const int MainStatMin = 3;
@@ -141,7 +143,16 @@ public static partial class Module
 
     public static int AfterDefense(int incoming, int defense) => Math.Max(0, incoming - defense);
 
-    public static int DodgeChance(int dexterity) => Math.Clamp(dexterity, 0, MaxDodgePercent);
+    public static int DodgeChance(int dexterity, Team faction)
+    {
+        var chance = Math.Clamp(dexterity, 0, MaxDodgePercent);
+        if (faction == Team.Enemies && EnemyDodgeDivisor > 1)
+        {
+            chance /= EnemyDodgeDivisor;
+        }
+
+        return chance;
+    }
 
     public static int RollInclusive(Random rng, int min, int max) => rng.Next(min, max + 1);
 
