@@ -74,6 +74,9 @@ public static partial class Module
     public const int StatPointIntelligence = 1;
     public const int StatPointSpeed = 1;
 
+    /// DisplayPos for TurnOrder rows that should not appear in the client list.
+    public const uint TurnListHiddenPos = 255;
+
     public static bool IsSpendableStat(StatType stat) =>
         stat is StatType.Strength
             or StatType.Speed

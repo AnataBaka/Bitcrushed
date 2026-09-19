@@ -1126,9 +1126,28 @@ public static partial class Module
         var atk = EnemyAtkForEncounter(floor, playerLevel);
         var strength = EnemyStrengthForEncounter(floor, playerLevel);
 
-        for (uint slot = 0; slot < (uint)count; slot++)
+        var picks = new List<EnemyArchetype>(count);
+        for (var i = 0; i < count; i++)
         {
-            var arch = pool[ctx.Rng.Next(0, pool.Length)];
+            picks.Add(pool[ctx.Rng.Next(0, pool.Length)]);
+        }
+
+        var copies = new Dictionary<string, int>();
+        foreach (var pick in picks)
+        {
+            copies.TryGetValue(pick.Name, out var n);
+            copies[pick.Name] = n + 1;
+        }
+
+        var seen = new Dictionary<string, int>();
+        for (uint slot = 0; slot < (uint)picks.Count; slot++)
+        {
+            var arch = picks[(int)slot];
+            seen.TryGetValue(arch.Name, out var index);
+            seen[arch.Name] = index + 1;
+            var name = copies[arch.Name] <= 1
+                ? arch.Name
+                : $"{arch.Name} {(char)('A' + index)}";
             var maxMana = Math.Max(1, arch.MaxMana);
             var dexterity = Math.Max(1, arch.Dexterity);
             var intelligence = Math.Max(1, arch.Intelligence);
@@ -1140,7 +1159,7 @@ public static partial class Module
                     EntityId = 0,
                     Faction = Team.Enemies,
                     Slot = slot,
-                    Name = arch.Name,
+                    Name = name,
                     ClassName = arch.Kind,
                     MaxHp = maxHp,
                     Hp = maxHp,
@@ -1261,6 +1280,7 @@ public static partial class Module
                     Speed = EffectiveSpeed(ordered[i]),
                     HasActed = false,
                     IsRush = ordered[i].GoFirstNextRound || ordered[i].NextTurnSpeedSet >= RushNextTurnSpeed,
+                    DisplayPos = (uint)i,
                 }
             );
         }
@@ -1474,6 +1494,56 @@ public static partial class Module
                     EntityId = refreshed.EntityId,
                 }
             );
+        }
+
+        RefreshTurnDisplay(ctx);
+    }
+
+    /// Puts the current actor at DisplayPos 0, then the rest of this round,
+    /// then combatants who already acted (their Idx order, which is next-round
+    /// speed order). Dead rows are hidden.
+    static void RefreshTurnDisplay(ReducerContext ctx)
+    {
+        var session = RequireSession(ctx);
+        var living = new List<TurnOrder>();
+        foreach (var entry in ctx.Db.TurnOrder.Iter().OrderBy(t => t.Idx))
+        {
+            if (ctx.Db.Entity.EntityId.Find(entry.EntityId) is Entity entity && entity.Alive)
+            {
+                living.Add(entry);
+            }
+        }
+
+        var start = 0;
+        if (session.ActiveEntityId != 0)
+        {
+            for (var i = 0; i < living.Count; i++)
+            {
+                if (living[i].EntityId == session.ActiveEntityId)
+                {
+                    start = i;
+                    break;
+                }
+            }
+        }
+
+        foreach (var entry in ctx.Db.TurnOrder.Iter().ToList())
+        {
+            var pos = TurnListHiddenPos;
+            for (var i = 0; i < living.Count; i++)
+            {
+                var rotated = living[(start + i) % living.Count];
+                if (rotated.Idx == entry.Idx)
+                {
+                    pos = (uint)i;
+                    break;
+                }
+            }
+
+            if (entry.DisplayPos != pos)
+            {
+                ctx.Db.TurnOrder.Idx.Update(entry with { DisplayPos = pos });
+            }
         }
     }
 
@@ -1709,6 +1779,8 @@ public static partial class Module
             var session = RequireSession(ctx);
             GrantKillXp(ctx, session.StageNumber < 1 ? 1u : session.StageNumber);
         }
+
+        RefreshTurnDisplay(ctx);
     }
 
     static void ApplyPercentMaxHpDamage(
@@ -1794,6 +1866,7 @@ public static partial class Module
 
         ctx.Db.Entity.EntityId.Update(entity with { Hp = 0, Alive = false });
         AddLog(ctx, message, LogKind.Defeat, entity.EntityId, entity.EntityId);
+        RefreshTurnDisplay(ctx);
     }
 
     static void MarkUsedAttack(ReducerContext ctx, ulong entityId)

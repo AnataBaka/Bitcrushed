@@ -287,11 +287,20 @@ public class GameManager : MonoBehaviour
             .ToList();
     }
 
-    /// Turn order as the module built it: fastest first.
-    public static List<TurnOrder> TurnQueue() =>
-        Conn == null
-            ? new List<TurnOrder>()
-            : Conn.Db.TurnOrder.Iter().OrderBy(t => t.Idx).ToList();
+    /// Turn list as the module assigned DisplayPos: 0 is the current actor.
+    public static List<TurnOrder> TurnQueue()
+    {
+        if (Conn == null)
+        {
+            return new List<TurnOrder>();
+        }
+
+        return Conn
+            .Db.TurnOrder.Iter()
+            .Where(t => t.DisplayPos < 255)
+            .OrderBy(t => t.DisplayPos)
+            .ToList();
+    }
 
     public static ItemDef ItemDefOf(PlayerItem item) =>
         Conn == null ? null : Conn.Db.ItemDef.Id.Find(item.ItemDefId);

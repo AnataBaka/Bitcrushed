@@ -40,7 +40,7 @@ public class BattleHud : MonoBehaviour
     Text _connectionLabel;
     Text _stageLabel;
     StatPopupView _popup;
-    TurnOrderStripView _turnStrip;
+    TurnOrderListView _turnList;
     EscapeMenuView _escape;
 
     readonly Dictionary<ulong, EntityView> _views = new Dictionary<ulong, EntityView>();
@@ -67,7 +67,7 @@ public class BattleHud : MonoBehaviour
         Text connectionLabel,
         Text stageLabel,
         StatPopupView popup,
-        TurnOrderStripView turnStrip,
+        TurnOrderListView turnList,
         EscapeMenuView escape
     )
     {
@@ -82,7 +82,7 @@ public class BattleHud : MonoBehaviour
         _connectionLabel = connectionLabel;
         _stageLabel = stageLabel;
         _popup = popup;
-        _turnStrip = turnStrip;
+        _turnList = turnList;
         _escape = escape;
 
         _menu.OnJoin = GameManager.JoinGame;
@@ -200,7 +200,7 @@ public class BattleHud : MonoBehaviour
         SyncTeam(GameManager.TeamMembers(Team.Enemies), EnemySlots, EnemyCardSize, false, me);
         PruneMissing();
         _popup?.Refresh();
-        _turnStrip?.Render(session);
+        _turnList?.Render(session);
 
         _log.SetLines(GameManager.LogLines(60));
         _menu.Render(session, me, myTurn, _targeting);

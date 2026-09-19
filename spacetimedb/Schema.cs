@@ -272,6 +272,10 @@ public static partial class Module
         public bool HasActed;
         /// True when a rush skill pushed this combatant to the front.
         public bool IsRush;
+        /// 0 is the current or next actor. Living combatants are 0..n-1 in
+        /// display order. Hidden or dead entries use TurnListHiddenPos.
+        [Default(0u)]
+        public uint DisplayPos;
     }
 
     /// Append-only battle log. Clients sort by Id, which is monotonic. The

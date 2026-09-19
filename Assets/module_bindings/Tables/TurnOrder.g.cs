@@ -44,6 +44,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<TurnOrder, int> Speed { get; }
         public global::SpacetimeDB.Col<TurnOrder, bool> HasActed { get; }
         public global::SpacetimeDB.Col<TurnOrder, bool> IsRush { get; }
+        public global::SpacetimeDB.Col<TurnOrder, uint> DisplayPos { get; }
 
         public TurnOrderCols(string tableName)
         {
@@ -52,6 +53,7 @@ namespace SpacetimeDB.Types
             Speed = new global::SpacetimeDB.Col<TurnOrder, int>(tableName, "speed");
             HasActed = new global::SpacetimeDB.Col<TurnOrder, bool>(tableName, "has_acted");
             IsRush = new global::SpacetimeDB.Col<TurnOrder, bool>(tableName, "is_rush");
+            DisplayPos = new global::SpacetimeDB.Col<TurnOrder, uint>(tableName, "display_pos");
         }
     }
 

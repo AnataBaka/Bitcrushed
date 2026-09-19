@@ -23,13 +23,16 @@ namespace SpacetimeDB.Types
         public bool HasActed;
         [DataMember(Name = "is_rush")]
         public bool IsRush;
+        [DataMember(Name = "display_pos")]
+        public uint DisplayPos;
 
         public TurnOrder(
             uint Idx,
             ulong EntityId,
             int Speed,
             bool HasActed,
-            bool IsRush
+            bool IsRush,
+            uint DisplayPos
         )
         {
             this.Idx = Idx;
@@ -37,6 +40,7 @@ namespace SpacetimeDB.Types
             this.Speed = Speed;
             this.HasActed = HasActed;
             this.IsRush = IsRush;
+            this.DisplayPos = DisplayPos;
         }
 
         public TurnOrder()
