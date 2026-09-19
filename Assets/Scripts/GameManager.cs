@@ -390,6 +390,11 @@ public class GameManager : MonoBehaviour
             return 100;
         }
 
+        if (skill.Name == "Overthrow")
+        {
+            return 40;
+        }
+
         if (skill.Name == "Spear")
         {
             return Math.Max(0, 45 - caster.SpearDiscount);

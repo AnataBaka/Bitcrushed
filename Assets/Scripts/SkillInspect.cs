@@ -218,7 +218,7 @@ public static class SkillInspect
                 return;
             case "Overthrow":
                 damage = "42 to all enemies";
-                description = "Gain 12 Enraged for this turn, then hit every living enemy for 42. Each hit that connects inflicts 9 Weak and 9 Fragile next turn. Requires Finish the Job stance.";
+                description = "Gain 12 Enraged for this turn, deal 42 to all enemies, and inflict 3 Weak and 4 Fragile on all enemies next turn. 40 MP. Requires Finish the Job stance.";
                 return;
             default:
                 damage = "See battle log";

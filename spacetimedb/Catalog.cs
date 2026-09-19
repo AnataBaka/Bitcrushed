@@ -135,8 +135,8 @@ public static partial class Module
             ctx,
             SkillNames.Overthrow,
             PlayerClass.Ninja,
-            40,
-            42,
+            OverthrowManaCost,
+            OverthrowDamage,
             4,
             DamageType.Physical,
             30
@@ -177,6 +177,11 @@ public static partial class Module
                         BaseDamage = GrandshotBaseDamage,
                     }
                 );
+            }
+
+            if (skill.Name == SkillNames.Overthrow && skill.ManaCost != OverthrowManaCost)
+            {
+                ctx.Db.SkillDef.Id.Update(skill with { ManaCost = OverthrowManaCost });
             }
         }
     }

@@ -288,14 +288,18 @@ public static partial class Module
                 );
                 foreach (var enemy in LivingMembers(ctx, Team.Enemies))
                 {
-                    if (Strike(ctx, caster, enemy.EntityId, skill.Name, OverthrowDamage, isSkill: true)
-                        .Connected)
-                    {
-                        QueueWeak(ctx, enemy.EntityId, OverthrowStatusStacks);
-                        QueueFragile(ctx, enemy.EntityId, OverthrowStatusStacks);
-                    }
+                    Strike(ctx, caster, enemy.EntityId, skill.Name, OverthrowDamage, isSkill: true);
+                    QueueWeak(ctx, enemy.EntityId, OverthrowWeakStacks);
+                    QueueFragile(ctx, enemy.EntityId, OverthrowFragileStacks);
                 }
 
+                AddLog(
+                    ctx,
+                    $"{caster.Name} inflicts {OverthrowWeakStacks} Weak and {OverthrowFragileStacks} Fragile on all enemies next turn.",
+                    LogKind.Focus,
+                    caster.EntityId,
+                    caster.EntityId
+                );
                 break;
             default:
                 throw new Exception($"Unhandled skill {skill.Name}.");

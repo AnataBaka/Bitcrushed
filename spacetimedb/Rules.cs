@@ -64,7 +64,9 @@ public static partial class Module
     public const int GrandshotDodgeCap = 4;
     public const int OverthrowEnragedStacks = 12;
     public const int OverthrowDamage = 42;
-    public const int OverthrowStatusStacks = 9;
+    public const int OverthrowManaCost = 40;
+    public const int OverthrowWeakStacks = 3;
+    public const int OverthrowFragileStacks = 4;
     public const int SpearBaseManaCost = 45;
     public const int VerticalCutBaseManaCost = 80;
     public const int SkillManaDiscountPerUse = 15;
@@ -384,6 +386,11 @@ public static partial class Module
         if (skillName == SkillNames.Grandshot)
         {
             return GrandshotManaCost;
+        }
+
+        if (skillName == SkillNames.Overthrow)
+        {
+            return OverthrowManaCost;
         }
 
         if (skillName == SkillNames.Spear)
