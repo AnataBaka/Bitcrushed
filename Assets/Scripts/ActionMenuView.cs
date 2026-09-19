@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Text;
 using SpacetimeDB.Types;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,6 +10,8 @@ using UnityEngine.UI;
 /// events; it never decides whether an action is legal.
 public class ActionMenuView : MonoBehaviour
 {
+    const float SubButtonHeight = 34f;
+
     enum Page
     {
         Lobby,
@@ -19,10 +23,13 @@ public class ActionMenuView : MonoBehaviour
     public Action OnJoin;
     public Action OnStartBattle;
     public Action OnFocus;
-    public Action<ItemKind> OnUseItem;
 
-    /// Raised when the player picked their attack skill and must now click a target.
-    public Action OnSkillSelected;
+    /// Raised with the bag item the player picked.
+    public Action<ulong> OnUseItem;
+
+    /// Raised when the player picked how to attack and must now click a target.
+    /// 0 means the free basic attack, anything else is a SkillDef id.
+    public Action<uint> OnAttackSelected;
 
     Text _status;
     RectTransform _lobby;
@@ -32,16 +39,17 @@ public class ActionMenuView : MonoBehaviour
 
     Button _joinButton;
     Button _startButton;
-    Button _attackButton;
-    Button _itemsButton;
-    Button _focusButton;
-    Button _skillButton;
-    Text _skillLabel;
-    Button _potionButton;
-    Text _potionLabel;
 
     Page _page = Page.Root;
     ulong _pageOwner;
+
+    // Sub-pages are rebuilt only when their contents actually change, so hovering
+    // and clicking are not interrupted by every table update.
+    string _skillsSignature = "";
+    string _itemsSignature = "";
+
+    readonly List<Button> _skillButtons = new List<Button>();
+    readonly List<Button> _itemButtons = new List<Button>();
 
     public static ActionMenuView Create(Transform parent)
     {
@@ -62,32 +70,24 @@ public class ActionMenuView : MonoBehaviour
         view._status.rectTransform.sizeDelta = new Vector2(-16f, 44f);
         view._status.rectTransform.anchoredPosition = new Vector2(0f, -6f);
 
-        view._lobby = MakePage(panel.transform, "LobbyPage");
-        view._root = MakePage(panel.transform, "RootPage");
-        view._skills = MakePage(panel.transform, "SkillsPage");
-        view._items = MakePage(panel.transform, "ItemsPage");
+        view._lobby = MakePage(panel.transform, "LobbyPage", 10f);
+        view._root = MakePage(panel.transform, "RootPage", 10f);
+        view._skills = MakePage(panel.transform, "SkillsPage", 6f);
+        view._items = MakePage(panel.transform, "ItemsPage", 6f);
 
         view._joinButton = UiFactory.TextButton(view._lobby, "Join", "Join Party");
         view._startButton = UiFactory.TextButton(view._lobby, "Start", "Start Battle");
 
-        view._attackButton = UiFactory.TextButton(view._root, "Attack", "Attack");
-        view._itemsButton = UiFactory.TextButton(view._root, "Items", "Items");
-        view._focusButton = UiFactory.TextButton(view._root, "Focus", "Focus");
-
-        view._skillButton = UiFactory.TextButton(view._skills, "Skill", "Skill", 20);
-        view._skillLabel = view._skillButton.GetComponentInChildren<Text>();
-        var skillBack = UiFactory.TextButton(view._skills, "Back", "Back", 20);
-
-        view._potionButton = UiFactory.TextButton(view._items, "Potion", "Health Potion", 20);
-        view._potionLabel = view._potionButton.GetComponentInChildren<Text>();
-        var itemBack = UiFactory.TextButton(view._items, "Back", "Back", 20);
+        var attack = UiFactory.TextButton(view._root, "Attack", "Attack");
+        var items = UiFactory.TextButton(view._root, "Items", "Items");
+        var focus = UiFactory.TextButton(view._root, "Focus", "Focus");
 
         view._joinButton.onClick.AddListener(() => view.OnJoin?.Invoke());
         view._startButton.onClick.AddListener(() => view.OnStartBattle?.Invoke());
 
-        view._attackButton.onClick.AddListener(() => view.Go(Page.Skills));
-        view._itemsButton.onClick.AddListener(() => view.Go(Page.Items));
-        view._focusButton.onClick.AddListener(
+        attack.onClick.AddListener(() => view.Go(Page.Skills));
+        items.onClick.AddListener(() => view.Go(Page.Items));
+        focus.onClick.AddListener(
             () =>
             {
                 view.Go(Page.Root);
@@ -95,29 +95,10 @@ public class ActionMenuView : MonoBehaviour
             }
         );
 
-        skillBack.onClick.AddListener(() => view.Go(Page.Root));
-        itemBack.onClick.AddListener(() => view.Go(Page.Root));
-
-        view._skillButton.onClick.AddListener(
-            () =>
-            {
-                view.Go(Page.Root);
-                view.OnSkillSelected?.Invoke();
-            }
-        );
-
-        view._potionButton.onClick.AddListener(
-            () =>
-            {
-                view.Go(Page.Root);
-                view.OnUseItem?.Invoke(ItemKind.HealthPotion);
-            }
-        );
-
         return view;
     }
 
-    static RectTransform MakePage(Transform parent, string name)
+    static RectTransform MakePage(Transform parent, string name, float spacing)
     {
         var page = UiFactory.NewRect(parent, name);
         page.anchorMin = Vector2.zero;
@@ -126,7 +107,7 @@ public class ActionMenuView : MonoBehaviour
         page.offsetMax = new Vector2(-12f, -52f);
 
         var layout = page.gameObject.AddComponent<VerticalLayoutGroup>();
-        layout.spacing = 10f;
+        layout.spacing = spacing;
         layout.childControlHeight = true;
         layout.childControlWidth = true;
         layout.childForceExpandHeight = false;
@@ -217,16 +198,161 @@ public class ActionMenuView : MonoBehaviour
 
         var canAct = myTurn && !targeting;
         SetPageInteractable(_root, canAct);
-        SetPageInteractable(_skills, canAct);
-        SetPageInteractable(_items, canAct);
+
+        RebuildSkills(me);
+        RebuildItems();
+
+        foreach (var button in _skillButtons)
+        {
+            button.interactable = canAct && ButtonAffordable(button, me);
+        }
+
+        foreach (var button in _itemButtons)
+        {
+            button.interactable = canAct;
+        }
+    }
+
+    /// Rebuilds the Attack sub-page: the free swing plus every learned skill.
+    void RebuildSkills(Entity me)
+    {
+        var skills = me == null ? new List<SkillDef>() : GameManager.LocalSkills();
+        var signature = new StringBuilder(me == null ? "-" : me.BasicAttackName);
+        foreach (var skill in skills)
+        {
+            signature.Append('|').Append(skill.Id).Append(':').Append(skill.Name);
+        }
+
+        if (signature.ToString() == _skillsSignature)
+        {
+            return;
+        }
+
+        _skillsSignature = signature.ToString();
+        ClearPage(_skills, _skillButtons);
 
         if (me != null)
         {
-            _skillLabel.text = $"{me.SkillName}  ({me.SkillManaCost} mp)";
-            _skillButton.interactable = canAct && me.Mana >= me.SkillManaCost;
+            var basic = UiFactory.TextButton(
+                _skills,
+                "Basic",
+                $"{me.BasicAttackName}  (free)",
+                18,
+                SubButtonHeight
+            );
+            basic.onClick.AddListener(() => Select(0u));
+            _skillButtons.Add(basic);
+        }
 
-            _potionLabel.text = $"Health Potion  x{me.Potions}";
-            _potionButton.interactable = canAct && me.Potions > 0;
+        foreach (var skill in skills)
+        {
+            var id = skill.Id;
+            var cost = skill.ManaCost;
+            var spread = skill.TargetCount > 1 ? $" x{skill.TargetCount}" : "";
+            var caption = skill.TargetCount == 0
+                ? $"{skill.Name}  ({cost} mp, buff)"
+                : $"{skill.Name}{spread}  ({cost} mp)";
+
+            var button = UiFactory.TextButton(
+                _skills,
+                skill.Name,
+                caption,
+                18,
+                SubButtonHeight
+            );
+            button.onClick.AddListener(() => Select(id));
+
+            // Buffs resolve immediately, so remember the cost for the mana gate.
+            var element = button.gameObject.AddComponent<ActionCost>();
+            element.ManaCost = cost;
+            _skillButtons.Add(button);
+        }
+
+        var back = UiFactory.TextButton(_skills, "Back", "Back", 18, SubButtonHeight);
+        back.onClick.AddListener(() => Go(Page.Root));
+    }
+
+    /// Rebuilds the Items sub-page from whatever potions are in the bag.
+    void RebuildItems()
+    {
+        var potions = GameManager.BagPotions();
+        var signature = new StringBuilder();
+        foreach (var potion in potions)
+        {
+            signature.Append(potion.Id).Append(':').Append(potion.Quantity).Append('|');
+        }
+
+        if (signature.ToString() == _itemsSignature)
+        {
+            return;
+        }
+
+        _itemsSignature = signature.ToString();
+        ClearPage(_items, _itemButtons);
+
+        foreach (var potion in potions)
+        {
+            var def = GameManager.ItemDefOf(potion);
+            if (def == null)
+            {
+                continue;
+            }
+
+            var id = potion.Id;
+            var button = UiFactory.TextButton(
+                _items,
+                def.Name,
+                $"{def.Name}  x{potion.Quantity}",
+                18,
+                SubButtonHeight
+            );
+            button.onClick.AddListener(
+                () =>
+                {
+                    Go(Page.Root);
+                    OnUseItem?.Invoke(id);
+                }
+            );
+            _itemButtons.Add(button);
+        }
+
+        if (potions.Count == 0)
+        {
+            var empty = UiFactory.TextButton(_items, "Empty", "No potions left", 18, SubButtonHeight);
+            empty.interactable = false;
+        }
+
+        var back = UiFactory.TextButton(_items, "Back", "Back", 18, SubButtonHeight);
+        back.onClick.AddListener(() => Go(Page.Root));
+    }
+
+    void Select(uint skillDefId)
+    {
+        Go(Page.Root);
+        OnAttackSelected?.Invoke(skillDefId);
+    }
+
+    static bool ButtonAffordable(Button button, Entity me)
+    {
+        if (me == null)
+        {
+            return false;
+        }
+
+        var cost = button.GetComponent<ActionCost>();
+        return cost == null || me.Mana >= cost.ManaCost;
+    }
+
+    static void ClearPage(RectTransform page, List<Button> tracked)
+    {
+        tracked.Clear();
+        for (var i = page.childCount - 1; i >= 0; i--)
+        {
+            // Destroy only takes effect at end of frame, so detach first or the
+            // layout group lays out the old and new buttons together.
+            var child = page.GetChild(i);
+            child.SetParent(null, false);
+            Destroy(child.gameObject);
         }
     }
 
@@ -237,4 +363,10 @@ public class ActionMenuView : MonoBehaviour
             button.interactable = interactable;
         }
     }
+}
+
+/// Tags a menu button with the mana it costs, so the mana gate needs no lookup.
+public class ActionCost : MonoBehaviour
+{
+    public int ManaCost;
 }
