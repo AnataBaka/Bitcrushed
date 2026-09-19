@@ -519,6 +519,17 @@ public class GameManager : MonoBehaviour
 
     public static void SpendStatPoint(StatType stat) => Conn?.Reducers.SpendStatPoint(stat);
 
+    public static void Cheat()
+    {
+        if (!IsConnected())
+        {
+            Debug.LogWarning("Cheat ignored: not connected yet.");
+            return;
+        }
+
+        Conn.Reducers.Cheat();
+    }
+
     public static void Disconnect()
     {
         if (Conn == null)

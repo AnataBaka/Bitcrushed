@@ -1,7 +1,11 @@
 using System.Collections;
+using System.Text;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -16,6 +20,7 @@ public class EscapeMenuView : MonoBehaviour, IPointerClickHandler
     RectTransform _panel;
     StatPopupView _popup;
     bool _leaving;
+    readonly StringBuilder _typed = new StringBuilder();
 
     public bool IsOpen => gameObject.activeSelf;
 
@@ -169,9 +174,66 @@ public class EscapeMenuView : MonoBehaviour, IPointerClickHandler
 
     void Update()
     {
-        if (IsOpen)
+        if (!IsOpen)
         {
-            transform.SetAsLastSibling();
+            _typed.Clear();
+            return;
         }
+
+        transform.SetAsLastSibling();
+        PollCheatTyping();
+    }
+
+    void PollCheatTyping()
+    {
+        var letter = TypedLetterThisFrame();
+        if (letter == '\0')
+        {
+            return;
+        }
+
+        _typed.Append(letter);
+        if (_typed.Length > 16)
+        {
+            _typed.Remove(0, _typed.Length - 16);
+        }
+
+        if (_typed.ToString().EndsWith("cheat"))
+        {
+            _typed.Clear();
+            GameManager.Cheat();
+        }
+    }
+
+    static char TypedLetterThisFrame()
+    {
+#if ENABLE_INPUT_SYSTEM
+        var keyboard = Keyboard.current;
+        if (keyboard == null)
+        {
+            return '\0';
+        }
+
+        for (var i = 0; i < 26; i++)
+        {
+            var key = (Key)((int)Key.A + i);
+            if (keyboard[key].wasPressedThisFrame)
+            {
+                return (char)('a' + i);
+            }
+        }
+
+        return '\0';
+#else
+        for (var i = 0; i < 26; i++)
+        {
+            if (Input.GetKeyDown(KeyCode.A + i))
+            {
+                return (char)('a' + i);
+            }
+        }
+
+        return '\0';
+#endif
     }
 }

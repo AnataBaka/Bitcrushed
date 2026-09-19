@@ -17,6 +17,7 @@ public static partial class Module
 
     public const int BagCapacity = 12;
     public const int FocusManaGain = 20;
+    public const uint CheatCharacterLevel = 999;
     public const int ManaRegenPerTurn = 2;
 
     /// Dexterity doubles as the dodge chance, capped so nobody is untouchable.

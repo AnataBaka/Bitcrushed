@@ -639,6 +639,7 @@ namespace SpacetimeDB.Types
             {
                 Reducer.Attack args => Reducers.InvokeAttack(eventContext, args),
                 Reducer.CastSkill args => Reducers.InvokeCastSkill(eventContext, args),
+                Reducer.Cheat args => Reducers.InvokeCheat(eventContext, args),
                 Reducer.EquipItem args => Reducers.InvokeEquipItem(eventContext, args),
                 Reducer.Focus args => Reducers.InvokeFocus(eventContext, args),
                 Reducer.JoinGame args => Reducers.InvokeJoinGame(eventContext, args),

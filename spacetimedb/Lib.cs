@@ -1929,6 +1929,37 @@ public static partial class Module
         RecomputeStats(ctx, player.Identity);
     }
 
+    /// Debug: set the caller's character to level 999 and unlock every class skill.
+    [SpacetimeDB.Reducer]
+    public static void Cheat(ReducerContext ctx)
+    {
+        var player = RequirePlayer(ctx);
+        if (ctx.Db.Entity.EntityId.Find(player.EntityId) is not Entity entity)
+        {
+            throw new Exception("Your character is missing.");
+        }
+
+        ctx.Db.Player.Identity.Update(
+            player with
+            {
+                CharacterLevel = CheatCharacterLevel,
+                Xp = 0,
+            }
+        );
+
+        GrantUnlockedSkills(ctx, player.EntityId, player.Class, CheatCharacterLevel);
+        RecomputeStats(ctx, ctx.Sender);
+
+        var fresh = ctx.Db.Entity.EntityId.Find(player.EntityId) ?? entity;
+        AddLog(
+            ctx,
+            $"{fresh.Name} cheats to level {CheatCharacterLevel}. All skills unlocked.",
+            LogKind.Focus,
+            fresh.EntityId,
+            fresh.EntityId
+        );
+    }
+
     /// Spend one unspent character-level point on a combat stat. Health and
     /// Mana are not spendable; only Strength, Speed, Intelligence, and Dexterity.
     [SpacetimeDB.Reducer]
