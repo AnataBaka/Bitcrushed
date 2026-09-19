@@ -264,10 +264,12 @@ public static class PlaceholderArt
     {
         switch (className)
         {
+            case "Knight":
             case "Warrior":
                 return new Color(0.80f, 0.29f, 0.25f);
             case "Mage":
                 return new Color(0.36f, 0.44f, 0.86f);
+            case "Ninja":
             case "Rogue":
                 return new Color(0.28f, 0.66f, 0.40f);
             case "Archer":
@@ -281,10 +283,12 @@ public static class PlaceholderArt
     {
         switch (className)
         {
+            case "Knight":
             case "Warrior":
                 return ShapeKind.Rect;
             case "Mage":
                 return ShapeKind.Diamond;
+            case "Ninja":
             case "Rogue":
                 return ShapeKind.Triangle;
             case "Archer":

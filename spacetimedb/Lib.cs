@@ -125,6 +125,7 @@ public static partial class Module
                 GoFirstNextRound = false,
                 Alive = true,
                 BasicAttackName = BasicAttackName(playerClass),
+                MagicBulletStage = 1,
             }
         );
 
@@ -380,11 +381,12 @@ public static partial class Module
 
         var target = RequireEnemyOf(ctx, attacker, targetEntityId);
 
-        ResolveHit(ctx, attacker, target, attacker.BasicAttackName, 0);
+        ResolveHit(ctx, attacker, target, attacker.BasicAttackName, 0, isSkill: false);
+        MarkUsedAttack(ctx, attacker.EntityId);
         AdvanceTurn(ctx);
     }
 
-    /// Spends mana. Hits SkillDef.TargetCount enemies, or buffs when TargetCount is 0.
+    /// Spends mana and resolves the named class skill.
     [SpacetimeDB.Reducer]
     public static void CastSkill(ReducerContext ctx, uint skillDefId, ulong targetEntityId)
     {
@@ -400,39 +402,28 @@ public static partial class Module
             throw new Exception("Your character has not learned that skill.");
         }
 
-        if (caster.Mana < skill.ManaCost)
+        ValidatePlayerSkill(ctx, caster, skill, targetEntityId);
+
+        var manaCost = EffectiveSkillManaCost(skill.Name, skill.ManaCost, caster);
+        if (caster.Mana < manaCost)
         {
             AddLog(
                 ctx,
-                $"Not enough mana. {caster.Name} needs {skill.ManaCost} mana for {skill.Name}."
+                $"Not enough mana. {caster.Name} needs {manaCost} mana for {skill.Name}."
             );
             return;
         }
 
-        // A pure buff still needs an enemy to exist, but never needs a target.
-        if (skill.TargetCount > 0)
+        caster = SpendMana(ctx, caster, manaCost);
+        ExecutePlayerSkill(ctx, caster, skill, targetEntityId);
+        if (IsDamagingSkill(skill.Name))
         {
-            RequireEnemyOf(ctx, caster, targetEntityId);
+            MarkUsedAttack(ctx, caster.EntityId);
         }
 
-        caster = SpendMana(ctx, caster, skill.ManaCost);
-        ApplySkillSelfEffects(ctx, ref caster, skill);
-
-        if (skill.TargetCount == 0 || skill.BaseDamage == 0)
+        if (EndBattleIfOver(ctx))
         {
-            AdvanceTurn(ctx);
             return;
-        }
-
-        var targets = SelectTargets(ctx, caster, targetEntityId, skill.TargetCount);
-        foreach (var target in targets)
-        {
-            // Earlier hits in the volley can finish a target off.
-            if (ctx.Db.Entity.EntityId.Find(target.EntityId) is Entity fresh && fresh.Alive)
-            {
-                var current = ctx.Db.Entity.EntityId.Find(caster.EntityId) ?? caster;
-                ResolveHit(ctx, current, fresh, skill.Name, skill.BaseDamage);
-            }
         }
 
         AdvanceTurn(ctx);
@@ -528,6 +519,11 @@ public static partial class Module
         if (def.Kind == ItemKind.Weapon && def.WeaponType != ClassWeapon(player.Class))
         {
             throw new Exception($"A {ClassName(player.Class)} cannot wield a {def.Name}.");
+        }
+
+        if (def.Kind == ItemKind.Armor && !CanWearArmor(player.Class))
+        {
+            throw new Exception($"A {ClassName(player.Class)} cannot wear armor.");
         }
 
         var slot = SlotFor(def);
@@ -646,6 +642,11 @@ public static partial class Module
             manaBonus += def.MaxManaBonus;
         }
 
+        if (entity.FinishTheJobStance)
+        {
+            atk += 6;
+        }
+
         var maxHp = ClassMaxHp(player.Class) + hpBonus;
         var maxMana = ClassMaxMana(player.Class) + manaBonus + intelligence;
 
@@ -703,13 +704,13 @@ public static partial class Module
         if (skill is SkillDef chosen)
         {
             enemy = SpendMana(ctx, enemy, chosen.ManaCost);
-            var picked = ChooseEnemyTargets(ctx, targets, chosen.TargetCount);
+            var picked = RedirectedOrChosenTargets(ctx, enemy, targets, chosen.TargetCount);
             foreach (var target in picked)
             {
                 if (ctx.Db.Entity.EntityId.Find(target.EntityId) is Entity fresh && fresh.Alive)
                 {
                     var current = ctx.Db.Entity.EntityId.Find(enemy.EntityId) ?? enemy;
-                    ResolveHit(ctx, current, fresh, chosen.Name, chosen.BaseDamage);
+                    ResolveHit(ctx, current, fresh, chosen.Name, chosen.BaseDamage, isSkill: true);
                 }
             }
         }
@@ -743,6 +744,34 @@ public static partial class Module
 
         affordable.Sort((a, b) => a.Id.CompareTo(b.Id));
         return affordable[ctx.Rng.Next(0, affordable.Count)];
+    }
+
+    static List<Entity> RedirectedOrChosenTargets(
+        ReducerContext ctx,
+        Entity attacker,
+        List<Entity> living,
+        int count
+    )
+    {
+        var session = RequireSession(ctx);
+        if (
+            session.AttackRedirectEntityId != 0
+            && ctx.Db.Entity.EntityId.Find(session.AttackRedirectEntityId) is Entity redirected
+            && redirected.Alive
+            && redirected.Faction != attacker.Faction
+        )
+        {
+            var hits = Math.Max(1, count);
+            var forced = new List<Entity>(hits);
+            for (var i = 0; i < hits; i++)
+            {
+                forced.Add(redirected);
+            }
+
+            return forced;
+        }
+
+        return ChooseEnemyTargets(ctx, living, count);
     }
 
     static List<Entity> ChooseEnemyTargets(ReducerContext ctx, List<Entity> living, int count)
@@ -1031,14 +1060,54 @@ public static partial class Module
 
     static void PreparePlayersForStage(ReducerContext ctx)
     {
+        var session = RequireSession(ctx);
+        ctx.Db.GameSession.Id.Update(session with { AttackRedirectEntityId = 0 });
+
         foreach (var entity in ctx.Db.Entity.Iter().ToList())
         {
-            if (entity.Faction != Team.Players || !entity.Alive)
+            if (entity.Faction != Team.Players)
             {
                 continue;
             }
 
-            ctx.Db.Entity.EntityId.Update(entity with { Mana = entity.MaxMana });
+            var reset = entity with
+            {
+                Mana = entity.Alive ? entity.MaxMana : entity.Mana,
+                StrengthBuff = 0,
+                NextTurnStrengthBonus = 0,
+                GoFirstNextRound = false,
+                BurnStack = 0,
+                BurnCount = 0,
+                WeakStacks = 0,
+                NextTurnWeak = 0,
+                FragileStacks = 0,
+                NextTurnFragile = 0,
+                CombatSpeed = 0,
+                NextTurnSpeedSet = 0,
+                NextTurnSpeedDelta = 0,
+                DodgeBonusPercent = 0,
+                NextTurnDodgeBonus = 0,
+                EvadeThreshold = 0,
+                EvadeFragileOnDodge = 0,
+                EvadeStrengthOnDodge = 0,
+                UsedAttackThisTurn = false,
+                UsedAttackLastTurn = false,
+                NextAttackBonus = 0,
+                MagicBulletStage = 1,
+                SpearDiscount = 0,
+                VerticalCutDiscount = 0,
+                FinishTheJobUsed = false,
+                FinishTheJobStance = false,
+                FinishTheJobPower = 0,
+                SkipNextTurn = false,
+                GrandUndertakingPending = false,
+            };
+            ctx.Db.Entity.EntityId.Update(reset);
+        }
+
+        foreach (var player in ctx.Db.Player.Iter())
+        {
+            RecomputeStats(ctx, player.Identity);
         }
     }
 
@@ -1055,13 +1124,13 @@ public static partial class Module
         for (uint slot = 0; slot < (uint)count; slot++)
         {
             var arch = pool[ctx.Rng.Next(0, pool.Length)];
-            var maxHp = ScaleByBps(ApplyStageScale(arch.MaxHp, stage), vitalityBps);
-            var maxMana = ScaleByBps(ApplyStageScale(arch.MaxMana, stage), vitalityBps);
-            var strength = ScaleByBps(ApplyStageScale(arch.Strength, stage), powerBps);
-            var dexterity = ScaleByBps(ApplyStageScale(arch.Dexterity, stage), powerBps);
-            var intelligence = ScaleByBps(ApplyStageScale(arch.Intelligence, stage), powerBps);
-            var speed = ScaleByBps(ApplyStageScale(arch.Speed, stage), powerBps);
-            var atk = ScaleByBps(ApplyStageScale(arch.Atk, stage), powerBps);
+            var maxHp = Math.Max(1, ScaleByBps(ApplyStageScale(arch.MaxHp, stage), vitalityBps));
+            var maxMana = Math.Max(1, ScaleByBps(ApplyStageScale(arch.MaxMana, stage), vitalityBps));
+            var strength = Math.Max(1, ScaleByBps(ApplyStageScale(arch.Strength, stage), powerBps));
+            var dexterity = Math.Max(1, ScaleByBps(ApplyStageScale(arch.Dexterity, stage), powerBps));
+            var intelligence = Math.Max(1, ScaleByBps(ApplyStageScale(arch.Intelligence, stage), powerBps));
+            var speed = Math.Max(1, ScaleByBps(ApplyStageScale(arch.Speed, stage), powerBps));
+            var atk = Math.Max(1, ScaleByBps(ApplyStageScale(arch.Atk, stage), powerBps));
             var defense = ScaleByBps(ApplyStageScale(Math.Max(0, arch.Defense), stage), powerBps);
             if (arch.Defense == 0)
             {
@@ -1095,6 +1164,7 @@ public static partial class Module
                     GoFirstNextRound = false,
                     Alive = true,
                     BasicAttackName = arch.BasicAttackName,
+                    MagicBulletStage = 1,
                 }
             );
 
@@ -1102,7 +1172,7 @@ public static partial class Module
         }
     }
 
-    /// Fastest combatant first. Rush skills jump the queue for exactly one round.
+    /// Fastest combatant first. Rush / Grand Undertaking jump the queue for one round.
     static void BuildTurnOrder(ReducerContext ctx)
     {
         foreach (var entry in ctx.Db.TurnOrder.Iter().ToList())
@@ -1110,11 +1180,20 @@ public static partial class Module
             ctx.Db.TurnOrder.Idx.Delete(entry.Idx);
         }
 
+        ResolvePendingGrandUndertakings(ctx);
+        if (EndBattleIfOver(ctx))
+        {
+            return;
+        }
+
+        RefreshRoundStatuses(ctx);
+
         var ordered = ctx
             .Db.Entity.Iter()
             .Where(e => e.Alive)
             .OrderByDescending(e => e.GoFirstNextRound)
-            .ThenByDescending(e => e.Speed)
+            .ThenByDescending(e => EffectiveSpeed(e))
+            .ThenBy(e => e.Faction == Team.Players ? ClassTurnPriority(ClassOf(ctx, e)) : 2)
             .ThenBy(e => e.Faction == Team.Players ? 0 : 1)
             .ThenBy(e => e.Slot)
             .ToList();
@@ -1126,25 +1205,76 @@ public static partial class Module
                 {
                     Idx = (uint)i,
                     EntityId = ordered[i].EntityId,
-                    Speed = ordered[i].Speed,
+                    Speed = EffectiveSpeed(ordered[i]),
                     HasActed = false,
-                    IsRush = ordered[i].GoFirstNextRound,
+                    IsRush = ordered[i].GoFirstNextRound || ordered[i].NextTurnSpeedSet >= RushNextTurnSpeed,
                 }
             );
         }
 
-        // The rush flag is spent by being placed, so it never carries over.
         foreach (var entity in ordered)
         {
-            if (entity.GoFirstNextRound)
+            if (
+                entity.GoFirstNextRound
+                || entity.NextTurnSpeedSet != 0
+                || entity.NextTurnSpeedDelta != 0
+            )
             {
-                ctx.Db.Entity.EntityId.Update(entity with { GoFirstNextRound = false });
+                ctx.Db.Entity.EntityId.Update(
+                    entity with
+                    {
+                        GoFirstNextRound = false,
+                        NextTurnSpeedSet = 0,
+                        NextTurnSpeedDelta = 0,
+                    }
+                );
             }
+        }
+    }
+
+    static void RefreshRoundStatuses(ReducerContext ctx)
+    {
+        foreach (var entity in ctx.Db.Entity.Iter().ToList())
+        {
+            var speed = entity.NextTurnSpeedSet != 0
+                ? entity.NextTurnSpeedSet
+                : entity.Speed + entity.NextTurnSpeedDelta;
+            ctx.Db.Entity.EntityId.Update(
+                entity with
+                {
+                    CombatSpeed = speed,
+                    FragileStacks = entity.NextTurnFragile,
+                    NextTurnFragile = 0,
+                    WeakStacks = entity.NextTurnWeak,
+                    NextTurnWeak = 0,
+                    DodgeBonusPercent = entity.NextTurnDodgeBonus,
+                    NextTurnDodgeBonus = 0,
+                }
+            );
+        }
+    }
+
+    static void ResolvePendingGrandUndertakings(ReducerContext ctx)
+    {
+        foreach (var entity in ctx.Db.Entity.Iter().ToList())
+        {
+            if (!entity.GrandUndertakingPending)
+            {
+                continue;
+            }
+
+            ResolveGrandUndertaking(ctx, entity);
         }
     }
 
     static void AdvanceTurn(ReducerContext ctx)
     {
+        var session = RequireSession(ctx);
+        if (session.ActiveEntityId != 0)
+        {
+            TickBurn(ctx, session.ActiveEntityId);
+        }
+
         MarkActed(ctx);
 
         if (EndBattleIfOver(ctx))
@@ -1152,7 +1282,7 @@ public static partial class Module
             return;
         }
 
-        var session = RequireSession(ctx);
+        session = RequireSession(ctx);
         FindNextActor(ctx, session.Round, session.TurnIndex + 1);
     }
 
@@ -1204,12 +1334,18 @@ public static partial class Module
 
     static void SetActive(ReducerContext ctx, uint round, uint idx, Entity entity)
     {
-        // Mana trickles back and one-turn buffs land right before the turn starts.
+        var stancePower = entity.FinishTheJobStance ? entity.FinishTheJobPower + 8 : entity.FinishTheJobPower;
         var refreshed = entity with
         {
             Mana = Math.Min(entity.MaxMana, entity.Mana + ManaRegenPerTurn),
             StrengthBuff = entity.NextTurnStrengthBonus,
             NextTurnStrengthBonus = 0,
+            UsedAttackLastTurn = entity.UsedAttackThisTurn,
+            UsedAttackThisTurn = false,
+            EvadeThreshold = 0,
+            EvadeFragileOnDodge = 0,
+            EvadeStrengthOnDodge = 0,
+            FinishTheJobPower = stancePower,
         };
         ctx.Db.Entity.EntityId.Update(refreshed);
 
@@ -1222,6 +1358,20 @@ public static partial class Module
                 ActiveEntityId = refreshed.EntityId,
             }
         );
+
+        if (refreshed.SkipNextTurn)
+        {
+            ctx.Db.Entity.EntityId.Update(refreshed with { SkipNextTurn = false });
+            AddLog(
+                ctx,
+                $"Round {round} - {refreshed.Name} cannot act.",
+                LogKind.TurnStart,
+                refreshed.EntityId,
+                refreshed.EntityId
+            );
+            AdvanceTurn(ctx);
+            return;
+        }
 
         AddLog(
             ctx,
@@ -1272,6 +1422,7 @@ public static partial class Module
                     Phase = BattlePhase.Defeat,
                     ActiveEntityId = 0,
                     UpcomingRestStop = false,
+                    AttackRedirectEntityId = 0,
                 }
             );
             AddLog(ctx, "The whole party has fallen. Defeat.");
@@ -1281,40 +1432,100 @@ public static partial class Module
         return false;
     }
 
+    readonly struct HitResult
+    {
+        public HitResult(bool connected, int damage, bool killed)
+        {
+            Connected = connected;
+            Damage = damage;
+            Killed = killed;
+        }
+
+        public bool Connected { get; }
+        public int Damage { get; }
+        public bool Killed { get; }
+    }
+
     /// The one place damage is computed, for players and enemies alike.
-    static void ResolveHit(
+    static HitResult ResolveHit(
         ReducerContext ctx,
         Entity attacker,
         Entity target,
         string actionName,
-        int skillBaseDamage
+        int skillBaseDamage,
+        bool isSkill = false,
+        bool bludgeonFragile = false
     )
     {
+        attacker = ctx.Db.Entity.EntityId.Find(attacker.EntityId) ?? attacker;
+        target = ctx.Db.Entity.EntityId.Find(target.EntityId) ?? target;
+        if (!target.Alive)
+        {
+            return default;
+        }
+
         var attackerClass = ClassOf(ctx, attacker);
-        var characterDamage =
-            skillBaseDamage
-            + ClassDamageStat(
-                attackerClass,
-                attacker.Dexterity,
-                attacker.Intelligence,
-                attacker.Speed
-            );
+        var power = skillBaseDamage + attacker.StrengthBuff + attacker.NextAttackBonus;
+        if (isSkill && attackerClass == PlayerClass.Ninja)
+        {
+            power += NinjaSpeedPowerBonus(EffectiveSpeed(attacker), EffectiveSpeed(target));
+            if (attacker.FinishTheJobStance)
+            {
+                power += 2 + attacker.FinishTheJobPower;
+            }
+        }
 
-        var strength = attacker.Strength + attacker.StrengthBuff;
-        var raw = DealtDamage(characterDamage, strength, attacker.Atk);
+        power += ClassDamageStat(
+            attackerClass,
+            attacker.Dexterity,
+            attacker.Intelligence,
+            attacker.Speed
+        );
 
-        var dodged = ctx.Rng.Next(1, 101) <= DodgeChance(target.Dexterity, target.Faction);
-        var damage = dodged ? 0 : AfterDefense(raw, target.Defense);
+        var raw = DealtDamage(power, attacker.Strength, attacker.Atk);
+        raw = ApplyWeak(raw, attacker.WeakStacks);
+        raw = AfterDefense(raw, target.Defense);
+        if (bludgeonFragile && target.FragileStacks > 0)
+        {
+            raw = ApplyBludgeonFragile(raw);
+        }
+        else
+        {
+            raw = ApplyFragile(raw, target.FragileStacks);
+        }
+
+        if (attacker.NextAttackBonus != 0)
+        {
+            ctx.Db.Entity.EntityId.Update(attacker with { NextAttackBonus = 0 });
+            attacker = ctx.Db.Entity.EntityId.Find(attacker.EntityId) ?? attacker;
+        }
+
+        var targetClass = ClassOf(ctx, target);
+        var dodgeBps = DodgeChanceBps(
+            target.Dexterity,
+            target.Faction,
+            target.DodgeBonusPercent,
+            targetClass == PlayerClass.Archer
+        );
+        var dodged = RollDodge(ctx.Rng, dodgeBps);
+        var evaded = !dodged && target.EvadeThreshold > 0 && raw < target.EvadeThreshold;
+        var connected = !dodged && !evaded;
+        var damage = connected ? raw : 0;
 
         var hp = Math.Max(0, target.Hp - damage);
         var alive = hp > 0;
-        ctx.Db.Entity.EntityId.Update(target with { Hp = hp, Alive = alive });
+        var wasAlive = target.Alive;
+        ctx.Db.Entity.EntityId.Update(
+            target with { Hp = hp, Alive = alive, HasDodged = target.HasDodged || dodged || evaded }
+        );
 
-        if (dodged)
+        if (dodged || evaded)
         {
+            OnSuccessfulDodge(ctx, attacker, target, evaded);
+            var reason = evaded ? "evades" : "dodges";
             AddLog(
                 ctx,
-                $"{attacker.Name} uses {actionName} on {target.Name} but {target.Name} dodges.",
+                $"{attacker.Name} uses {actionName} on {target.Name} but {target.Name} {reason}.",
                 LogKind.Attack,
                 attacker.EntityId,
                 target.EntityId
@@ -1332,58 +1543,137 @@ public static partial class Module
             );
         }
 
-        if (!alive)
+        if (wasAlive && !alive)
         {
-            AddLog(
-                ctx,
-                $"{target.Name} is defeated!",
-                LogKind.Defeat,
-                attacker.EntityId,
-                target.EntityId
-            );
+            HandleDefeat(ctx, attacker, target);
+        }
 
-            if (target.Faction == Team.Enemies)
-            {
-                var session = RequireSession(ctx);
-                GrantKillXp(ctx, session.StageNumber < 1 ? 1u : session.StageNumber);
-            }
+        return new HitResult(connected, damage, wasAlive && !alive);
+    }
+
+    static void OnSuccessfulDodge(ReducerContext ctx, Entity attacker, Entity target, bool evaded)
+    {
+        var freshTarget = ctx.Db.Entity.EntityId.Find(target.EntityId) ?? target;
+        if (freshTarget.EvadeFragileOnDodge > 0)
+        {
+            QueueFragile(ctx, attacker.EntityId, freshTarget.EvadeFragileOnDodge);
+        }
+
+        if (freshTarget.EvadeStrengthOnDodge > 0)
+        {
+            QueueStrength(ctx, freshTarget.EntityId, freshTarget.EvadeStrengthOnDodge);
+        }
+
+        _ = evaded;
+    }
+
+    static void HandleDefeat(ReducerContext ctx, Entity attacker, Entity target)
+    {
+        AddLog(
+            ctx,
+            $"{target.Name} is defeated!",
+            LogKind.Defeat,
+            attacker.EntityId,
+            target.EntityId
+        );
+
+        if (target.Faction == Team.Enemies)
+        {
+            var session = RequireSession(ctx);
+            GrantKillXp(ctx, session.StageNumber < 1 ? 1u : session.StageNumber);
         }
     }
 
-    static void ApplySkillSelfEffects(ReducerContext ctx, ref Entity caster, SkillDef skill)
+    static void ApplyPercentMaxHpDamage(
+        ReducerContext ctx,
+        Entity attacker,
+        Entity target,
+        int maxHpBps,
+        string actionName
+    )
     {
-        if (!skill.AlwaysGoFirst && skill.NextTurnStrengthBonus == 0)
+        target = ctx.Db.Entity.EntityId.Find(target.EntityId) ?? target;
+        if (!target.Alive)
         {
             return;
         }
 
-        var updated = caster with
-        {
-            GoFirstNextRound = caster.GoFirstNextRound || skill.AlwaysGoFirst,
-            NextTurnStrengthBonus = caster.NextTurnStrengthBonus + skill.NextTurnStrengthBonus,
-        };
-        ctx.Db.Entity.EntityId.Update(updated);
-        caster = updated;
+        var damage = ApplyFragile(ScaleByBps(target.MaxHp, maxHpBps), target.FragileStacks);
+        var hp = Math.Max(0, target.Hp - damage);
+        var alive = hp > 0;
+        ctx.Db.Entity.EntityId.Update(target with { Hp = hp, Alive = alive });
+        AddLog(
+            ctx,
+            $"{actionName} hits {target.Name} for {damage} damage.",
+            LogKind.Attack,
+            attacker.EntityId,
+            target.EntityId,
+            damage
+        );
 
-        if (skill.NextTurnStrengthBonus > 0)
+        if (!alive)
         {
-            AddLog(
-                ctx,
-                $"{caster.Name} uses {skill.Name} and gains +{skill.NextTurnStrengthBonus} strength next turn.",
-                LogKind.Focus,
-                caster.EntityId,
-                caster.EntityId
-            );
+            HandleDefeat(ctx, attacker, target);
         }
-        else
+    }
+
+    static void TickBurn(ReducerContext ctx, ulong entityId)
+    {
+        if (ctx.Db.Entity.EntityId.Find(entityId) is not Entity entity || !entity.Alive)
         {
-            AddLog(
-                ctx,
-                $"{caster.Name} uses {skill.Name} and will strike first next round.",
-                LogKind.Focus,
-                caster.EntityId,
-                caster.EntityId
-            );
+            return;
+        }
+
+        if (entity.BurnStack <= 0 || entity.BurnCount <= 0)
+        {
+            return;
+        }
+
+        var damage = ApplyFragile(entity.BurnStack, entity.FragileStacks);
+        var hp = Math.Max(0, entity.Hp - damage);
+        var alive = hp > 0;
+        var count = entity.BurnCount - 1;
+        ctx.Db.Entity.EntityId.Update(
+            entity with
+            {
+                Hp = hp,
+                Alive = alive,
+                BurnCount = count,
+                BurnStack = count > 0 ? entity.BurnStack : 0,
+            }
+        );
+        AddLog(
+            ctx,
+            $"{entity.Name} takes {damage} burn damage.",
+            LogKind.Attack,
+            entity.EntityId,
+            entity.EntityId,
+            damage
+        );
+
+        if (!alive)
+        {
+            HandleDefeat(ctx, entity, entity);
+        }
+    }
+
+    static void KillEntity(ReducerContext ctx, Entity entity, string message)
+    {
+        entity = ctx.Db.Entity.EntityId.Find(entity.EntityId) ?? entity;
+        if (!entity.Alive)
+        {
+            return;
+        }
+
+        ctx.Db.Entity.EntityId.Update(entity with { Hp = 0, Alive = false });
+        AddLog(ctx, message, LogKind.Defeat, entity.EntityId, entity.EntityId);
+    }
+
+    static void MarkUsedAttack(ReducerContext ctx, ulong entityId)
+    {
+        if (ctx.Db.Entity.EntityId.Find(entityId) is Entity entity)
+        {
+            ctx.Db.Entity.EntityId.Update(entity with { UsedAttackThisTurn = true });
         }
     }
 
@@ -1463,6 +1753,8 @@ public static partial class Module
             AddLog(ctx, $"{name} reached level {newLevel}!");
             Log.Info($"{name} reached level {newLevel}.");
         }
+
+        GrantUnlockedSkills(ctx, player.EntityId, player.Class, level);
     }
 
     /// Spend one unspent character-level point on a combat stat. Health and
@@ -1527,48 +1819,11 @@ public static partial class Module
         return updated;
     }
 
-    /// The preferred target first, then the rest of the living enemy line.
-    static List<Entity> SelectTargets(
-        ReducerContext ctx,
-        Entity attacker,
-        ulong preferredId,
-        int count
-    )
-    {
-        var enemyTeam = attacker.Faction == Team.Players ? Team.Enemies : Team.Players;
-        var living = LivingMembers(ctx, enemyTeam);
-        var selected = new List<Entity>();
-
-        foreach (var candidate in living)
-        {
-            if (candidate.EntityId == preferredId)
-            {
-                selected.Add(candidate);
-                break;
-            }
-        }
-
-        foreach (var candidate in living)
-        {
-            if (selected.Count >= count)
-            {
-                break;
-            }
-
-            if (candidate.EntityId != preferredId)
-            {
-                selected.Add(candidate);
-            }
-        }
-
-        return selected;
-    }
-
     static PlayerClass ClassOf(ReducerContext ctx, Entity entity)
     {
         if (entity.Faction != Team.Players)
         {
-            return PlayerClass.Warrior;
+            return PlayerClass.Knight;
         }
 
         foreach (var player in ctx.Db.Player.Iter())
@@ -1579,7 +1834,7 @@ public static partial class Module
             }
         }
 
-        return PlayerClass.Warrior;
+        return PlayerClass.Knight;
     }
 
     static bool KnowsSkill(ReducerContext ctx, ulong entityId, uint skillDefId)

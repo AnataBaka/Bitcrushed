@@ -63,6 +63,33 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Entity, bool> GoFirstNextRound { get; }
         public global::SpacetimeDB.Col<Entity, bool> Alive { get; }
         public global::SpacetimeDB.Col<Entity, string> BasicAttackName { get; }
+        public global::SpacetimeDB.Col<Entity, int> BurnStack { get; }
+        public global::SpacetimeDB.Col<Entity, int> BurnCount { get; }
+        public global::SpacetimeDB.Col<Entity, int> WeakStacks { get; }
+        public global::SpacetimeDB.Col<Entity, int> NextTurnWeak { get; }
+        public global::SpacetimeDB.Col<Entity, int> FragileStacks { get; }
+        public global::SpacetimeDB.Col<Entity, int> NextTurnFragile { get; }
+        public global::SpacetimeDB.Col<Entity, int> CombatSpeed { get; }
+        public global::SpacetimeDB.Col<Entity, int> NextTurnSpeedSet { get; }
+        public global::SpacetimeDB.Col<Entity, int> NextTurnSpeedDelta { get; }
+        public global::SpacetimeDB.Col<Entity, int> DodgeBonusPercent { get; }
+        public global::SpacetimeDB.Col<Entity, int> NextTurnDodgeBonus { get; }
+        public global::SpacetimeDB.Col<Entity, int> EvadeThreshold { get; }
+        public global::SpacetimeDB.Col<Entity, int> EvadeFragileOnDodge { get; }
+        public global::SpacetimeDB.Col<Entity, int> EvadeStrengthOnDodge { get; }
+        public global::SpacetimeDB.Col<Entity, bool> HasDodged { get; }
+        public global::SpacetimeDB.Col<Entity, bool> UsedAttackThisTurn { get; }
+        public global::SpacetimeDB.Col<Entity, bool> UsedAttackLastTurn { get; }
+        public global::SpacetimeDB.Col<Entity, int> NextAttackBonus { get; }
+        public global::SpacetimeDB.Col<Entity, int> MagicBulletStage { get; }
+        public global::SpacetimeDB.Col<Entity, int> SpearDiscount { get; }
+        public global::SpacetimeDB.Col<Entity, int> VerticalCutDiscount { get; }
+        public global::SpacetimeDB.Col<Entity, bool> FinishTheJobUsed { get; }
+        public global::SpacetimeDB.Col<Entity, bool> FinishTheJobStance { get; }
+        public global::SpacetimeDB.Col<Entity, int> FinishTheJobPower { get; }
+        public global::SpacetimeDB.Col<Entity, bool> NecromancyUsed { get; }
+        public global::SpacetimeDB.Col<Entity, bool> SkipNextTurn { get; }
+        public global::SpacetimeDB.Col<Entity, bool> GrandUndertakingPending { get; }
 
         public EntityCols(string tableName)
         {
@@ -90,6 +117,33 @@ namespace SpacetimeDB.Types
             GoFirstNextRound = new global::SpacetimeDB.Col<Entity, bool>(tableName, "go_first_next_round");
             Alive = new global::SpacetimeDB.Col<Entity, bool>(tableName, "alive");
             BasicAttackName = new global::SpacetimeDB.Col<Entity, string>(tableName, "basic_attack_name");
+            BurnStack = new global::SpacetimeDB.Col<Entity, int>(tableName, "burn_stack");
+            BurnCount = new global::SpacetimeDB.Col<Entity, int>(tableName, "burn_count");
+            WeakStacks = new global::SpacetimeDB.Col<Entity, int>(tableName, "weak_stacks");
+            NextTurnWeak = new global::SpacetimeDB.Col<Entity, int>(tableName, "next_turn_weak");
+            FragileStacks = new global::SpacetimeDB.Col<Entity, int>(tableName, "fragile_stacks");
+            NextTurnFragile = new global::SpacetimeDB.Col<Entity, int>(tableName, "next_turn_fragile");
+            CombatSpeed = new global::SpacetimeDB.Col<Entity, int>(tableName, "combat_speed");
+            NextTurnSpeedSet = new global::SpacetimeDB.Col<Entity, int>(tableName, "next_turn_speed_set");
+            NextTurnSpeedDelta = new global::SpacetimeDB.Col<Entity, int>(tableName, "next_turn_speed_delta");
+            DodgeBonusPercent = new global::SpacetimeDB.Col<Entity, int>(tableName, "dodge_bonus_percent");
+            NextTurnDodgeBonus = new global::SpacetimeDB.Col<Entity, int>(tableName, "next_turn_dodge_bonus");
+            EvadeThreshold = new global::SpacetimeDB.Col<Entity, int>(tableName, "evade_threshold");
+            EvadeFragileOnDodge = new global::SpacetimeDB.Col<Entity, int>(tableName, "evade_fragile_on_dodge");
+            EvadeStrengthOnDodge = new global::SpacetimeDB.Col<Entity, int>(tableName, "evade_strength_on_dodge");
+            HasDodged = new global::SpacetimeDB.Col<Entity, bool>(tableName, "has_dodged");
+            UsedAttackThisTurn = new global::SpacetimeDB.Col<Entity, bool>(tableName, "used_attack_this_turn");
+            UsedAttackLastTurn = new global::SpacetimeDB.Col<Entity, bool>(tableName, "used_attack_last_turn");
+            NextAttackBonus = new global::SpacetimeDB.Col<Entity, int>(tableName, "next_attack_bonus");
+            MagicBulletStage = new global::SpacetimeDB.Col<Entity, int>(tableName, "magic_bullet_stage");
+            SpearDiscount = new global::SpacetimeDB.Col<Entity, int>(tableName, "spear_discount");
+            VerticalCutDiscount = new global::SpacetimeDB.Col<Entity, int>(tableName, "vertical_cut_discount");
+            FinishTheJobUsed = new global::SpacetimeDB.Col<Entity, bool>(tableName, "finish_the_job_used");
+            FinishTheJobStance = new global::SpacetimeDB.Col<Entity, bool>(tableName, "finish_the_job_stance");
+            FinishTheJobPower = new global::SpacetimeDB.Col<Entity, int>(tableName, "finish_the_job_power");
+            NecromancyUsed = new global::SpacetimeDB.Col<Entity, bool>(tableName, "necromancy_used");
+            SkipNextTurn = new global::SpacetimeDB.Col<Entity, bool>(tableName, "skip_next_turn");
+            GrandUndertakingPending = new global::SpacetimeDB.Col<Entity, bool>(tableName, "grand_undertaking_pending");
         }
     }
 

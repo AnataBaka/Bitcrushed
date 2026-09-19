@@ -49,6 +49,8 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<SkillDef, bool> AlwaysGoFirst { get; }
         public global::SpacetimeDB.Col<SkillDef, int> NextTurnStrengthBonus { get; }
         public global::SpacetimeDB.Col<SkillDef, DamageType> DamageType { get; }
+        public global::SpacetimeDB.Col<SkillDef, uint> LevelRequired { get; }
+        public global::SpacetimeDB.Col<SkillDef, int> HitCount { get; }
 
         public SkillDefCols(string tableName)
         {
@@ -62,6 +64,8 @@ namespace SpacetimeDB.Types
             AlwaysGoFirst = new global::SpacetimeDB.Col<SkillDef, bool>(tableName, "always_go_first");
             NextTurnStrengthBonus = new global::SpacetimeDB.Col<SkillDef, int>(tableName, "next_turn_strength_bonus");
             DamageType = new global::SpacetimeDB.Col<SkillDef, DamageType>(tableName, "damage_type");
+            LevelRequired = new global::SpacetimeDB.Col<SkillDef, uint>(tableName, "level_required");
+            HitCount = new global::SpacetimeDB.Col<SkillDef, int>(tableName, "hit_count");
         }
     }
 

@@ -7,9 +7,9 @@ public static partial class Module
     [SpacetimeDB.Type]
     public enum PlayerClass
     {
-        Warrior,
+        Knight,
         Mage,
-        Rogue,
+        Ninja,
         Archer,
     }
 
@@ -121,6 +121,9 @@ public static partial class Module
         /// Set during StageTransition: true if the next beat is a rest stop.
         [Default(false)]
         public bool UpcomingRestStop;
+        /// Living combatant that receives every enemy attack this round (Grand Undertaking).
+        [Default(0ul)]
+        public ulong AttackRedirectEntityId;
     }
 
     /// A seat in the party. Owns exactly one Entity row once the player joins.
@@ -182,7 +185,7 @@ public static partial class Module
         public int Atk;
         public int Defense;
 
-        /// Applied for one turn by buff skills such as Enrage.
+        /// Strength status stacks: +1 damage per stack on attacks this turn.
         public int StrengthBuff;
         public int NextTurnStrengthBonus;
         /// Set by "always go first" skills; consumed when the next round is built.
@@ -191,6 +194,71 @@ public static partial class Module
         public bool Alive;
         /// Free fallback action, so an out-of-mana combatant can always act.
         public string BasicAttackName;
+
+        /// Burn: stack is damage per tick, count is turns remaining. Reapplying adds both.
+        [Default(0)]
+        public int BurnStack;
+        [Default(0)]
+        public int BurnCount;
+        /// Weak: 10% less damage dealt per stack while active this round.
+        [Default(0)]
+        public int WeakStacks;
+        [Default(0)]
+        public int NextTurnWeak;
+        /// Fragile: 10% more damage taken per stack while active this round.
+        [Default(0)]
+        public int FragileStacks;
+        [Default(0)]
+        public int NextTurnFragile;
+
+        /// Speed used for this round's turn order and Ninja power comparisons.
+        [Default(0)]
+        public int CombatSpeed;
+        /// Non-zero replaces Speed next round (Rush 99999, Gallant Pride 1).
+        [Default(0)]
+        public int NextTurnSpeedSet;
+        [Default(0)]
+        public int NextTurnSpeedDelta;
+
+        [Default(0)]
+        public int DodgeBonusPercent;
+        [Default(0)]
+        public int NextTurnDodgeBonus;
+        /// Incoming hits below this damage are negated (Archer Evade / Ninja Focus Spirit).
+        [Default(0)]
+        public int EvadeThreshold;
+        [Default(0)]
+        public int EvadeFragileOnDodge;
+        [Default(0)]
+        public int EvadeStrengthOnDodge;
+        [Default(false)]
+        public bool HasDodged;
+
+        [Default(false)]
+        public bool UsedAttackThisTurn;
+        [Default(false)]
+        public bool UsedAttackLastTurn;
+        [Default(0)]
+        public int NextAttackBonus;
+
+        [Default(1)]
+        public int MagicBulletStage;
+        [Default(0)]
+        public int SpearDiscount;
+        [Default(0)]
+        public int VerticalCutDiscount;
+        [Default(false)]
+        public bool FinishTheJobUsed;
+        [Default(false)]
+        public bool FinishTheJobStance;
+        [Default(0)]
+        public int FinishTheJobPower;
+        [Default(false)]
+        public bool NecromancyUsed;
+        [Default(false)]
+        public bool SkipNextTurn;
+        [Default(false)]
+        public bool GrandUndertakingPending;
     }
 
     /// Rebuilt at the start of every round by BuildTurnOrder, fastest first.
@@ -272,6 +340,10 @@ public static partial class Module
         public bool AlwaysGoFirst;
         public int NextTurnStrengthBonus;
         public DamageType DamageType;
+        [Default(1u)]
+        public uint LevelRequired;
+        [Default(1)]
+        public int HitCount;
     }
 
     /// Which skills a combatant can use. Covers players and enemies alike.

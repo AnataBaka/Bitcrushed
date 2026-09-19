@@ -225,7 +225,7 @@ public class ActionMenuView : MonoBehaviour
         }
         else if (myTurn)
         {
-            _status.text = targeting ? "Choose an enemy target" : "Your turn";
+            _status.text = targeting ? "Choose a target" : "Your turn";
         }
         else
         {
@@ -235,7 +235,7 @@ public class ActionMenuView : MonoBehaviour
         var canAct = myTurn && !targeting && !actionsLocked;
         SetPageInteractable(_root, canAct);
 
-        RebuildSkills(me);
+        RebuildSkills(me, session);
         RebuildItems();
 
         foreach (var button in _skillButtons)
@@ -259,10 +259,30 @@ public class ActionMenuView : MonoBehaviour
     }
 
     /// Rebuilds the Attack sub-page: the free swing plus every learned skill.
-    void RebuildSkills(Entity me)
+    void RebuildSkills(Entity me, GameSession session)
     {
         var skills = me == null ? new List<SkillDef>() : GameManager.LocalSkills();
         var signature = new StringBuilder(me == null ? "-" : me.BasicAttackName);
+        signature.Append('|').Append(session == null ? 0 : session.Round);
+        if (me != null)
+        {
+            signature
+                .Append('|')
+                .Append(me.SpearDiscount)
+                .Append(':')
+                .Append(me.VerticalCutDiscount)
+                .Append(':')
+                .Append(me.HasDodged)
+                .Append(':')
+                .Append(me.FinishTheJobUsed)
+                .Append(':')
+                .Append(me.FinishTheJobStance)
+                .Append(':')
+                .Append(me.NecromancyUsed)
+                .Append(':')
+                .Append(me.MagicBulletStage);
+        }
+
         foreach (var skill in skills)
         {
             signature.Append('|').Append(skill.Id).Append(':').Append(skill.Name);
@@ -292,11 +312,8 @@ public class ActionMenuView : MonoBehaviour
         foreach (var skill in skills)
         {
             var id = skill.Id;
-            var cost = skill.ManaCost;
-            var spread = skill.TargetCount > 1 ? $" x{skill.TargetCount}" : "";
-            var caption = skill.TargetCount == 0
-                ? $"{skill.Name}  ({cost} mp, buff)"
-                : $"{skill.Name}{spread}  ({cost} mp)";
+            var cost = GameManager.EffectiveManaCost(skill, me);
+            var caption = GameManager.SkillCaption(skill, me);
 
             var button = UiFactory.TextButton(
                 _skills,
@@ -307,9 +324,9 @@ public class ActionMenuView : MonoBehaviour
             );
             button.onClick.AddListener(() => Select(id));
 
-            // Buffs resolve immediately, so remember the cost for the mana gate.
             var element = button.gameObject.AddComponent<ActionCost>();
             element.ManaCost = cost;
+            element.Ready = GameManager.SkillReadyToCast(skill, me, session);
             _skillButtons.Add(button);
         }
 
@@ -385,7 +402,12 @@ public class ActionMenuView : MonoBehaviour
         }
 
         var cost = button.GetComponent<ActionCost>();
-        return cost == null || me.Mana >= cost.ManaCost;
+        if (cost == null)
+        {
+            return true;
+        }
+
+        return cost.Ready && me.Mana >= cost.ManaCost;
     }
 
     static void ClearPage(RectTransform page, List<Button> tracked)
@@ -414,4 +436,5 @@ public class ActionMenuView : MonoBehaviour
 public class ActionCost : MonoBehaviour
 {
     public int ManaCost;
+    public bool Ready = true;
 }

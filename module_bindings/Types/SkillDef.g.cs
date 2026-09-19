@@ -33,6 +33,10 @@ namespace SpacetimeDB.Types
         public int NextTurnStrengthBonus;
         [DataMember(Name = "damage_type")]
         public DamageType DamageType;
+        [DataMember(Name = "level_required")]
+        public uint LevelRequired;
+        [DataMember(Name = "hit_count")]
+        public int HitCount;
 
         public SkillDef(
             uint Id,
@@ -44,7 +48,9 @@ namespace SpacetimeDB.Types
             int TargetCount,
             bool AlwaysGoFirst,
             int NextTurnStrengthBonus,
-            DamageType DamageType
+            DamageType DamageType,
+            uint LevelRequired,
+            int HitCount
         )
         {
             this.Id = Id;
@@ -57,6 +63,8 @@ namespace SpacetimeDB.Types
             this.AlwaysGoFirst = AlwaysGoFirst;
             this.NextTurnStrengthBonus = NextTurnStrengthBonus;
             this.DamageType = DamageType;
+            this.LevelRequired = LevelRequired;
+            this.HitCount = HitCount;
         }
 
         public SkillDef()

@@ -21,6 +21,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     Text _manaText;
     Text _tagText;
     Text _readyBanner;
+    Text _statusText;
     Button _button;
     RectTransform _manaRow;
 
@@ -93,7 +94,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         footer.anchorMin = new Vector2(0f, 0f);
         footer.anchorMax = new Vector2(1f, 0f);
         footer.pivot = new Vector2(0.5f, 0f);
-        footer.sizeDelta = new Vector2(0f, showMana ? 62f : 42f);
+        footer.sizeDelta = new Vector2(0f, showMana ? 78f : 58f);
         footer.anchoredPosition = Vector2.zero;
 
         view._nameText = UiFactory.Label(
@@ -133,6 +134,20 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
                 out view._manaText
             );
         }
+
+        view._statusText = UiFactory.Label(
+            footer,
+            "Status",
+            "",
+            12,
+            TextAnchor.MiddleCenter,
+            UiFactory.MutedColor
+        );
+        view._statusText.rectTransform.anchorMin = new Vector2(0f, 0f);
+        view._statusText.rectTransform.anchorMax = new Vector2(1f, 0f);
+        view._statusText.rectTransform.pivot = new Vector2(0.5f, 0f);
+        view._statusText.rectTransform.sizeDelta = new Vector2(0f, 16f);
+        view._statusText.rectTransform.anchoredPosition = Vector2.zero;
 
         return view;
     }
@@ -266,7 +281,58 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             _card.color = new Color(0f, 0f, 0f, 0f);
         }
 
-        _button.interactable = entity.Alive;
+        _button.interactable = entity.Alive || targetable;
+
+        if (_statusText != null)
+        {
+            _statusText.text = StatusCaption(entity);
+        }
+    }
+
+    static string StatusCaption(Entity entity)
+    {
+        var parts = new System.Collections.Generic.List<string>();
+        if (entity.StrengthBuff > 0)
+        {
+            parts.Add($"Str {entity.StrengthBuff}");
+        }
+
+        if (entity.BurnStack > 0 && entity.BurnCount > 0)
+        {
+            parts.Add($"Burn {entity.BurnStack}x{entity.BurnCount}");
+        }
+
+        if (entity.FragileStacks > 0)
+        {
+            parts.Add($"Fragile {entity.FragileStacks}");
+        }
+
+        if (entity.WeakStacks > 0)
+        {
+            parts.Add($"Weak {entity.WeakStacks}");
+        }
+
+        if (entity.DodgeBonusPercent > 0)
+        {
+            parts.Add($"Dodge +{entity.DodgeBonusPercent}%");
+        }
+
+        if (entity.EvadeThreshold > 0)
+        {
+            parts.Add($"Evade <{entity.EvadeThreshold}");
+        }
+
+        if (entity.FinishTheJobStance)
+        {
+            parts.Add("Stance");
+        }
+
+        if (!entity.Alive)
+        {
+            parts.Add("Fallen");
+        }
+
+        return string.Join("  ", parts);
     }
 
     /// Driven from Player.Ready during lobby and rest stop.

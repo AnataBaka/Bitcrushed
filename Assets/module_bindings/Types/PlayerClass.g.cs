@@ -10,9 +10,9 @@ namespace SpacetimeDB.Types
     [SpacetimeDB.Type]
     public enum PlayerClass
     {
-        Warrior,
+        Knight,
         Mage,
-        Rogue,
+        Ninja,
         Archer,
     }
 }

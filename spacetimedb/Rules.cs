@@ -20,6 +20,26 @@ public static partial class Module
     public const int MaxDodgePercent = 25;
     /// Enemy dodge is this many times smaller than the shared Dexterity formula.
     public const int EnemyDodgeDivisor = 3;
+    /// Archer passive: 0.5% dodge per Dexterity (50 basis points).
+    public const int ArcherDodgeBpsPerDex = 50;
+    /// Non-archer dodge: 1% per Dexterity, then capped.
+    public const int StandardDodgeBpsPerDex = 100;
+    public const int BpsPerPercent = 100;
+    public const int MaxDodgeBps = 9500;
+    public const int FragileDamageBpsPerStack = 1000;
+    public const int WeakDamageBpsPerStack = 1000;
+    public const int BludgeonFragileBps = 15000;
+    public const int GrandUndertakingEnemyHpBps = 5000;
+    public const int GrandUndertakingAllyHpBps = 1000;
+    public const int NecromancyReviveHpBps = 1500;
+    public const int NinjaSpeedPowerCap = 5;
+    public const int FinishTheJobTurnRequirement = 8;
+    public const int RushNextTurnSpeed = 99999;
+    public const int EvadeDamageThreshold = 20;
+    public const int SpearBaseManaCost = 45;
+    public const int VerticalCutBaseManaCost = 80;
+    public const int SkillManaDiscountPerUse = 15;
+    public const int MagicBulletStageCount = 7;
 
     /// Main stat rolls 3-6, the other three roll 1-3.
     public const int MainStatMin = 3;
@@ -54,9 +74,9 @@ public static partial class Module
     public static string ClassName(PlayerClass playerClass) =>
         playerClass switch
         {
-            PlayerClass.Warrior => "Warrior",
+            PlayerClass.Knight => "Knight",
             PlayerClass.Mage => "Mage",
-            PlayerClass.Rogue => "Rogue",
+            PlayerClass.Ninja => "Ninja",
             PlayerClass.Archer => "Archer",
             _ => "Adventurer",
         };
@@ -64,30 +84,30 @@ public static partial class Module
     public static int ClassMaxHp(PlayerClass playerClass) =>
         playerClass switch
         {
-            PlayerClass.Warrior => 120,
-            PlayerClass.Mage => 70,
-            PlayerClass.Rogue => 85,
-            PlayerClass.Archer => 90,
-            _ => 90,
+            PlayerClass.Knight => 80,
+            PlayerClass.Mage => 40,
+            PlayerClass.Ninja => 20,
+            PlayerClass.Archer => 50,
+            _ => 80,
         };
 
     public static int ClassMaxMana(PlayerClass playerClass) =>
         playerClass switch
         {
-            PlayerClass.Warrior => 30,
-            PlayerClass.Mage => 80,
-            PlayerClass.Rogue => 45,
-            PlayerClass.Archer => 50,
-            _ => 40,
+            PlayerClass.Knight => 100,
+            PlayerClass.Mage => 150,
+            PlayerClass.Ninja => 100,
+            PlayerClass.Archer => 100,
+            _ => 100,
         };
 
     /// The stat a class rolls high in, and the stat that feeds its damage.
     public static StatType MainStat(PlayerClass playerClass) =>
         playerClass switch
         {
-            PlayerClass.Warrior => StatType.Strength,
+            PlayerClass.Knight => StatType.Strength,
             PlayerClass.Mage => StatType.Intelligence,
-            PlayerClass.Rogue => StatType.Speed,
+            PlayerClass.Ninja => StatType.Speed,
             PlayerClass.Archer => StatType.Dexterity,
             _ => StatType.Strength,
         };
@@ -95,9 +115,9 @@ public static partial class Module
     public static WeaponType ClassWeapon(PlayerClass playerClass) =>
         playerClass switch
         {
-            PlayerClass.Warrior => WeaponType.Sword,
+            PlayerClass.Knight => WeaponType.Sword,
             PlayerClass.Mage => WeaponType.Staff,
-            PlayerClass.Rogue => WeaponType.Dagger,
+            PlayerClass.Ninja => WeaponType.Dagger,
             PlayerClass.Archer => WeaponType.Bow,
             _ => WeaponType.None,
         };
@@ -105,9 +125,9 @@ public static partial class Module
     public static string StarterWeaponName(PlayerClass playerClass) =>
         playerClass switch
         {
-            PlayerClass.Warrior => "Iron Sword",
+            PlayerClass.Knight => "Iron Sword",
             PlayerClass.Mage => "Oak Staff",
-            PlayerClass.Rogue => "Twin Daggers",
+            PlayerClass.Ninja => "Twin Daggers",
             PlayerClass.Archer => "Hunting Bow",
             _ => "Iron Sword",
         };
@@ -115,18 +135,105 @@ public static partial class Module
     public static string BasicAttackName(PlayerClass playerClass) =>
         playerClass switch
         {
-            PlayerClass.Warrior => "Sword Swing",
+            PlayerClass.Knight => "Sword Swing",
             PlayerClass.Mage => "Staff Jab",
-            PlayerClass.Rogue => "Quick Cut",
+            PlayerClass.Ninja => "Quick Cut",
             PlayerClass.Archer => "Snap Shot",
             _ => "Strike",
         };
 
+    public static bool CanWearArmor(PlayerClass playerClass) => playerClass != PlayerClass.Ninja;
+
+    /// Knights win speed ties so their High priority actually shows up in the queue.
+    public static int ClassTurnPriority(PlayerClass playerClass) =>
+        playerClass == PlayerClass.Knight ? 0 : 1;
+
     public static string PartyName(uint slot) => PartyNames[slot % (uint)PartyNames.Length];
+
+    public static class SkillNames
+    {
+        public const string Bash = "Bash";
+        public const string Rush = "Rush";
+        public const string Embolden = "Embolden";
+        public const string GallantPride = "Gallant Pride";
+        public const string Cleave = "Cleave";
+        public const string Bludgeon = "Bludgeon";
+        public const string Terrify = "Terrify";
+        public const string TripleSlash = "Triple Slash";
+        public const string Furioso = "Furioso";
+
+        public const string Shoot = "Shoot";
+        public const string Restring = "Restring";
+        public const string Scheme = "Scheme";
+        public const string Evade = "Evade";
+        public const string RainDown = "Rain Down";
+        public const string Snipe = "Snipe";
+        public const string CurvedShot = "Curved Shot";
+        public const string Grandshot = "Grandshot";
+
+        public const string MagicMissile = "Magic Missile";
+        public const string Fireball = "Fireball";
+        public const string Concentrate = "Concentrate";
+        public const string Pray = "Pray";
+        public const string MagicBullet = "Magic Bullet";
+        public const string GrandUndertaking = "Grand Undertaking";
+        public const string Necromancy = "Necromancy";
+
+        public const string Spear = "Spear";
+        public const string VerticalCut = "Vertical Cut";
+        public const string FocusSpirit = "Focus Spirit";
+        public const string FinishTheJob = "Finish the Job";
+        public const string Overthrow = "Overthrow";
+    }
+
+    public readonly struct MagicBulletStageDef
+    {
+        public MagicBulletStageDef(
+            int stage,
+            int damage,
+            int hits,
+            bool allEnemies,
+            int burnStack,
+            int burnCount,
+            int speedDelta,
+            bool killsCaster
+        )
+        {
+            Stage = stage;
+            Damage = damage;
+            Hits = hits;
+            AllEnemies = allEnemies;
+            BurnStack = burnStack;
+            BurnCount = burnCount;
+            SpeedDelta = speedDelta;
+            KillsCaster = killsCaster;
+        }
+
+        public int Stage { get; }
+        public int Damage { get; }
+        public int Hits { get; }
+        public bool AllEnemies { get; }
+        public int BurnStack { get; }
+        public int BurnCount { get; }
+        public int SpeedDelta { get; }
+        public bool KillsCaster { get; }
+    }
+
+    public static MagicBulletStageDef MagicBulletStageDefOf(int stage) =>
+        stage switch
+        {
+            2 => new MagicBulletStageDef(2, 3, 1, true, 1, 3, -1, false),
+            3 => new MagicBulletStageDef(3, 5, 1, true, 3, 2, 0, false),
+            4 => new MagicBulletStageDef(4, 7, 1, true, 3, 2, -1, false),
+            5 => new MagicBulletStageDef(5, 8, 1, true, 4, 2, 0, false),
+            6 => new MagicBulletStageDef(6, 5, 8, false, 10, 2, 0, false),
+            7 => new MagicBulletStageDef(7, 90, 1, true, 0, 0, 0, true),
+            _ => new MagicBulletStageDef(1, 5, 1, false, 2, 2, 0, false),
+        };
 
     // ------------------------------------------------------------------- math
 
-    /// The damage stat a class adds on top of a skill's base. Warrior Strength is
+    /// The damage stat a class adds on top of a skill's base. Knight Strength is
     /// deliberately absent because Strength is already a term in DealtDamage.
     public static int ClassDamageStat(
         PlayerClass playerClass,
@@ -136,12 +243,74 @@ public static partial class Module
     ) =>
         playerClass switch
         {
-            PlayerClass.Warrior => 0,
+            PlayerClass.Knight => 0,
             PlayerClass.Mage => intelligence,
-            PlayerClass.Rogue => speed,
+            PlayerClass.Ninja => speed,
             PlayerClass.Archer => dexterity,
             _ => 0,
         };
+
+    public static int EffectiveSpeed(Entity entity) =>
+        entity.CombatSpeed != 0 ? entity.CombatSpeed : entity.Speed;
+
+    /// Ninja passive: +1 skill base power per Speed above the target, capped at +5.
+    public static int NinjaSpeedPowerBonus(int ninjaSpeed, int targetSpeed) =>
+        Math.Clamp(ninjaSpeed - targetSpeed, 0, NinjaSpeedPowerCap);
+
+    public static int ScaleByBps(int value, int bps) =>
+        Math.Max(0, (int)((long)value * bps / 10000));
+
+    /// Fragile is a final damage-taken multiplier and applies to allies and enemies.
+    public static int ApplyFragile(int damage, int fragileStacks)
+    {
+        if (damage <= 0 || fragileStacks <= 0)
+        {
+            return damage;
+        }
+
+        return Math.Max(0, ScaleByBps(damage, 10000 + (FragileDamageBpsPerStack * fragileStacks)));
+    }
+
+    public static int ApplyWeak(int damage, int weakStacks)
+    {
+        if (damage <= 0 || weakStacks <= 0)
+        {
+            return damage;
+        }
+
+        return Math.Max(0, ScaleByBps(damage, 10000 - (WeakDamageBpsPerStack * weakStacks)));
+    }
+
+    public static int ApplyBludgeonFragile(int damage) =>
+        damage <= 0 ? 0 : ScaleByBps(damage, BludgeonFragileBps);
+
+    public static int MagicBulletStageOf(Entity entity)
+    {
+        if (entity.MagicBulletStage < 1)
+        {
+            return 1;
+        }
+
+        return Math.Min(entity.MagicBulletStage, MagicBulletStageCount);
+    }
+
+    public static int EffectiveSkillManaCost(string skillName, int catalogCost, Entity caster)
+    {
+        if (skillName == SkillNames.Spear)
+        {
+            return Math.Max(0, SpearBaseManaCost - caster.SpearDiscount);
+        }
+
+        if (skillName == SkillNames.VerticalCut)
+        {
+            return Math.Max(0, VerticalCutBaseManaCost - caster.VerticalCutDiscount);
+        }
+
+        return catalogCost;
+    }
+
+    public static int NextDiscountedManaCost(int currentCost) =>
+        Math.Max(0, currentCost - SkillManaDiscountPerUse);
 
     /// Dealt damage = (character damage + strength + attack) + strength / 10.
     /// The trailing term is integer-truncated, so 1 extra point per 10 Strength.
@@ -163,6 +332,31 @@ public static partial class Module
 
         return chance;
     }
+
+    /// Dodge chance in basis points (10000 = 100%). Archer uses 0.5% per DEX.
+    public static int DodgeChanceBps(
+        int dexterity,
+        Team faction,
+        int dodgeBonusPercent,
+        bool archerPassive
+    )
+    {
+        int bps;
+        if (archerPassive)
+        {
+            bps = Math.Max(0, dexterity) * ArcherDodgeBpsPerDex;
+        }
+        else
+        {
+            bps = DodgeChance(dexterity, faction) * BpsPerPercent;
+        }
+
+        bps += Math.Max(0, dodgeBonusPercent) * BpsPerPercent;
+        return Math.Clamp(bps, 0, MaxDodgeBps);
+    }
+
+    public static bool RollDodge(Random rng, int dodgeBps) =>
+        dodgeBps > 0 && rng.Next(1, 10001) <= dodgeBps;
 
     public static int RollInclusive(Random rng, int min, int max) => rng.Next(min, max + 1);
 
@@ -232,9 +426,6 @@ public static partial class Module
             3 => 10800,
             _ => 10000,
         };
-
-    public static int ScaleByBps(int value, int bps) =>
-        Math.Max(1, (int)((long)value * bps / 10000));
 
     public readonly struct EnemyArchetype
     {

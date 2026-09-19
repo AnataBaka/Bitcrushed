@@ -31,6 +31,8 @@ namespace SpacetimeDB.Types
         public uint StageNumber;
         [DataMember(Name = "upcoming_rest_stop")]
         public bool UpcomingRestStop;
+        [DataMember(Name = "attack_redirect_entity_id")]
+        public ulong AttackRedirectEntityId;
 
         public GameSession(
             uint Id,
@@ -41,7 +43,8 @@ namespace SpacetimeDB.Types
             uint TurnIndex,
             ulong ActiveEntityId,
             uint StageNumber,
-            bool UpcomingRestStop
+            bool UpcomingRestStop,
+            ulong AttackRedirectEntityId
         )
         {
             this.Id = Id;
@@ -53,6 +56,7 @@ namespace SpacetimeDB.Types
             this.ActiveEntityId = ActiveEntityId;
             this.StageNumber = StageNumber;
             this.UpcomingRestStop = UpcomingRestStop;
+            this.AttackRedirectEntityId = AttackRedirectEntityId;
         }
 
         public GameSession()

@@ -294,7 +294,7 @@ public class BattleHud : MonoBehaviour
             // Defeated combatants keep an existing card so the killing blow can
             // finish, but a later attack must never spawn a new one. AnimationsPending
             // used to force a recreate, which is what flickered dead entities back in.
-            if (!entity.Alive && !hasView)
+            if (!entity.Alive && !hasView && entity.Faction == Team.Enemies)
             {
                 continue;
             }
@@ -313,8 +313,17 @@ public class BattleHud : MonoBehaviour
             var index = (int)Mathf.Min(entity.Slot, slots.Length - 1);
             view.SetPosition(slots[index]);
 
-            var targetable = _targeting && myTurn && entity.Faction == Team.Enemies && entity.Alive;
             var isLocal = me != null && me.EntityId == entity.EntityId;
+            var pending = GameManager.Conn?.Db.SkillDef.Id.Find(_pendingSkillId);
+            var revive = GameManager.SkillTargetsFallenAlly(pending);
+            var targetable =
+                _targeting
+                && myTurn
+                && (
+                    revive
+                        ? entity.Faction == Team.Players && !entity.Alive && !isLocal
+                        : entity.Faction == Team.Enemies && entity.Alive
+                );
             view.Bind(entity, activeId == entity.EntityId, isLocal, targetable, HandleEntityClicked);
 
             var occupant = GameManager.FindPlayer(entity.EntityId);
@@ -341,7 +350,7 @@ public class BattleHud : MonoBehaviour
             {
                 _stale.Add(pair.Key);
             }
-            else if (!entity.Alive && !AnimationsPending())
+            else if (!entity.Alive && !AnimationsPending() && entity.Faction == Team.Enemies)
             {
                 _stale.Add(pair.Key);
             }
@@ -400,7 +409,7 @@ public class BattleHud : MonoBehaviour
     void HandleEntityClicked(ulong entityId, Vector2 screenPoint)
     {
         var entity = GameManager.FindEntity(entityId);
-        if (entity == null || !entity.Alive)
+        if (entity == null)
         {
             return;
         }
@@ -410,13 +419,30 @@ public class BattleHud : MonoBehaviour
             if (
                 (_levelUp != null && _levelUp.IsOpen)
                 || !GameManager.IsLocalTurn()
-                || entity.Faction != Team.Enemies
             )
             {
                 return;
             }
 
             var skillDefId = _pendingSkillId;
+            var skill = GameManager.Conn?.Db.SkillDef.Id.Find(skillDefId);
+            if (GameManager.SkillTargetsFallenAlly(skill))
+            {
+                if (entity.Faction != Team.Players || entity.Alive)
+                {
+                    return;
+                }
+
+                ClearTargeting();
+                GameManager.CastSkill(skillDefId, entityId);
+                return;
+            }
+
+            if (!entity.Alive || entity.Faction != Team.Enemies)
+            {
+                return;
+            }
+
             ClearTargeting();
 
             if (skillDefId == 0)
@@ -426,6 +452,11 @@ public class BattleHud : MonoBehaviour
             }
 
             GameManager.CastSkill(skillDefId, entityId);
+            return;
+        }
+
+        if (!entity.Alive)
+        {
             return;
         }
 

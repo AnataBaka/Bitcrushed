@@ -115,7 +115,15 @@ public class EquipmentPanelView : MonoBehaviour
         for (var i = 0; i < _cells.Count; i++)
         {
             var slot = GearSlots[i];
-            if (me == null)
+            var localPlayer = GameManager.LocalPlayer();
+            if (
+                me == null
+                || (
+                    slot != EquipSlot.Weapon
+                    && localPlayer != null
+                    && localPlayer.Class == PlayerClass.Ninja
+                )
+            )
             {
                 SetEmpty(_cells[i], 0, null, false);
                 continue;

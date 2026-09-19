@@ -48,6 +48,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<GameSession, ulong> ActiveEntityId { get; }
         public global::SpacetimeDB.Col<GameSession, uint> StageNumber { get; }
         public global::SpacetimeDB.Col<GameSession, bool> UpcomingRestStop { get; }
+        public global::SpacetimeDB.Col<GameSession, ulong> AttackRedirectEntityId { get; }
 
         public GameSessionCols(string tableName)
         {
@@ -60,6 +61,7 @@ namespace SpacetimeDB.Types
             ActiveEntityId = new global::SpacetimeDB.Col<GameSession, ulong>(tableName, "active_entity_id");
             StageNumber = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "stage_number");
             UpcomingRestStop = new global::SpacetimeDB.Col<GameSession, bool>(tableName, "upcoming_rest_stop");
+            AttackRedirectEntityId = new global::SpacetimeDB.Col<GameSession, ulong>(tableName, "attack_redirect_entity_id");
         }
     }
 

@@ -361,8 +361,107 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        return skills.OrderBy(s => s.ManaCost).ThenBy(s => s.Id).ToList();
+        return skills.OrderBy(s => s.LevelRequired).ThenBy(s => s.ManaCost).ThenBy(s => s.Id).ToList();
     }
+
+    public static bool SkillTargetsFallenAlly(SkillDef skill) =>
+        skill != null && skill.Name == "Necromancy";
+
+    public static int EffectiveManaCost(SkillDef skill, Entity caster)
+    {
+        if (skill == null || caster == null)
+        {
+            return 0;
+        }
+
+        if (skill.Name == "Spear")
+        {
+            return Math.Max(0, 45 - caster.SpearDiscount);
+        }
+
+        if (skill.Name == "Vertical Cut")
+        {
+            return Math.Max(0, 80 - caster.VerticalCutDiscount);
+        }
+
+        return skill.ManaCost;
+    }
+
+    public static bool SkillReadyToCast(SkillDef skill, Entity caster, GameSession session)
+    {
+        if (skill == null || caster == null)
+        {
+            return false;
+        }
+
+        if (skill.Name == "Grandshot" && !caster.HasDodged)
+        {
+            return false;
+        }
+
+        if (skill.Name == "Finish the Job")
+        {
+            if (caster.FinishTheJobUsed)
+            {
+                return false;
+            }
+
+            if (session == null || session.Round < 8)
+            {
+                return false;
+            }
+        }
+
+        if (skill.Name == "Overthrow" && !caster.FinishTheJobStance)
+        {
+            return false;
+        }
+
+        if (skill.Name == "Necromancy" && caster.NecromancyUsed)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    public static string SkillCaption(SkillDef skill, Entity caster)
+    {
+        var cost = EffectiveManaCost(skill, caster);
+        var hits = skill.HitCount > 1 ? $" x{skill.HitCount}" : "";
+        var name = skill.Name;
+        if (skill.Name == "Magic Bullet" && caster != null)
+        {
+            var stage = caster.MagicBulletStage < 1 ? 1 : caster.MagicBulletStage;
+            name = $"Magic Bullet {ToRoman(stage)}";
+        }
+
+        if (skill.TargetCount == 0)
+        {
+            return $"{name}  ({cost} mp)";
+        }
+
+        var spread = skill.TargetCount > 1 ? $" x{skill.TargetCount}" : hits;
+        if (skill.TargetCount > 1 && skill.HitCount > 1)
+        {
+            spread = $" x{skill.TargetCount} x{skill.HitCount}";
+        }
+
+        return $"{name}{spread}  ({cost} mp)";
+    }
+
+    static string ToRoman(int value) =>
+        value switch
+        {
+            1 => "I",
+            2 => "II",
+            3 => "III",
+            4 => "IV",
+            5 => "V",
+            6 => "VI",
+            7 => "VII",
+            _ => value.ToString(),
+        };
 
     // ---------------------------------------------------------- reducer calls
 

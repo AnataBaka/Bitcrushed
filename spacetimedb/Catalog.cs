@@ -15,23 +15,132 @@ public static partial class Module
 
     static void SeedSkills(ReducerContext ctx)
     {
-        // Every class gets one heavy single target hit, one area attack and one
-        // cheap trick, so the spell menu is worth opening for all four rolls.
-        AddPlayerSkill(ctx, "Cleaving Strike", PlayerClass.Warrior, 5, 10, 1, DamageType.Physical);
-        AddPlayerSkill(ctx, "Cleave", PlayerClass.Warrior, 14, 7, 3, DamageType.Physical);
-        AddBuffSkill(ctx, "Enrage", PlayerClass.Warrior, 12, strengthBonus: 4);
+        AddPlayerSkill(ctx, SkillNames.Bash, PlayerClass.Knight, 0, 5, 1, DamageType.Physical, 1);
+        AddPlayerSkill(ctx, SkillNames.Rush, PlayerClass.Knight, 5, 3, 1, DamageType.Physical, 2);
+        AddBuffSkill(ctx, SkillNames.Embolden, PlayerClass.Knight, 10, 3);
+        AddBuffSkill(ctx, SkillNames.GallantPride, PlayerClass.Knight, 20, 4);
+        AddPlayerSkill(ctx, SkillNames.Cleave, PlayerClass.Knight, 10, 7, 4, DamageType.Physical, 7);
+        AddPlayerSkill(ctx, SkillNames.Bludgeon, PlayerClass.Knight, 50, 30, 1, DamageType.Physical, 15);
+        AddBuffSkill(ctx, SkillNames.Terrify, PlayerClass.Knight, 20, 20);
+        AddPlayerSkill(
+            ctx,
+            SkillNames.TripleSlash,
+            PlayerClass.Knight,
+            60,
+            12,
+            1,
+            DamageType.Physical,
+            25,
+            hitCount: 3
+        );
+        AddPlayerSkill(
+            ctx,
+            SkillNames.Furioso,
+            PlayerClass.Knight,
+            100,
+            5,
+            1,
+            DamageType.Physical,
+            30,
+            hitCount: 9
+        );
 
-        AddPlayerSkill(ctx, "Fireball", PlayerClass.Mage, 18, 25, 1, DamageType.Magical);
-        AddPlayerSkill(ctx, "Frost Nova", PlayerClass.Mage, 16, 10, 3, DamageType.Magical);
-        AddPlayerSkill(ctx, "Arcane Pulse", PlayerClass.Mage, 10, 12, 1, DamageType.Magical);
+        AddPlayerSkill(ctx, SkillNames.Shoot, PlayerClass.Archer, 0, 4, 1, DamageType.Physical, 1);
+        AddBuffSkill(ctx, SkillNames.Restring, PlayerClass.Archer, 10, 2);
+        AddBuffSkill(ctx, SkillNames.Scheme, PlayerClass.Archer, 15, 5);
+        AddBuffSkill(ctx, SkillNames.Evade, PlayerClass.Archer, 10, 5);
+        AddPlayerSkill(
+            ctx,
+            SkillNames.RainDown,
+            PlayerClass.Archer,
+            30,
+            4,
+            4,
+            DamageType.Physical,
+            7,
+            hitCount: 3
+        );
+        AddPlayerSkill(ctx, SkillNames.Snipe, PlayerClass.Archer, 50, 30, 1, DamageType.Physical, 12);
+        AddPlayerSkill(
+            ctx,
+            SkillNames.CurvedShot,
+            PlayerClass.Archer,
+            75,
+            17,
+            4,
+            DamageType.Physical,
+            18,
+            hitCount: 2
+        );
+        AddPlayerSkill(
+            ctx,
+            SkillNames.Grandshot,
+            PlayerClass.Archer,
+            100,
+            30,
+            1,
+            DamageType.Physical,
+            30
+        );
 
-        AddPlayerSkill(ctx, "Backstab", PlayerClass.Rogue, 10, 14, 1, DamageType.Physical);
-        AddPlayerSkill(ctx, "Fan of Knives", PlayerClass.Rogue, 13, 8, 3, DamageType.Physical);
-        AddRushSkill(ctx, "Ambush", PlayerClass.Rogue, 8, 6);
+        AddPlayerSkill(
+            ctx,
+            SkillNames.MagicMissile,
+            PlayerClass.Mage,
+            5,
+            10,
+            1,
+            DamageType.Magical,
+            1
+        );
+        AddPlayerSkill(ctx, SkillNames.Fireball, PlayerClass.Mage, 10, 2, 1, DamageType.Magical, 3);
+        AddBuffSkill(ctx, SkillNames.Concentrate, PlayerClass.Mage, 15, 5);
+        AddBuffSkill(ctx, SkillNames.Pray, PlayerClass.Mage, 30, 10);
+        AddPlayerSkill(
+            ctx,
+            SkillNames.MagicBullet,
+            PlayerClass.Mage,
+            20,
+            5,
+            1,
+            DamageType.Magical,
+            15
+        );
+        AddBuffSkill(ctx, SkillNames.GrandUndertaking, PlayerClass.Mage, 100, 30);
+        AddPlayerSkill(
+            ctx,
+            SkillNames.Necromancy,
+            PlayerClass.Mage,
+            150,
+            0,
+            1,
+            DamageType.Magical,
+            35
+        );
 
-        AddPlayerSkill(ctx, "Piercing Arrow", PlayerClass.Archer, 9, 13, 1, DamageType.Physical);
-        AddPlayerSkill(ctx, "Rain of Arrows", PlayerClass.Archer, 13, 8, 3, DamageType.Physical);
-        AddRushSkill(ctx, "Quickdraw", PlayerClass.Archer, 8, 5);
+        AddPlayerSkill(ctx, SkillNames.Spear, PlayerClass.Ninja, 45, 12, 1, DamageType.Physical, 1);
+        AddPlayerSkill(
+            ctx,
+            SkillNames.VerticalCut,
+            PlayerClass.Ninja,
+            80,
+            27,
+            1,
+            DamageType.Physical,
+            5
+        );
+        AddBuffSkill(ctx, SkillNames.FocusSpirit, PlayerClass.Ninja, 50, 10);
+        AddBuffSkill(ctx, SkillNames.FinishTheJob, PlayerClass.Ninja, 100, 30);
+        AddPlayerSkill(
+            ctx,
+            SkillNames.Overthrow,
+            PlayerClass.Ninja,
+            40,
+            42,
+            4,
+            DamageType.Physical,
+            30
+        );
 
         AddEnemySkill(ctx, "Rusty Slash", 6, 8, 1, DamageType.Physical);
         AddEnemySkill(ctx, "Whirling Rust", 14, 4, 3, DamageType.Physical);
@@ -78,7 +187,9 @@ public static partial class Module
         int manaCost,
         int baseDamage,
         int targetCount,
-        DamageType damageType
+        DamageType damageType,
+        uint levelRequired,
+        int hitCount = 1
     ) =>
         ctx.Db.SkillDef.Insert(
             new SkillDef
@@ -93,16 +204,18 @@ public static partial class Module
                 AlwaysGoFirst = false,
                 NextTurnStrengthBonus = 0,
                 DamageType = damageType,
+                LevelRequired = levelRequired,
+                HitCount = hitCount < 1 ? 1 : hitCount,
             }
         );
 
-    /// Deals no damage; buys a Strength spike on the caster's next turn.
+    /// Self or party effect with no enemy click.
     static void AddBuffSkill(
         ReducerContext ctx,
         string name,
         PlayerClass forClass,
         int manaCost,
-        int strengthBonus
+        uint levelRequired
     ) =>
         ctx.Db.SkillDef.Insert(
             new SkillDef
@@ -115,32 +228,10 @@ public static partial class Module
                 BaseDamage = 0,
                 TargetCount = 0,
                 AlwaysGoFirst = false,
-                NextTurnStrengthBonus = strengthBonus,
-                DamageType = DamageType.Physical,
-            }
-        );
-
-    /// Light hit that also jumps the caster to the front of the next round.
-    static void AddRushSkill(
-        ReducerContext ctx,
-        string name,
-        PlayerClass forClass,
-        int manaCost,
-        int baseDamage
-    ) =>
-        ctx.Db.SkillDef.Insert(
-            new SkillDef
-            {
-                Id = 0,
-                Name = name,
-                IsEnemySkill = false,
-                ForClass = forClass,
-                ManaCost = manaCost,
-                BaseDamage = baseDamage,
-                TargetCount = 1,
-                AlwaysGoFirst = true,
                 NextTurnStrengthBonus = 0,
                 DamageType = DamageType.Physical,
+                LevelRequired = levelRequired,
+                HitCount = 1,
             }
         );
 
@@ -158,13 +249,15 @@ public static partial class Module
                 Id = 0,
                 Name = name,
                 IsEnemySkill = true,
-                ForClass = PlayerClass.Warrior,
+                ForClass = PlayerClass.Knight,
                 ManaCost = manaCost,
                 BaseDamage = baseDamage,
                 TargetCount = targetCount,
                 AlwaysGoFirst = false,
                 NextTurnStrengthBonus = 0,
                 DamageType = damageType,
+                LevelRequired = 1,
+                HitCount = 1,
             }
         );
 
@@ -318,8 +411,7 @@ public static partial class Module
         throw new Exception($"Skill catalog is missing {name}.");
     }
 
-    /// Weapon and full armour set worn on arrival, potions in the bag. The class
-    /// weapon is equipped immediately so the EQUIPMENT panel is never empty.
+    /// Weapon worn on arrival, potions in the bag. Ninjas cannot wear armor.
     public static void GiveStartingLoadout(
         ReducerContext ctx,
         Identity owner,
@@ -327,28 +419,29 @@ public static partial class Module
         PlayerClass playerClass
     )
     {
-        var weapon = RequireItem(ctx, StarterWeaponName(playerClass));
-        var chest = playerClass == PlayerClass.Mage
-            ? RequireItem(ctx, "Mage Robes")
-            : RequireItem(ctx, "Leather Vest");
+        EquipFresh(ctx, owner, RequireItem(ctx, StarterWeaponName(playerClass)));
 
-        EquipFresh(ctx, owner, weapon);
-        EquipFresh(ctx, owner, RequireItem(ctx, "Leather Helm"));
-        EquipFresh(ctx, owner, chest);
-        EquipFresh(ctx, owner, RequireItem(ctx, "Leather Greaves"));
-        EquipFresh(ctx, owner, RequireItem(ctx, "Leather Boots"));
+        if (CanWearArmor(playerClass))
+        {
+            var chest = playerClass == PlayerClass.Mage
+                ? RequireItem(ctx, "Mage Robes")
+                : RequireItem(ctx, "Leather Vest");
+
+            EquipFresh(ctx, owner, RequireItem(ctx, "Leather Helm"));
+            EquipFresh(ctx, owner, chest);
+            EquipFresh(ctx, owner, RequireItem(ctx, "Leather Greaves"));
+            EquipFresh(ctx, owner, RequireItem(ctx, "Leather Boots"));
+
+            var spare = playerClass == PlayerClass.Mage
+                ? RequireItem(ctx, "Leather Vest")
+                : RequireItem(ctx, "Mage Robes");
+            GiveToBag(ctx, owner, spare.Id, 1);
+        }
 
         GiveToBag(ctx, owner, RequireItem(ctx, "Health Potion").Id, 3);
         GiveToBag(ctx, owner, RequireItem(ctx, "Mana Potion").Id, 2);
 
-        // A spare chest piece with a different stat line, so the bag always holds
-        // something worth equipping.
-        var spare = playerClass == PlayerClass.Mage
-            ? RequireItem(ctx, "Leather Vest")
-            : RequireItem(ctx, "Mage Robes");
-        GiveToBag(ctx, owner, spare.Id, 1);
-
-        GrantClassSkills(ctx, entity.EntityId, playerClass);
+        GrantUnlockedSkills(ctx, entity.EntityId, playerClass, 1);
         RecomputeStats(ctx, owner);
     }
 
@@ -386,11 +479,23 @@ public static partial class Module
     public static int BagCount(ReducerContext ctx, Identity owner) =>
         ctx.Db.PlayerItem.Owner.Filter(owner).Count(i => i.EquippedSlot == EquipSlot.Bag);
 
-    static void GrantClassSkills(ReducerContext ctx, ulong entityId, PlayerClass playerClass)
+    public static void GrantUnlockedSkills(
+        ReducerContext ctx,
+        ulong entityId,
+        PlayerClass playerClass,
+        uint characterLevel
+    )
     {
+        var level = characterLevel == 0 ? 1u : characterLevel;
         foreach (var skill in ctx.Db.SkillDef.Iter())
         {
             if (skill.IsEnemySkill || skill.ForClass != playerClass)
+            {
+                continue;
+            }
+
+            var required = skill.LevelRequired == 0 ? 1u : skill.LevelRequired;
+            if (required > level || KnowsSkill(ctx, entityId, skill.Id))
             {
                 continue;
             }

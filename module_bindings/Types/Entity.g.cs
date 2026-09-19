@@ -61,6 +61,60 @@ namespace SpacetimeDB.Types
         public bool Alive;
         [DataMember(Name = "basic_attack_name")]
         public string BasicAttackName;
+        [DataMember(Name = "burn_stack")]
+        public int BurnStack;
+        [DataMember(Name = "burn_count")]
+        public int BurnCount;
+        [DataMember(Name = "weak_stacks")]
+        public int WeakStacks;
+        [DataMember(Name = "next_turn_weak")]
+        public int NextTurnWeak;
+        [DataMember(Name = "fragile_stacks")]
+        public int FragileStacks;
+        [DataMember(Name = "next_turn_fragile")]
+        public int NextTurnFragile;
+        [DataMember(Name = "combat_speed")]
+        public int CombatSpeed;
+        [DataMember(Name = "next_turn_speed_set")]
+        public int NextTurnSpeedSet;
+        [DataMember(Name = "next_turn_speed_delta")]
+        public int NextTurnSpeedDelta;
+        [DataMember(Name = "dodge_bonus_percent")]
+        public int DodgeBonusPercent;
+        [DataMember(Name = "next_turn_dodge_bonus")]
+        public int NextTurnDodgeBonus;
+        [DataMember(Name = "evade_threshold")]
+        public int EvadeThreshold;
+        [DataMember(Name = "evade_fragile_on_dodge")]
+        public int EvadeFragileOnDodge;
+        [DataMember(Name = "evade_strength_on_dodge")]
+        public int EvadeStrengthOnDodge;
+        [DataMember(Name = "has_dodged")]
+        public bool HasDodged;
+        [DataMember(Name = "used_attack_this_turn")]
+        public bool UsedAttackThisTurn;
+        [DataMember(Name = "used_attack_last_turn")]
+        public bool UsedAttackLastTurn;
+        [DataMember(Name = "next_attack_bonus")]
+        public int NextAttackBonus;
+        [DataMember(Name = "magic_bullet_stage")]
+        public int MagicBulletStage;
+        [DataMember(Name = "spear_discount")]
+        public int SpearDiscount;
+        [DataMember(Name = "vertical_cut_discount")]
+        public int VerticalCutDiscount;
+        [DataMember(Name = "finish_the_job_used")]
+        public bool FinishTheJobUsed;
+        [DataMember(Name = "finish_the_job_stance")]
+        public bool FinishTheJobStance;
+        [DataMember(Name = "finish_the_job_power")]
+        public int FinishTheJobPower;
+        [DataMember(Name = "necromancy_used")]
+        public bool NecromancyUsed;
+        [DataMember(Name = "skip_next_turn")]
+        public bool SkipNextTurn;
+        [DataMember(Name = "grand_undertaking_pending")]
+        public bool GrandUndertakingPending;
 
         public Entity(
             ulong EntityId,
@@ -86,7 +140,34 @@ namespace SpacetimeDB.Types
             int NextTurnStrengthBonus,
             bool GoFirstNextRound,
             bool Alive,
-            string BasicAttackName
+            string BasicAttackName,
+            int BurnStack,
+            int BurnCount,
+            int WeakStacks,
+            int NextTurnWeak,
+            int FragileStacks,
+            int NextTurnFragile,
+            int CombatSpeed,
+            int NextTurnSpeedSet,
+            int NextTurnSpeedDelta,
+            int DodgeBonusPercent,
+            int NextTurnDodgeBonus,
+            int EvadeThreshold,
+            int EvadeFragileOnDodge,
+            int EvadeStrengthOnDodge,
+            bool HasDodged,
+            bool UsedAttackThisTurn,
+            bool UsedAttackLastTurn,
+            int NextAttackBonus,
+            int MagicBulletStage,
+            int SpearDiscount,
+            int VerticalCutDiscount,
+            bool FinishTheJobUsed,
+            bool FinishTheJobStance,
+            int FinishTheJobPower,
+            bool NecromancyUsed,
+            bool SkipNextTurn,
+            bool GrandUndertakingPending
         )
         {
             this.EntityId = EntityId;
@@ -113,6 +194,33 @@ namespace SpacetimeDB.Types
             this.GoFirstNextRound = GoFirstNextRound;
             this.Alive = Alive;
             this.BasicAttackName = BasicAttackName;
+            this.BurnStack = BurnStack;
+            this.BurnCount = BurnCount;
+            this.WeakStacks = WeakStacks;
+            this.NextTurnWeak = NextTurnWeak;
+            this.FragileStacks = FragileStacks;
+            this.NextTurnFragile = NextTurnFragile;
+            this.CombatSpeed = CombatSpeed;
+            this.NextTurnSpeedSet = NextTurnSpeedSet;
+            this.NextTurnSpeedDelta = NextTurnSpeedDelta;
+            this.DodgeBonusPercent = DodgeBonusPercent;
+            this.NextTurnDodgeBonus = NextTurnDodgeBonus;
+            this.EvadeThreshold = EvadeThreshold;
+            this.EvadeFragileOnDodge = EvadeFragileOnDodge;
+            this.EvadeStrengthOnDodge = EvadeStrengthOnDodge;
+            this.HasDodged = HasDodged;
+            this.UsedAttackThisTurn = UsedAttackThisTurn;
+            this.UsedAttackLastTurn = UsedAttackLastTurn;
+            this.NextAttackBonus = NextAttackBonus;
+            this.MagicBulletStage = MagicBulletStage;
+            this.SpearDiscount = SpearDiscount;
+            this.VerticalCutDiscount = VerticalCutDiscount;
+            this.FinishTheJobUsed = FinishTheJobUsed;
+            this.FinishTheJobStance = FinishTheJobStance;
+            this.FinishTheJobPower = FinishTheJobPower;
+            this.NecromancyUsed = NecromancyUsed;
+            this.SkipNextTurn = SkipNextTurn;
+            this.GrandUndertakingPending = GrandUndertakingPending;
         }
 
         public Entity()
