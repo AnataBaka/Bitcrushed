@@ -23,7 +23,8 @@ public static partial class Module
     public const int EnemyDodgeDivisor = 3;
     /// Archer passive: 0.1% dodge per Dexterity (10 basis points).
     public const int ArcherDodgeBpsPerDex = 10;
-    /// Knight passive: +0.5 damage per Strength, stored as tenths.
+    /// Archer passive: +0.2 damage per Dexterity, stored as tenths.
+    public const int ArcherDamageTenthsPerDex = 2;
     public const int KnightDamageTenthsPerStrength = 5;
     /// Mage passive: +0.2 spell damage per Intelligence, stored as tenths.
     public const int MageSpellDamageTenthsPerInt = 2;
@@ -256,10 +257,11 @@ public static partial class Module
 
     // ------------------------------------------------------------------- math
 
-    /// Flat class passives: Knight +0.5/STR on every attack, Mage +0.2/INT on spells.
+    /// Flat class passives: Knight +0.5/STR, Archer +0.2/DEX, Mage +0.2/INT on spells.
     public static int ClassPassiveDamage(
         PlayerClass playerClass,
         int strength,
+        int dexterity,
         int intelligence,
         bool isSpell
     )
@@ -268,6 +270,11 @@ public static partial class Module
         if (playerClass == PlayerClass.Knight)
         {
             tenths += KnightDamageTenthsPerStrength * Math.Max(0, strength);
+        }
+
+        if (playerClass == PlayerClass.Archer)
+        {
+            tenths += ArcherDamageTenthsPerDex * Math.Max(0, dexterity);
         }
 
         if (playerClass == PlayerClass.Mage && isSpell)

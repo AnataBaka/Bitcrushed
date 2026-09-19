@@ -1560,6 +1560,7 @@ public static partial class Module
             power += ClassPassiveDamage(
                 attackerClass,
                 attacker.Strength,
+                attacker.Dexterity,
                 attacker.Intelligence,
                 isSpell: attackerClass == PlayerClass.Mage && isSkill
             );

@@ -31,7 +31,7 @@ public static class SkillInspect
             name,
             "Free",
             "Weapon ATK to one enemy",
-            "A free weapon swing. Adds class passives (Knight +0.5 per STR on every attack). Mage basic attacks are not spells.",
+            "A free weapon swing. Adds class passives (Knight +0.5 per STR, Archer +0.2 per DEX). Mage basic attacks are not spells.",
             ""
         );
     }
