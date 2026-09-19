@@ -27,6 +27,8 @@ public static partial class Module
                 CurrentBiome = WorldBiome.Plains,
                 NextBiome = WorldBiome.Plains,
                 IsBossStage = false,
+                BossLootGranted = false,
+                StageClearNote = "",
             }
         );
 
@@ -201,6 +203,7 @@ public static partial class Module
 
         DeleteEntitySkills(ctx, entityId);
         DeleteOwnedItems(ctx, player.Identity);
+        DeletePendingRewards(ctx, player.Identity);
         RemoveTurnOrderEntry(ctx, entityId);
         ctx.Db.Entity.EntityId.Delete(entityId);
         ctx.Db.Player.Identity.Delete(player.Identity);
@@ -360,6 +363,11 @@ public static partial class Module
             ctx.Db.BattleLog.Id.Delete(line.Id);
         }
 
+        foreach (var pending in ctx.Db.PendingReward.Iter().ToList())
+        {
+            ctx.Db.PendingReward.Id.Delete(pending.Id);
+        }
+
         var session = RequireSession(ctx);
         ctx.Db.GameSession.Id.Update(
             session with
@@ -375,6 +383,8 @@ public static partial class Module
                 CurrentBiome = WorldBiome.Plains,
                 NextBiome = WorldBiome.Plains,
                 IsBossStage = false,
+                BossLootGranted = false,
+                StageClearNote = "",
             }
         );
         AddLog(ctx, "Stage reset. Waiting for players.");
@@ -573,6 +583,7 @@ public static partial class Module
             player.EntityId,
             player.EntityId
         );
+        DeliverPendingRewardsFor(ctx, ctx.Sender);
     }
 
     [SpacetimeDB.Reducer]
@@ -602,6 +613,7 @@ public static partial class Module
             player.EntityId,
             player.EntityId
         );
+        DeliverPendingRewardsFor(ctx, ctx.Sender);
     }
 
     [SpacetimeDB.Reducer]
@@ -639,6 +651,7 @@ public static partial class Module
             player.EntityId,
             player.EntityId
         );
+        DeliverPendingRewardsFor(ctx, ctx.Sender);
     }
 
     static PlayerItem? InventoryAt(ReducerContext ctx, Identity owner, uint slotIndex)
@@ -1017,6 +1030,8 @@ public static partial class Module
         }
         BuildTurnOrder(ctx);
 
+        DeliverPendingRewards(ctx);
+
         if (EndBattleIfOver(ctx))
         {
             return;
@@ -1053,11 +1068,13 @@ public static partial class Module
         var cleared = session.StageNumber < 1 ? 1u : session.StageNumber;
         ClearEnemySide(ctx);
         AddLog(ctx, $"Stage {cleared} cleared.");
+        GrantBossLoot(ctx, cleared);
         EnterStageTransition(ctx, ShouldEnterRestStop(cleared));
     }
 
     static bool ShouldEnterRestStop(uint clearedStage) =>
-        RestStopEvery > 0 && clearedStage % RestStopEvery == 0;
+        (RestStopEvery > 0 && clearedStage % RestStopEvery == 0)
+        || IsBossStageNumber(clearedStage);
 
     static void ApplyStageFields(ReducerContext ctx, GameSession session, uint stage)
     {
@@ -1069,6 +1086,8 @@ public static partial class Module
                 CurrentBiome = biome,
                 NextBiome = BiomeOf(stage + 1),
                 IsBossStage = IsBossStageNumber(stage),
+                BossLootGranted = false,
+                StageClearNote = "",
             }
         );
     }
@@ -1135,6 +1154,8 @@ public static partial class Module
             }
         );
 
+        DeliverPendingRewards(ctx);
+
         ctx.Db.StageTransitionTimer.Insert(
             new StageTransitionTimer
             {
@@ -1194,6 +1215,7 @@ public static partial class Module
             }
         );
         AddLog(ctx, "Rest stop. HP and mana restored. Ready up to continue.");
+        DeliverPendingRewards(ctx);
     }
 
     static void RestorePartyAtRest(ReducerContext ctx)
@@ -2390,6 +2412,128 @@ public static partial class Module
         foreach (var item in ctx.Db.PlayerItem.Owner.Filter(owner).ToList())
         {
             ctx.Db.PlayerItem.Id.Delete(item.Id);
+        }
+    }
+
+    static void DeletePendingRewards(ReducerContext ctx, Identity owner)
+    {
+        foreach (var pending in ctx.Db.PendingReward.Owner.Filter(owner).ToList())
+        {
+            ctx.Db.PendingReward.Id.Delete(pending.Id);
+        }
+    }
+
+    static void GrantBossLoot(ReducerContext ctx, uint clearedStage)
+    {
+        var session = RequireSession(ctx);
+        if (!IsBossStageNumber(clearedStage) || session.BossLootGranted)
+        {
+            return;
+        }
+
+        EnsureBossDrops(ctx);
+        ctx.Db.GameSession.Id.Update(session with { BossLootGranted = true });
+
+        var notes = new List<string>();
+        foreach (var player in ctx.Db.Player.Iter().ToList())
+        {
+            if (ctx.Db.Entity.EntityId.Find(player.EntityId) is not Entity entity || !entity.Alive)
+            {
+                continue;
+            }
+
+            if (RollBossDrop(ctx, player.Class) is not ItemDef item)
+            {
+                continue;
+            }
+
+            var delivered = TryAddItemToInventory(ctx, player.Identity, item.Id);
+            if (delivered)
+            {
+                AddLog(ctx, $"{entity.Name} found {item.Name}.");
+                notes.Add($"{entity.Name} found {item.Name}");
+            }
+            else
+            {
+                ctx.Db.PendingReward.Insert(
+                    new PendingReward
+                    {
+                        Id = 0,
+                        Owner = player.Identity,
+                        ItemDefId = item.Id,
+                    }
+                );
+                AddLog(
+                    ctx,
+                    $"{entity.Name}'s inventory is full. {item.Name} waits for a free slot."
+                );
+                notes.Add($"{entity.Name}'s {item.Name} is waiting for a free slot");
+            }
+        }
+
+        session = RequireSession(ctx);
+        ctx.Db.GameSession.Id.Update(
+            session with { StageClearNote = string.Join(". ", notes) }
+        );
+    }
+
+    static ItemDef? RollBossDrop(ReducerContext ctx, PlayerClass playerClass)
+    {
+        var pool = new List<ItemDef>();
+        foreach (var drop in ctx.Db.BossDrop.Tier.Filter(FirstBossDropTier))
+        {
+            if (ctx.Db.ItemDef.Id.Find(drop.ItemDefId) is not ItemDef item)
+            {
+                continue;
+            }
+
+            if (item.Kind == ItemKind.Amulet)
+            {
+                pool.Add(item);
+                continue;
+            }
+
+            if (item.Kind == ItemKind.Weapon && item.WeaponType == ClassWeapon(playerClass))
+            {
+                pool.Add(item);
+            }
+        }
+
+        if (pool.Count == 0)
+        {
+            return null;
+        }
+
+        return pool[ctx.Rng.Next(0, pool.Count)];
+    }
+
+    static void DeliverPendingRewards(ReducerContext ctx)
+    {
+        foreach (var player in ctx.Db.Player.Iter().ToList())
+        {
+            DeliverPendingRewardsFor(ctx, player.Identity);
+        }
+    }
+
+    static void DeliverPendingRewardsFor(ReducerContext ctx, Identity owner)
+    {
+        foreach (var pending in ctx.Db.PendingReward.Owner.Filter(owner).ToList())
+        {
+            if (!TryAddItemToInventory(ctx, owner, pending.ItemDefId))
+            {
+                return;
+            }
+
+            ctx.Db.PendingReward.Id.Delete(pending.Id);
+            var itemName = ctx.Db.ItemDef.Id.Find(pending.ItemDefId)?.Name ?? "an item";
+            var ownerName = "Someone";
+            if (ctx.Db.Player.Identity.Find(owner) is Player player
+                && ctx.Db.Entity.EntityId.Find(player.EntityId) is Entity entity)
+            {
+                ownerName = entity.Name;
+            }
+
+            AddLog(ctx, $"{ownerName} claimed {itemName}.");
         }
     }
 

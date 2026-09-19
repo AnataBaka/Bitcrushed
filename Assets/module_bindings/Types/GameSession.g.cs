@@ -39,6 +39,10 @@ namespace SpacetimeDB.Types
         public WorldBiome NextBiome;
         [DataMember(Name = "is_boss_stage")]
         public bool IsBossStage;
+        [DataMember(Name = "boss_loot_granted")]
+        public bool BossLootGranted;
+        [DataMember(Name = "stage_clear_note")]
+        public string StageClearNote;
 
         public GameSession(
             uint Id,
@@ -53,7 +57,9 @@ namespace SpacetimeDB.Types
             ulong AttackRedirectEntityId,
             WorldBiome CurrentBiome,
             WorldBiome NextBiome,
-            bool IsBossStage
+            bool IsBossStage,
+            bool BossLootGranted,
+            string StageClearNote
         )
         {
             this.Id = Id;
@@ -69,10 +75,13 @@ namespace SpacetimeDB.Types
             this.CurrentBiome = CurrentBiome;
             this.NextBiome = NextBiome;
             this.IsBossStage = IsBossStage;
+            this.BossLootGranted = BossLootGranted;
+            this.StageClearNote = StageClearNote;
         }
 
         public GameSession()
         {
+            this.StageClearNote = "";
         }
     }
 }

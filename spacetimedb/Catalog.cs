@@ -10,6 +10,48 @@ public static partial class Module
         SeedSkills(ctx);
         SeedItems(ctx);
         SeedBiomeDefs(ctx);
+        SeedBossDrops(ctx);
+    }
+
+    public const uint FirstBossDropTier = 1;
+
+    public static void EnsureBossDrops(ReducerContext ctx)
+    {
+        if (ctx.Db.BossDrop.Count > 0)
+        {
+            return;
+        }
+
+        SeedBossDrops(ctx);
+    }
+
+    static void SeedBossDrops(ReducerContext ctx)
+    {
+        foreach (var row in ctx.Db.BossDrop.Iter().ToList())
+        {
+            ctx.Db.BossDrop.Id.Delete(row.Id);
+        }
+
+        foreach (
+            var name in new[]
+            {
+                "Copper Sword",
+                "Wooden Bow",
+                "Crooked Stick",
+                "Sharpened Katana",
+                "Health Amulet",
+            }
+        )
+        {
+            ctx.Db.BossDrop.Insert(
+                new BossDrop
+                {
+                    Id = 0,
+                    Tier = FirstBossDropTier,
+                    ItemDefId = RequireItem(ctx, name).Id,
+                }
+            );
+        }
     }
 
     public static void EnsureBiomeDefs(ReducerContext ctx)
@@ -375,6 +417,10 @@ public static partial class Module
         AddWeapon(ctx, "Wooden Cane", "WCN", WeaponType.Staff, atk: 6, intelligence: 2);
         AddWeapon(ctx, "Rusted Katana", "KTN", WeaponType.Katana, atk: 9, speed: 2);
         AddWeapon(ctx, "Weathered Bow", "WBW", WeaponType.Bow, atk: 10, dexterity: 2);
+        AddWeapon(ctx, "Copper Sword", "CPS", WeaponType.Sword, atk: 18, strength: 2);
+        AddWeapon(ctx, "Wooden Bow", "WDB", WeaponType.Bow, atk: 15, dexterity: 3);
+        AddWeapon(ctx, "Crooked Stick", "CST", WeaponType.Staff, atk: 9, intelligence: 3);
+        AddWeapon(ctx, "Sharpened Katana", "SKT", WeaponType.Katana, atk: 14, speed: 3);
         AddAmulet(ctx, "Health Amulet", "HPA", maxHp: 10);
 
         AddConsumable(ctx, "Health Potion", "HPT", heal: 30, mana: 0);

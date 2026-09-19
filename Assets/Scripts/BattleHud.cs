@@ -284,7 +284,10 @@ public class BattleHud : MonoBehaviour
                 _overlayText.color = new Color(0.95f, 0.86f, 0.45f);
                 if (_overlaySubtext != null)
                 {
-                    _overlaySubtext.text = NextLine(session);
+                    var next = NextLine(session);
+                    _overlaySubtext.text = string.IsNullOrEmpty(session.StageClearNote)
+                        ? next
+                        : $"{session.StageClearNote}\n{next}";
                 }
             }
             else

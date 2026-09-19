@@ -139,6 +139,10 @@ public static partial class Module
         public WorldBiome NextBiome;
         [Default(false)]
         public bool IsBossStage;
+        [Default(false)]
+        public bool BossLootGranted;
+        [Default("")]
+        public string StageClearNote;
     }
 
     /// One row per biome: display name, log phrasing, and backdrop colors.
@@ -453,5 +457,29 @@ public static partial class Module
         /// 0-8 when EquippedSlot is Inventory; otherwise InventoryNone (255).
         [Default(255u)]
         public uint InventoryIndex;
+    }
+
+    /// Data-driven boss loot. Later tiers can reuse or extend these rows.
+    [SpacetimeDB.Table(Accessor = "BossDrop", Public = true)]
+    public partial struct BossDrop
+    {
+        [PrimaryKey]
+        [AutoInc]
+        public uint Id;
+        [SpacetimeDB.Index.BTree]
+        public uint Tier;
+        public uint ItemDefId;
+    }
+
+    /// Loot that did not fit in the 3x3. Delivered as soon as a cell frees.
+    [SpacetimeDB.Table(Accessor = "PendingReward", Public = true)]
+    public partial struct PendingReward
+    {
+        [PrimaryKey]
+        [AutoInc]
+        public ulong Id;
+        [SpacetimeDB.Index.BTree]
+        public Identity Owner;
+        public uint ItemDefId;
     }
 }
