@@ -11,7 +11,7 @@ namespace SpacetimeDB.Types
 {
     [SpacetimeDB.Type]
     [DataContract]
-    public sealed partial class PlayerItem
+    public sealed partial class PendingReward
     {
         [DataMember(Name = "id")]
         public ulong Id;
@@ -19,31 +19,19 @@ namespace SpacetimeDB.Types
         public SpacetimeDB.Identity Owner;
         [DataMember(Name = "item_def_id")]
         public uint ItemDefId;
-        [DataMember(Name = "quantity")]
-        public int Quantity;
-        [DataMember(Name = "equipped_slot")]
-        public EquipSlot EquippedSlot;
-        [DataMember(Name = "inventory_index")]
-        public uint InventoryIndex;
 
-        public PlayerItem(
+        public PendingReward(
             ulong Id,
             SpacetimeDB.Identity Owner,
-            uint ItemDefId,
-            int Quantity,
-            EquipSlot EquippedSlot,
-            uint InventoryIndex
+            uint ItemDefId
         )
         {
             this.Id = Id;
             this.Owner = Owner;
             this.ItemDefId = ItemDefId;
-            this.Quantity = Quantity;
-            this.EquippedSlot = EquippedSlot;
-            this.InventoryIndex = InventoryIndex;
         }
 
-        public PlayerItem()
+        public PendingReward()
         {
         }
     }

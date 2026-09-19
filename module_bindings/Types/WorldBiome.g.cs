@@ -8,11 +8,12 @@ using System;
 namespace SpacetimeDB.Types
 {
     [SpacetimeDB.Type]
-    public enum EquipSlot
+    public enum WorldBiome
     {
-        Bag,
-        Weapon,
-        Amulet,
-        Inventory,
+        Plains,
+        Caves,
+        Volcano,
+        Swamp,
+        SnowyTundra,
     }
 }

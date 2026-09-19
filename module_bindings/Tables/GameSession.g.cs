@@ -49,6 +49,11 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<GameSession, uint> StageNumber { get; }
         public global::SpacetimeDB.Col<GameSession, bool> UpcomingRestStop { get; }
         public global::SpacetimeDB.Col<GameSession, ulong> AttackRedirectEntityId { get; }
+        public global::SpacetimeDB.Col<GameSession, WorldBiome> CurrentBiome { get; }
+        public global::SpacetimeDB.Col<GameSession, WorldBiome> NextBiome { get; }
+        public global::SpacetimeDB.Col<GameSession, bool> IsBossStage { get; }
+        public global::SpacetimeDB.Col<GameSession, bool> BossLootGranted { get; }
+        public global::SpacetimeDB.Col<GameSession, string> StageClearNote { get; }
 
         public GameSessionCols(string tableName)
         {
@@ -62,6 +67,11 @@ namespace SpacetimeDB.Types
             StageNumber = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "stage_number");
             UpcomingRestStop = new global::SpacetimeDB.Col<GameSession, bool>(tableName, "upcoming_rest_stop");
             AttackRedirectEntityId = new global::SpacetimeDB.Col<GameSession, ulong>(tableName, "attack_redirect_entity_id");
+            CurrentBiome = new global::SpacetimeDB.Col<GameSession, WorldBiome>(tableName, "current_biome");
+            NextBiome = new global::SpacetimeDB.Col<GameSession, WorldBiome>(tableName, "next_biome");
+            IsBossStage = new global::SpacetimeDB.Col<GameSession, bool>(tableName, "is_boss_stage");
+            BossLootGranted = new global::SpacetimeDB.Col<GameSession, bool>(tableName, "boss_loot_granted");
+            StageClearNote = new global::SpacetimeDB.Col<GameSession, string>(tableName, "stage_clear_note");
         }
     }
 

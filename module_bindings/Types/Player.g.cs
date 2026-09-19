@@ -29,6 +29,8 @@ namespace SpacetimeDB.Types
         public uint CharacterLevel;
         [DataMember(Name = "xp")]
         public uint Xp;
+        [DataMember(Name = "unspent_stat_points")]
+        public uint UnspentStatPoints;
 
         public Player(
             SpacetimeDB.Identity Identity,
@@ -38,7 +40,8 @@ namespace SpacetimeDB.Types
             ulong EntityId,
             bool Ready,
             uint CharacterLevel,
-            uint Xp
+            uint Xp,
+            uint UnspentStatPoints
         )
         {
             this.Identity = Identity;
@@ -49,6 +52,7 @@ namespace SpacetimeDB.Types
             this.Ready = Ready;
             this.CharacterLevel = CharacterLevel;
             this.Xp = Xp;
+            this.UnspentStatPoints = UnspentStatPoints;
         }
 
         public Player()

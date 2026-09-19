@@ -12,17 +12,17 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void EquipItemHandler(ReducerEventContext ctx, uint slotIndex);
-        public event EquipItemHandler? OnEquipItem;
+        public delegate void DropItemHandler(ReducerEventContext ctx, uint slotIndex);
+        public event DropItemHandler? OnDropItem;
 
-        public void EquipItem(uint slotIndex)
+        public void DropItem(uint slotIndex)
         {
-            conn.InternalCallReducer(new Reducer.EquipItem(slotIndex));
+            conn.InternalCallReducer(new Reducer.DropItem(slotIndex));
         }
 
-        public bool InvokeEquipItem(ReducerEventContext ctx, Reducer.EquipItem args)
+        public bool InvokeDropItem(ReducerEventContext ctx, Reducer.DropItem args)
         {
-            if (OnEquipItem == null)
+            if (OnDropItem == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -34,7 +34,7 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
-            OnEquipItem(
+            OnDropItem(
                 ctx,
                 args.SlotIndex
             );
@@ -46,21 +46,21 @@ namespace SpacetimeDB.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class EquipItem : Reducer, IReducerArgs
+        public sealed partial class DropItem : Reducer, IReducerArgs
         {
             [DataMember(Name = "slot_index")]
             public uint SlotIndex;
 
-            public EquipItem(uint SlotIndex)
+            public DropItem(uint SlotIndex)
             {
                 this.SlotIndex = SlotIndex;
             }
 
-            public EquipItem()
+            public DropItem()
             {
             }
 
-            string IReducerArgs.ReducerName => "equip_item";
+            string IReducerArgs.ReducerName => "drop_item";
         }
     }
 }

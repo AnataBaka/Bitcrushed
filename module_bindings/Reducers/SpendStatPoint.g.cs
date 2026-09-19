@@ -12,17 +12,17 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void EquipItemHandler(ReducerEventContext ctx, uint slotIndex);
-        public event EquipItemHandler? OnEquipItem;
+        public delegate void SpendStatPointHandler(ReducerEventContext ctx, SpacetimeDB.Types.StatType stat);
+        public event SpendStatPointHandler? OnSpendStatPoint;
 
-        public void EquipItem(uint slotIndex)
+        public void SpendStatPoint(SpacetimeDB.Types.StatType stat)
         {
-            conn.InternalCallReducer(new Reducer.EquipItem(slotIndex));
+            conn.InternalCallReducer(new Reducer.SpendStatPoint(stat));
         }
 
-        public bool InvokeEquipItem(ReducerEventContext ctx, Reducer.EquipItem args)
+        public bool InvokeSpendStatPoint(ReducerEventContext ctx, Reducer.SpendStatPoint args)
         {
-            if (OnEquipItem == null)
+            if (OnSpendStatPoint == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -34,9 +34,9 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
-            OnEquipItem(
+            OnSpendStatPoint(
                 ctx,
-                args.SlotIndex
+                args.Stat
             );
             return true;
         }
@@ -46,21 +46,21 @@ namespace SpacetimeDB.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class EquipItem : Reducer, IReducerArgs
+        public sealed partial class SpendStatPoint : Reducer, IReducerArgs
         {
-            [DataMember(Name = "slot_index")]
-            public uint SlotIndex;
+            [DataMember(Name = "stat")]
+            public StatType Stat;
 
-            public EquipItem(uint SlotIndex)
+            public SpendStatPoint(StatType Stat)
             {
-                this.SlotIndex = SlotIndex;
+                this.Stat = Stat;
             }
 
-            public EquipItem()
+            public SpendStatPoint()
             {
             }
 
-            string IReducerArgs.ReducerName => "equip_item";
+            string IReducerArgs.ReducerName => "spend_stat_point";
         }
     }
 }

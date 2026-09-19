@@ -8,11 +8,11 @@ using System;
 namespace SpacetimeDB.Types
 {
     [SpacetimeDB.Type]
-    public enum EquipSlot
+    public enum StatType
     {
-        Bag,
-        Weapon,
-        Amulet,
-        Inventory,
+        Strength,
+        Dexterity,
+        Intelligence,
+        Speed,
     }
 }

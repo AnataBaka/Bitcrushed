@@ -17,5 +17,6 @@ namespace SpacetimeDB.Types
         Focus,
         Equip,
         Defeat,
+        Aoe,
     }
 }
