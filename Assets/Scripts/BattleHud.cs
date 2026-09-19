@@ -10,9 +10,9 @@ public class BattleHud : MonoBehaviour
 {
     static readonly Vector2[] PlayerSlots =
     {
-        new Vector2(360f, 120f),
-        new Vector2(540f, 290f),
-        new Vector2(720f, 460f),
+        new Vector2(480f, 120f),
+        new Vector2(640f, 300f),
+        new Vector2(800f, 480f),
     };
 
     static readonly Vector2[] EnemySlots =
@@ -115,6 +115,16 @@ public class BattleHud : MonoBehaviour
             return;
         }
 
+        uint max = 0;
+        foreach (var row in GameManager.Conn.Db.CombatEvent.Iter())
+        {
+            if (row.Id > max)
+            {
+                max = row.Id;
+            }
+        }
+
+        _lastEventId = max;
         GameManager.Conn.Db.CombatEvent.OnInsert += OnCombatEvent;
         _eventsBound = true;
     }
@@ -156,12 +166,23 @@ public class BattleHud : MonoBehaviour
                 ? Vector2.Lerp(actor.Home, actor.Home + new Vector2(80f, 0f), 1f)
                 : Vector2.Lerp(actor.Home, target.Home, 0.78f);
         yield return MoveTo(actor.Root, start, dest, 0.16f);
+        if (actor == null)
+        {
+            _lunging = false;
+            yield break;
+        }
+
         if (target != null)
         {
             StartCoroutine(PunchScale(target.Root));
         }
 
         yield return new WaitForSeconds(0.08f);
+        if (actor == null)
+        {
+            _lunging = false;
+            yield break;
+        }
         if (!NextLungeSameActor(row))
         {
             yield return MoveTo(actor.Root, dest, actor.Home, 0.2f);
