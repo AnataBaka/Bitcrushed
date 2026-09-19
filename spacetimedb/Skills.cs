@@ -107,19 +107,19 @@ public static partial class Module
                 break;
             case SkillNames.Furioso:
                 var furiosoBonus = 0;
-                for (var hit = 0; hit < 9; hit++)
+                for (var hit = 0; hit < FuriosoHitCount; hit++)
                 {
                     var landed = Strike(
                         ctx,
                         caster,
                         targetEntityId,
                         skill.Name,
-                        5 + furiosoBonus,
+                        FuriosoBaseDamage + furiosoBonus,
                         isSkill: true
                     );
                     if (landed.Connected)
                     {
-                        furiosoBonus += 9;
+                        furiosoBonus += FuriosoBonusPerHit;
                     }
                 }
 
@@ -129,9 +129,10 @@ public static partial class Module
                 break;
             case SkillNames.Restring:
                 QueueDodgeBonus(ctx, caster.EntityId, 15);
+                QueueStrength(ctx, caster.EntityId, 4);
                 AddLog(
                     ctx,
-                    $"{caster.Name} uses {skill.Name} and gains +15% dodge next turn.",
+                    $"{caster.Name} uses {skill.Name}, gains +15% dodge and 4 Enraged next turn.",
                     LogKind.Focus,
                     caster.EntityId,
                     caster.EntityId
@@ -176,7 +177,7 @@ public static partial class Module
                 StrikeLivingEnemies(ctx, caster, skill.Name, 4, hits: 3);
                 break;
             case SkillNames.Snipe:
-                if (Strike(ctx, caster, targetEntityId, skill.Name, 30, isSkill: true).Connected)
+                if (Strike(ctx, caster, targetEntityId, skill.Name, SnipeDamage, isSkill: true).Connected)
                 {
                     QueueFragile(ctx, targetEntityId, 4);
                 }
@@ -202,19 +203,11 @@ public static partial class Module
 
                 break;
             case SkillNames.Grandshot:
-                var heads = 0;
-                for (var coin = 0; coin < 9; coin++)
-                {
-                    if (ctx.Rng.Next(0, 2) == 1)
-                    {
-                        heads += 1;
-                    }
-                }
-
-                var grandshotDamage = 30 + (heads * 6);
+                var countedDodges = GrandshotCountedDodges(caster.DodgeCount);
+                var grandshotDamage = GrandshotDamageOf(caster.DodgeCount);
                 AddLog(
                     ctx,
-                    $"{caster.Name} flips 9 coins for {skill.Name}: {heads} heads (+{heads * 6} damage).",
+                    $"{caster.Name} fires {skill.Name} with {countedDodges} dodge{(countedDodges == 1 ? "" : "s")} this battle (+{countedDodges * GrandshotDamagePerDodge} power).",
                     LogKind.Focus,
                     caster.EntityId,
                     caster.EntityId
@@ -229,9 +222,18 @@ public static partial class Module
 
                 break;
             case SkillNames.Fireball:
-                if (Strike(ctx, caster, targetEntityId, skill.Name, 2, isSkill: true).Connected)
+                if (
+                    Strike(
+                        ctx,
+                        caster,
+                        targetEntityId,
+                        skill.Name,
+                        2 + BurnSpellPowerBonus(ctx, caster),
+                        isSkill: true
+                    ).Connected
+                )
                 {
-                    ApplyBurn(ctx, targetEntityId, 5, 6);
+                    ApplyBurn(ctx, targetEntityId, 5, 6, BurnCapOf(ctx, caster));
                 }
 
                 break;
@@ -277,7 +279,34 @@ public static partial class Module
                 EnterFinishTheJob(ctx, caster);
                 break;
             case SkillNames.Overthrow:
-                StrikeLivingEnemies(ctx, caster, skill.Name, 42, hits: 1);
+                AddLog(
+                    ctx,
+                    $"{caster.Name} uses {skill.Name} and applies {OverthrowEnragedStacks} Enraged to this attack.",
+                    LogKind.Focus,
+                    caster.EntityId,
+                    caster.EntityId
+                );
+                foreach (var enemy in LivingMembers(ctx, Team.Enemies))
+                {
+                    Strike(
+                        ctx,
+                        caster,
+                        enemy.EntityId,
+                        skill.Name,
+                        OverthrowDamage + OverthrowEnragedStacks,
+                        isSkill: true
+                    );
+                    QueueWeak(ctx, enemy.EntityId, OverthrowWeakStacks);
+                    QueueFragile(ctx, enemy.EntityId, OverthrowFragileStacks);
+                }
+
+                AddLog(
+                    ctx,
+                    $"{caster.Name} inflicts {OverthrowWeakStacks} Weak and {OverthrowFragileStacks} Fragile on all enemies next turn.",
+                    LogKind.Focus,
+                    caster.EntityId,
+                    caster.EntityId
+                );
                 break;
             default:
                 throw new Exception($"Unhandled skill {skill.Name}.");
@@ -291,7 +320,7 @@ public static partial class Module
         ulong targetEntityId
     )
     {
-        if (skill.Name == SkillNames.Grandshot && !caster.HasDodged)
+        if (skill.Name == SkillNames.Grandshot && caster.DodgeCount < 1)
         {
             throw new Exception("Grandshot requires having dodged at least once.");
         }
@@ -305,7 +334,7 @@ public static partial class Module
 
             if (RequireSession(ctx).Round < FinishTheJobTurnRequirement)
             {
-                throw new Exception("Finish the Job requires 8 turns to have passed.");
+                throw new Exception("Finish the Job requires 4 turns to have passed.");
             }
         }
 
@@ -402,7 +431,8 @@ public static partial class Module
             var connected = false;
             for (var hit = 0; hit < def.Hits; hit++)
             {
-                if (Strike(ctx, caster, target.EntityId, SkillNames.MagicBullet, def.Damage, isSkill: true)
+                var bulletPower = def.Damage + (def.BurnStack > 0 ? BurnSpellPowerBonus(ctx, caster) : 0);
+                if (Strike(ctx, caster, target.EntityId, SkillNames.MagicBullet, bulletPower, isSkill: true)
                     .Connected)
                 {
                     connected = true;
@@ -416,7 +446,7 @@ public static partial class Module
 
             if (def.BurnStack > 0)
             {
-                ApplyBurn(ctx, target.EntityId, def.BurnStack, def.BurnCount);
+                ApplyBurn(ctx, target.EntityId, def.BurnStack, def.BurnCount, BurnCapOf(ctx, caster));
             }
 
             if (def.SpeedDelta != 0 && ctx.Db.Entity.EntityId.Find(target.EntityId) is Entity living)
@@ -684,20 +714,24 @@ public static partial class Module
         }
     }
 
-    static void ApplyBurn(ReducerContext ctx, ulong entityId, int stack, int count)
+    static void ApplyBurn(ReducerContext ctx, ulong entityId, int stack, int count, int cap = BurnStackCap)
     {
         if (ctx.Db.Entity.EntityId.Find(entityId) is not Entity entity || !entity.Alive)
         {
             return;
         }
 
-        ctx.Db.Entity.EntityId.Update(
-            entity with { BurnStack = entity.BurnStack + stack, BurnCount = entity.BurnCount + count }
-        );
+        var burnCap = cap < BurnStackCap ? BurnStackCap : cap;
+        var nextStack = Math.Min(burnCap, entity.BurnStack + Math.Max(0, stack));
+        var nextCount = entity.BurnCount + Math.Max(0, count);
+        ctx.Db.Entity.EntityId.Update(entity with { BurnStack = nextStack, BurnCount = nextCount });
         var updated = ctx.Db.Entity.EntityId.Find(entityId) ?? entity;
+        var capped = entity.BurnStack + stack > burnCap;
         AddLog(
             ctx,
-            $"{updated.Name} is burned (stack {updated.BurnStack}, {updated.BurnCount} turns).",
+            capped
+                ? $"{updated.Name} is burned (stack {updated.BurnStack} capped, {updated.BurnCount} turns)."
+                : $"{updated.Name} is burned (stack {updated.BurnStack}, {updated.BurnCount} turns).",
             LogKind.Attack,
             0,
             updated.EntityId

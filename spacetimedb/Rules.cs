@@ -34,6 +34,16 @@ public static partial class Module
     /// When true, join fills the 3x3 with the Health Amulet and every base weapon.
     public const bool SeedTestItems = false;
     public const int FocusManaGain = 20;
+    public const int AmethystSashFocusMana = 50;
+    public const int GuardiansPendantReduceBps = 700;
+    public const int CountessNecklaceHeal = 2;
+    public const int HolyGrailHeal = 5;
+    public const int HiddenDreamcatcherDodgePercent = 5;
+    public const int EmeraldPendantManaDiscount = 5;
+    public const int RubyScepterBurnPower = 3;
+    public const int RedCocoonReflect = 1;
+    public const int RootedBladeSpeedPenalty = 1;
+    public const int DragonsFireBurnCap = 30;
     public const uint CheatCharacterLevel = 999;
     public const int ManaRegenPerTurn = 2;
 
@@ -41,16 +51,21 @@ public static partial class Module
     public const int MaxDodgePercent = 25;
     /// Enemy dodge is this many times smaller than the shared Dexterity formula.
     public const int EnemyDodgeDivisor = 3;
-    /// Archer passive: 0.1% dodge per Dexterity (10 basis points).
-    public const int ArcherDodgeBpsPerDex = 10;
-    /// Archer passive: +0.2 damage per Dexterity, stored as tenths.
-    public const int ArcherDamageTenthsPerDex = 2;
-    public const int KnightDamageTenthsPerStrength = 5;
+    /// Archer passive: 2% dodge per Dexterity (200 basis points).
+    public const int ArcherDodgeBpsPerDex = 200;
+    /// Archer DEX dodge is capped at 50% before skill bonuses such as Restring.
+    public const int ArcherMaxDodgeBps = 5000;
+    /// Archer passive: +0.5 damage per Dexterity, stored as tenths.
+    public const int ArcherDamageTenthsPerDex = 5;
+    /// Knight STR stat passive: +0.2 damage per Strength, stored as tenths.
+    public const int KnightDamageTenthsPerStrength = 2;
     /// Mage passive: +0.2 spell damage per Intelligence, stored as tenths.
     public const int MageSpellDamageTenthsPerInt = 2;
     /// Mage passive: +0.4 max mana per Intelligence, stored as tenths.
     public const int MageManaTenthsPerInt = 4;
-    /// Ninja crit: 0.1% per Speed (10 basis points).
+    /// Ninja Speed stat passive: +0.5 damage per Speed on all attacks, stored as tenths.
+    public const int NinjaDamageTenthsPerSpeed = 5;
+    /// Ninja crit: 0.1% per Speed stat (10 basis points). Uses Speed, not CombatSpeed.
     public const int NinjaCritBpsPerSpeed = 10;
     public const int NinjaSpeedLeadForFirstAction = 5;
     public const int NinjaGuaranteedFirstSpeed = 999999999;
@@ -64,13 +79,34 @@ public static partial class Module
     public const int GrandUndertakingEnemyHpBps = 5000;
     public const int GrandUndertakingAllyHpBps = 1000;
     public const int NinjaSpeedPowerCap = 5;
-    public const int FinishTheJobTurnRequirement = 8;
+    public const int FinishTheJobTurnRequirement = 4;
+    /// Stance +8/turn is uncapped in the spec; a cap keeps long L30 fights from snowballing.
+    public const int FinishTheJobPowerCap = 40;
     public const int RushNextTurnSpeed = 99999;
     public const int EvadeDamageThreshold = 20;
+    public const int FuriosoManaCost = 100;
+    public const int FuriosoHitCount = 9;
+    public const int FuriosoBaseDamage = 5;
+    public const int FuriosoBonusPerHit = 3;
+    public const int GrandshotManaCost = 100;
+    public const uint GrandshotLevelRequired = 30;
+    public const int GrandshotBaseDamage = 50;
+    public const int GrandshotDamagePerDodge = 50;
+    public const int GrandshotDodgeCap = 4;
+    public const int SnipeDamage = 10;
+    public const int SnipeManaCost = 50;
+    public const uint SnipeLevelRequired = 1;
+    public const int OverthrowEnragedStacks = 12;
+    public const int OverthrowDamage = 42;
+    public const int OverthrowManaCost = 40;
+    public const int OverthrowWeakStacks = 3;
+    public const int OverthrowFragileStacks = 4;
     public const int SpearBaseManaCost = 45;
     public const int VerticalCutBaseManaCost = 80;
     public const int SkillManaDiscountPerUse = 15;
     public const int MagicBulletStageCount = 7;
+    /// Burn stack (per-tick damage) caps at 25. Extra applications still add duration.
+    public const int BurnStackCap = 25;
 
     /// Main stat rolls 3-6, the other three roll 1-3.
     public const int MainStatMin = 3;
@@ -200,6 +236,46 @@ public static partial class Module
 
     public static string PartyName(uint slot) => PartyNames[slot % (uint)PartyNames.Length];
 
+    public static class AmuletNames
+    {
+        public const string AmethystSash = "Amethyst Sash";
+        public const string GoldenCross = "Golden Cross";
+        public const string GuardiansPendant = "Guardian's Pendant";
+        public const string CountessNecklace = "Countess' Necklace";
+        public const string EyeOfTheWatcher = "Eye of the Watcher";
+        public const string SigilOfTheOld = "Sigil of the Old";
+        public const string DragonflyCharm = "Dragonfly Charm";
+        public const string TwinAmethystCharm = "Twin Amethyst Charm";
+        public const string DragonsFire = "Dragons' Fire";
+        public const string EmeraldPendant = "Emerald Pendant";
+        public const string JusticesWings = "Justices' Wings";
+        public const string HolyGrail = "Holy Grail";
+        public const string HiddenDreamcatcher = "Hidden Dreamcatcher";
+        public const string RootedBlade = "Rooted Blade";
+        public const string RedCocoon = "Red Cocoon";
+        public const string RubyScepter = "Ruby Scepter";
+    }
+
+    public static readonly string[] AllAmuletNames =
+    {
+        AmuletNames.AmethystSash,
+        AmuletNames.GoldenCross,
+        AmuletNames.GuardiansPendant,
+        AmuletNames.CountessNecklace,
+        AmuletNames.EyeOfTheWatcher,
+        AmuletNames.SigilOfTheOld,
+        AmuletNames.DragonflyCharm,
+        AmuletNames.TwinAmethystCharm,
+        AmuletNames.DragonsFire,
+        AmuletNames.EmeraldPendant,
+        AmuletNames.JusticesWings,
+        AmuletNames.HolyGrail,
+        AmuletNames.HiddenDreamcatcher,
+        AmuletNames.RootedBlade,
+        AmuletNames.RedCocoon,
+        AmuletNames.RubyScepter,
+    };
+
     public static class SkillNames
     {
         public const string Bash = "Bash";
@@ -282,12 +358,14 @@ public static partial class Module
 
     // ------------------------------------------------------------------- math
 
-    /// Flat class passives: Knight +0.5/STR, Archer +0.2/DEX, Mage +0.2/INT on spells.
+    /// Flat class passives: Knight +0.2/STR, Archer +0.5/DEX, Ninja +0.5/BaseSpeed,
+    /// Mage +0.2/INT on spells. Ninja must be given BaseSpeed, never CombatSpeed.
     public static int ClassPassiveDamage(
         PlayerClass playerClass,
         int strength,
         int dexterity,
         int intelligence,
+        int baseSpeed,
         bool isSpell
     )
     {
@@ -302,12 +380,29 @@ public static partial class Module
             tenths += ArcherDamageTenthsPerDex * Math.Max(0, dexterity);
         }
 
+        if (playerClass == PlayerClass.Ninja)
+        {
+            tenths += NinjaDamageTenthsPerSpeed * NinjaPassiveBaseSpeed(baseSpeed);
+        }
+
         if (playerClass == PlayerClass.Mage && isSpell)
         {
             tenths += MageSpellDamageTenthsPerInt * Math.Max(0, intelligence);
         }
 
         return tenths <= 0 ? 0 : (tenths + 5) / 10;
+    }
+
+    /// Passive 3 uses rolled/spent BaseSpeed only. CombatSpeed first-action
+    /// (999999999) and temporary Speed sets must never feed this bonus.
+    public static int NinjaPassiveBaseSpeed(int baseSpeed)
+    {
+        if (baseSpeed <= 0 || baseSpeed >= NinjaGuaranteedFirstSpeed)
+        {
+            return 0;
+        }
+
+        return baseSpeed;
     }
 
     public static int MageManaFromIntelligence(int intelligence) =>
@@ -321,6 +416,9 @@ public static partial class Module
 
     public static int EffectiveSpeed(Entity entity) =>
         entity.CombatSpeed != 0 ? entity.CombatSpeed : entity.Speed;
+
+    public static bool HasForcedFirstSpeed(Entity entity) =>
+        entity.GoFirstNextRound || EffectiveSpeed(entity) >= RushNextTurnSpeed;
 
     /// Ninja passive: +1 skill base power per Speed above the target, capped at +5.
     public static int NinjaSpeedPowerBonus(int ninjaSpeed, int targetSpeed) =>
@@ -365,6 +463,21 @@ public static partial class Module
 
     public static int EffectiveSkillManaCost(string skillName, int catalogCost, Entity caster)
     {
+        if (skillName == SkillNames.Furioso)
+        {
+            return FuriosoManaCost;
+        }
+
+        if (skillName == SkillNames.Grandshot)
+        {
+            return GrandshotManaCost;
+        }
+
+        if (skillName == SkillNames.Overthrow)
+        {
+            return OverthrowManaCost;
+        }
+
         if (skillName == SkillNames.Spear)
         {
             return Math.Max(0, SpearBaseManaCost - caster.SpearDiscount);
@@ -378,8 +491,33 @@ public static partial class Module
         return catalogCost;
     }
 
+    public static int ApplySpellManaDiscount(int cost, bool hasEmeraldPendant) =>
+        hasEmeraldPendant ? Math.Max(0, cost - EmeraldPendantManaDiscount) : cost;
+
+    public static int ApplyReceivedDamageReduction(int damage, bool hasGuardiansPendant)
+    {
+        if (damage <= 0 || !hasGuardiansPendant)
+        {
+            return damage;
+        }
+
+        return ScaleByBps(damage, 10000 - GuardiansPendantReduceBps);
+    }
+
+    public static int BurnCapFor(bool hasDragonsFire) =>
+        hasDragonsFire ? DragonsFireBurnCap : BurnStackCap;
+
+    public static int FocusManaFor(bool hasAmethystSash) =>
+        hasAmethystSash ? AmethystSashFocusMana : FocusManaGain;
+
     public static int NextDiscountedManaCost(int currentCost) =>
         Math.Max(0, currentCost - SkillManaDiscountPerUse);
+
+    public static int GrandshotCountedDodges(int dodgeCount) =>
+        Math.Clamp(dodgeCount, 0, GrandshotDodgeCap);
+
+    public static int GrandshotDamageOf(int dodgeCount) =>
+        GrandshotBaseDamage + (GrandshotCountedDodges(dodgeCount) * GrandshotDamagePerDodge);
 
     /// Weapon/skill core. Class passives and Enraged stacks are added separately.
     public static int DealtDamage(int characterDamage, int atk) =>
@@ -398,7 +536,8 @@ public static partial class Module
         return chance;
     }
 
-    /// Dodge chance in basis points (10000 = 100%). Archer uses 0.1% per DEX.
+    /// Dodge chance in basis points (10000 = 100%). Archer uses 2% per DEX, capped
+    /// at 50% before temporary bonuses such as Restring.
     public static int DodgeChanceBps(
         int dexterity,
         Team faction,
@@ -409,7 +548,7 @@ public static partial class Module
         int bps;
         if (archerPassive)
         {
-            bps = Math.Max(0, dexterity) * ArcherDodgeBpsPerDex;
+            bps = Math.Min(ArcherMaxDodgeBps, Math.Max(0, dexterity) * ArcherDodgeBpsPerDex);
         }
         else
         {
@@ -467,43 +606,64 @@ public static partial class Module
         return (uint)Math.Round(xp, MidpointRounding.AwayFromZero);
     }
 
-    /// Floor is the main driver. Player level adds a quarter-weight, capped at 35
-    /// so a cheat-level party does not spawn raid-boss stats.
-    public static double EnemyScaleLevel(uint floor, uint playerLevel)
+    /// Uses the stronger of floor and party level so a L30 group cannot farm weak early floors.
+    /// Party level is capped at 35 so cheat-level characters do not spawn raid bosses.
+    public static int EncounterScaleLevel(uint floor, uint partyLevel)
     {
-        var f = floor == 0 ? 1 : (int)floor;
-        var level = playerLevel == 0 ? 1 : (int)playerLevel;
-        var capped = Math.Clamp(level, 1, 35);
-        return f + 0.25 * capped;
+        var stage = floor == 0 ? 1 : (int)floor;
+        var level = partyLevel == 0 ? 1 : (int)partyLevel;
+        return Math.Max(stage, Math.Clamp(level, 1, 35));
     }
 
-    /// EnemyHP = (30 + 6*blend) * (P/3) * packVitality.
-    /// Blend is floor + 0.25*min(playerLevel, 35). Pack vitality beefs up solos and
-    /// thins out 4-packs so total fight HP stays in a sensible band at full party (3).
+    /// Early HP eased now that Snipe is 10, not 30. Late HP stays high for L30 nukes
+    /// (Furioso ~153, Grandshot 100–250, Overthrow 54, Grand Undertaking 50% max HP).
+    /// L1 ~52; L30 ~693 before party/pack.
+    public static int EnemyHpBaseline(int level)
+    {
+        var n = Math.Max(1, level);
+        return Math.Max(1, (int)Math.Round(45 + (6.0 * n) + (0.52 * n * n), MidpointRounding.AwayFromZero));
+    }
+
+    /// Tracks the longer late fights without over-tuning the opener. L1 ~6; L30 ~41.
+    public static int EnemyAtkBaseline(int level)
+    {
+        var n = Math.Max(1, level);
+        return Math.Max(1, (int)Math.Round(5 + (0.6 * n) + (0.02 * n * n), MidpointRounding.AwayFromZero));
+    }
+
+    /// Light late-game armor so flat nukes chip instead of deleting. 0 until level 10.
+    public static int EnemyDefenseBaseline(int level)
+    {
+        var n = Math.Max(1, level);
+        return Math.Max(0, (n - 10) / 5);
+    }
+
+    /// EnemyHP = baseline(L) * (P / 3) * packVitality.
     public static int EnemyHpForEncounter(
         uint floor,
-        uint playerLevel,
+        uint partyLevel,
         int playerCount,
         int enemyCount
     )
     {
-        var baseline = 30 + 6 * EnemyScaleLevel(floor, playerLevel);
+        var baseline = EnemyHpBaseline(EncounterScaleLevel(floor, partyLevel));
         var p = Math.Max(1, playerCount);
         var fromParty = baseline * (p / 3.0);
         var vitalityBps = PackVitalityBps(Math.Max(1, enemyCount));
         return ClampStat(fromParty * vitalityBps / 10000.0, 1);
     }
 
-    /// ATK is not cut by party size — starter armor is 5, so P/3 was zeroing solo hits.
-    public static int EnemyAtkForEncounter(uint floor, uint playerLevel)
+    /// EnemyATK = baseline(L) * (P / 3).
+    public static int EnemyAtkForEncounter(uint floor, uint partyLevel, int playerCount)
     {
-        var atk = 4 + 0.6 * EnemyScaleLevel(floor, playerLevel);
-        return Math.Max(6, ClampStat(atk, 6));
+        var baseline = EnemyAtkBaseline(EncounterScaleLevel(floor, partyLevel));
+        var p = Math.Max(1, playerCount);
+        return Math.Max(1, (int)Math.Round(baseline * (p / 3.0), MidpointRounding.AwayFromZero));
     }
 
-    public static int EnemyStrengthForEncounter(uint floor, uint playerLevel)
+    public static int EnemyStrengthForEncounter(uint floor, uint partyLevel)
     {
-        var strength = 2 + 0.3 * EnemyScaleLevel(floor, playerLevel);
+        var strength = 2 + 0.3 * EncounterScaleLevel(floor, partyLevel);
         return Math.Max(3, ClampStat(strength, 3));
     }
 

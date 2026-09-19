@@ -171,7 +171,8 @@ public static class GearArt
 
         if (def.Kind == ItemKind.Amulet)
         {
-            return PlaceholderArt.Shape(ShapeKind.Circle, new Color(0.82f, 0.62f, 0.28f), 48, 48);
+            return AmuletArt.Icon(def.Name)
+                ?? PlaceholderArt.Shape(ShapeKind.Circle, new Color(0.82f, 0.62f, 0.28f), 48, 48);
         }
 
         return PlaceholderArt.Shape(ShapeKind.Rect, WeaponColor(def.WeaponType), 48, 48);

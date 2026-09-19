@@ -340,6 +340,8 @@ public class ActionMenuView : MonoBehaviour
                 .Append(':')
                 .Append(me.HasDodged)
                 .Append(':')
+                .Append(me.DodgeCount)
+                .Append(':')
                 .Append(me.FinishTheJobUsed)
                 .Append(':')
                 .Append(me.FinishTheJobStance)

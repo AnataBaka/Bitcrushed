@@ -185,12 +185,12 @@ public static partial class Module
             ctx,
             SkillNames.Furioso,
             PlayerClass.Knight,
-            100,
-            5,
+            FuriosoManaCost,
+            FuriosoBaseDamage,
             1,
             DamageType.Physical,
             30,
-            hitCount: 9
+            hitCount: FuriosoHitCount
         );
 
         AddPlayerSkill(ctx, SkillNames.Shoot, PlayerClass.Archer, 0, 4, 1, DamageType.Physical, 1);
@@ -208,7 +208,16 @@ public static partial class Module
             7,
             hitCount: 3
         );
-        AddPlayerSkill(ctx, SkillNames.Snipe, PlayerClass.Archer, 50, 30, 1, DamageType.Physical, 12);
+        AddPlayerSkill(
+            ctx,
+            SkillNames.Snipe,
+            PlayerClass.Archer,
+            SnipeManaCost,
+            SnipeDamage,
+            1,
+            DamageType.Physical,
+            SnipeLevelRequired
+        );
         AddPlayerSkill(
             ctx,
             SkillNames.CurvedShot,
@@ -224,11 +233,11 @@ public static partial class Module
             ctx,
             SkillNames.Grandshot,
             PlayerClass.Archer,
-            100,
-            30,
+            GrandshotManaCost,
+            GrandshotBaseDamage,
             1,
             DamageType.Physical,
-            30
+            GrandshotLevelRequired
         );
 
         AddPlayerSkill(
@@ -273,8 +282,8 @@ public static partial class Module
             ctx,
             SkillNames.Overthrow,
             PlayerClass.Ninja,
-            40,
-            42,
+            OverthrowManaCost,
+            OverthrowDamage,
             4,
             DamageType.Physical,
             30
@@ -287,6 +296,65 @@ public static partial class Module
         AddEnemySkill(ctx, "Hex Bolt", 8, 10, 1, DamageType.Magical);
         AddEnemySkill(ctx, "Bite", 5, 7, 1, DamageType.Physical);
         AddEnemySkill(ctx, "Bone Slash", 7, 8, 1, DamageType.Physical);
+    }
+
+    public static void EnsureSkillCatalog(ReducerContext ctx)
+    {
+        foreach (var skill in ctx.Db.SkillDef.Iter().ToList())
+        {
+            if (skill.Name == SkillNames.Furioso && skill.ManaCost != FuriosoManaCost)
+            {
+                ctx.Db.SkillDef.Id.Update(skill with { ManaCost = FuriosoManaCost });
+            }
+
+            if (
+                skill.Name == SkillNames.Grandshot
+                && (
+                    skill.ManaCost != GrandshotManaCost
+                    || skill.LevelRequired != GrandshotLevelRequired
+                    || skill.BaseDamage != GrandshotBaseDamage
+                )
+            )
+            {
+                ctx.Db.SkillDef.Id.Update(
+                    skill with
+                    {
+                        ManaCost = GrandshotManaCost,
+                        LevelRequired = GrandshotLevelRequired,
+                        BaseDamage = GrandshotBaseDamage,
+                    }
+                );
+            }
+
+            if (skill.Name == SkillNames.Overthrow && skill.ManaCost != OverthrowManaCost)
+            {
+                ctx.Db.SkillDef.Id.Update(skill with { ManaCost = OverthrowManaCost });
+            }
+
+            if (
+                skill.Name == SkillNames.Snipe
+                && (
+                    skill.LevelRequired != SnipeLevelRequired
+                    || skill.BaseDamage != SnipeDamage
+                    || skill.ManaCost != SnipeManaCost
+                )
+            )
+            {
+                ctx.Db.SkillDef.Id.Update(
+                    skill with
+                    {
+                        LevelRequired = SnipeLevelRequired,
+                        BaseDamage = SnipeDamage,
+                        ManaCost = SnipeManaCost,
+                    }
+                );
+            }
+        }
+
+        foreach (var player in ctx.Db.Player.Iter())
+        {
+            GrantUnlockedSkills(ctx, player.EntityId, player.Class, player.CharacterLevel);
+        }
     }
 
     public static void EnsureEnemyCatalog(ReducerContext ctx)
@@ -415,6 +483,97 @@ public static partial class Module
 
         AddConsumable(ctx, "Health Potion", "HPT", heal: 30, mana: 0);
         AddConsumable(ctx, "Mana Potion", "MPT", heal: 0, mana: 30);
+
+        SeedAmulets(ctx);
+    }
+
+    public static void EnsureItemCatalog(ReducerContext ctx)
+    {
+        foreach (var name in AllAmuletNames)
+        {
+            if (FindExistingItem(ctx, name) is not null)
+            {
+                continue;
+            }
+
+            SeedOneAmulet(ctx, name);
+        }
+    }
+
+    static void SeedAmulets(ReducerContext ctx)
+    {
+        foreach (var name in AllAmuletNames)
+        {
+            SeedOneAmulet(ctx, name);
+        }
+    }
+
+    static ItemDef? FindExistingItem(ReducerContext ctx, string name)
+    {
+        foreach (var item in ctx.Db.ItemDef.Iter())
+        {
+            if (item.Name == name)
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    static void SeedOneAmulet(ReducerContext ctx, string name)
+    {
+        switch (name)
+        {
+            case AmuletNames.AmethystSash:
+                AddAmulet(ctx, name, "AMS");
+                break;
+            case AmuletNames.GoldenCross:
+                AddAmulet(ctx, name, "GLC", maxHp: 8);
+                break;
+            case AmuletNames.GuardiansPendant:
+                AddAmulet(ctx, name, "GRP");
+                break;
+            case AmuletNames.CountessNecklace:
+                AddAmulet(ctx, name, "CNT");
+                break;
+            case AmuletNames.EyeOfTheWatcher:
+                AddAmulet(ctx, name, "EYE", intelligence: 4);
+                break;
+            case AmuletNames.SigilOfTheOld:
+                AddAmulet(ctx, name, "SIG", strength: 5, dexterity: -2);
+                break;
+            case AmuletNames.DragonflyCharm:
+                AddAmulet(ctx, name, "DFC");
+                break;
+            case AmuletNames.TwinAmethystCharm:
+                AddAmulet(ctx, name, "TAC", intelligence: 5);
+                break;
+            case AmuletNames.DragonsFire:
+                AddAmulet(ctx, name, "DRF");
+                break;
+            case AmuletNames.EmeraldPendant:
+                AddAmulet(ctx, name, "EMP");
+                break;
+            case AmuletNames.JusticesWings:
+                AddAmulet(ctx, name, "JSW", speed: 3);
+                break;
+            case AmuletNames.HolyGrail:
+                AddAmulet(ctx, name, "HGR");
+                break;
+            case AmuletNames.HiddenDreamcatcher:
+                AddAmulet(ctx, name, "HDC");
+                break;
+            case AmuletNames.RootedBlade:
+                AddAmulet(ctx, name, "RTB");
+                break;
+            case AmuletNames.RedCocoon:
+                AddAmulet(ctx, name, "RCC");
+                break;
+            case AmuletNames.RubyScepter:
+                AddAmulet(ctx, name, "RBS");
+                break;
+        }
     }
 
     static void AddWeapon(
@@ -502,6 +661,38 @@ public static partial class Module
             }
         );
 
+    static void AddAmulet(
+        ReducerContext ctx,
+        string name,
+        string shortName,
+        int strength = 0,
+        int dexterity = 0,
+        int intelligence = 0,
+        int speed = 0,
+        int maxHp = 0
+    ) =>
+        ctx.Db.ItemDef.Insert(
+            new ItemDef
+            {
+                Id = 0,
+                Name = name,
+                ShortName = shortName,
+                Kind = ItemKind.Amulet,
+                WeaponType = WeaponType.None,
+                ArmorSlot = ArmorSlot.None,
+                AtkBonus = 0,
+                DefenseBonus = 0,
+                StrengthBonus = strength,
+                DexterityBonus = dexterity,
+                IntelligenceBonus = intelligence,
+                SpeedBonus = speed,
+                MaxHpBonus = maxHp,
+                MaxManaBonus = 0,
+                HealAmount = 0,
+                ManaRestoreAmount = 0,
+            }
+        );
+
     // -------------------------------------------------------------- loadouts
 
     public static ItemDef RequireItem(ReducerContext ctx, string name)
@@ -530,8 +721,8 @@ public static partial class Module
         throw new Exception($"Skill catalog is missing {name}.");
     }
 
-    /// Class base weapon worn, Amulet empty, 3x3 inventory empty. Potions stay
-    /// in the action-menu bag and are not part of inventory.
+    /// Class base weapon worn, a random starting amulet, 3x3 inventory empty.
+    /// Potions stay in the action-menu bag and are not part of inventory.
     public static void GiveStartingLoadout(
         ReducerContext ctx,
         Identity owner,
@@ -543,6 +734,7 @@ public static partial class Module
 
         GiveToBag(ctx, owner, RequireItem(ctx, "Health Potion").Id, 3);
         GiveToBag(ctx, owner, RequireItem(ctx, "Mana Potion").Id, 2);
+        GiveRandomStartingAmulet(ctx, owner);
 
         if (SeedTestItems)
         {

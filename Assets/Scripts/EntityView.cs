@@ -385,6 +385,11 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             parts.Add($"Dodge +{entity.DodgeBonusPercent}%");
         }
 
+        if (entity.DodgeCount > 0)
+        {
+            parts.Add($"Dodges {entity.DodgeCount}");
+        }
+
         if (entity.EvadeThreshold > 0)
         {
             parts.Add($"Evade <{entity.EvadeThreshold}");

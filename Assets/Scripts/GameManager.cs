@@ -11,6 +11,7 @@ public class GameManager : MonoBehaviour
 {
     public const uint SessionId = 1;
     public const int InventoryCapacity = 9;
+    public const int FinishTheJobTurnRequirement = 4;
 
     [SerializeField]
     string serverUrl = "https://maincloud.spacetimedb.com";
@@ -497,6 +498,16 @@ public class GameManager : MonoBehaviour
             return 0;
         }
 
+        if (skill.Name == "Furioso" || skill.Name == "Grandshot")
+        {
+            return 100;
+        }
+
+        if (skill.Name == "Overthrow")
+        {
+            return 40;
+        }
+
         if (skill.Name == "Spear")
         {
             return Math.Max(0, 45 - caster.SpearDiscount);
@@ -507,7 +518,20 @@ public class GameManager : MonoBehaviour
             return Math.Max(0, 80 - caster.VerticalCutDiscount);
         }
 
-        return skill.ManaCost;
+        var cost = skill.ManaCost;
+        if (skill.ForClass == PlayerClass.Mage && LocalHasAmulet("Emerald Pendant"))
+        {
+            cost = Math.Max(0, cost - 5);
+        }
+
+        return cost;
+    }
+
+    public static bool LocalHasAmulet(string name)
+    {
+        var worn = EquippedIn(EquipSlot.Amulet);
+        var def = worn == null ? null : ItemDefOf(worn);
+        return def != null && def.Name == name;
     }
 
     public static bool SkillReadyToCast(SkillDef skill, Entity caster, GameSession session)
@@ -517,7 +541,7 @@ public class GameManager : MonoBehaviour
             return false;
         }
 
-        if (skill.Name == "Grandshot" && !caster.HasDodged)
+        if (skill.Name == "Grandshot" && caster.DodgeCount < 1)
         {
             return false;
         }
@@ -529,7 +553,7 @@ public class GameManager : MonoBehaviour
                 return false;
             }
 
-            if (session == null || session.Round < 8)
+            if (session == null || session.Round < FinishTheJobTurnRequirement)
             {
                 return false;
             }

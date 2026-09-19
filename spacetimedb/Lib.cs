@@ -33,12 +33,16 @@ public static partial class Module
         );
 
         SeedCatalog(ctx);
+        EnsureSkillCatalog(ctx);
+        EnsureItemCatalog(ctx);
         Log.Info("Testing Fight Stage initialized.");
     }
 
     [SpacetimeDB.Reducer(ReducerKind.ClientConnected)]
     public static void ClientConnected(ReducerContext ctx)
     {
+        EnsureSkillCatalog(ctx);
+        EnsureItemCatalog(ctx);
         if (ctx.Db.Player.Identity.Find(ctx.Sender) is Player player)
         {
             ctx.Db.Player.Identity.Update(player with { Online = true });
@@ -427,7 +431,10 @@ public static partial class Module
 
         ValidatePlayerSkill(ctx, caster, skill, targetEntityId);
 
-        var manaCost = EffectiveSkillManaCost(skill.Name, skill.ManaCost, caster);
+        var manaCost = ApplySpellManaDiscount(
+            EffectiveSkillManaCost(skill.Name, skill.ManaCost, caster),
+            HasEmeraldPendant(ctx, caster)
+        );
         if (caster.Mana < manaCost)
         {
             AddLog(
@@ -715,6 +722,11 @@ public static partial class Module
         if (entity.FinishTheJobStance)
         {
             atk += 6;
+        }
+
+        if (entity.DoubleStrength)
+        {
+            strength *= 2;
         }
 
         var maxHp = ClassMaxHp(player.Class, player.CharacterLevel) + hpBonus;
@@ -1216,6 +1228,16 @@ public static partial class Module
         );
         AddLog(ctx, "Rest stop. HP and mana restored. Ready up to continue.");
         DeliverPendingRewards(ctx);
+
+        foreach (var player in ctx.Db.Player.Iter())
+        {
+            if (ctx.Db.Entity.EntityId.Find(player.EntityId) is not Entity entity || !entity.Alive)
+            {
+                continue;
+            }
+
+            GrantRandomUnownedAmulet(ctx, player.Identity, entity.Name);
+        }
     }
 
     static void RestorePartyAtRest(ReducerContext ctx)
@@ -1315,8 +1337,12 @@ public static partial class Module
                 FinishTheJobUsed = false,
                 FinishTheJobStance = false,
                 FinishTheJobPower = 0,
+                HasDodged = false,
+                DodgeCount = 0,
                 SkipNextTurn = false,
                 GrandUndertakingPending = false,
+                DoubleStrength = false,
+                NextTurnDoubleStrength = false,
             };
             ctx.Db.Entity.EntityId.Update(reset);
         }
@@ -1330,14 +1356,18 @@ public static partial class Module
     static void SpawnEnemies(ReducerContext ctx)
     {
         EnsureEnemyCatalog(ctx);
+        EnsureSkillCatalog(ctx);
         var floor = CombatFloor(ctx);
         var players = PartyEncounterSize(ctx);
-        var playerLevel = PartyCombatLevel(ctx);
+        var partyLevel = PartyCombatLevel(ctx);
         var pool = EnemyPool;
-        var count = RollEnemyPackSize(ctx, players);
-        var maxHp = EnemyHpForEncounter(floor, playerLevel, players, count);
-        var atk = EnemyAtkForEncounter(floor, playerLevel);
-        var strength = EnemyStrengthForEncounter(floor, playerLevel);
+        var count = RollEnemyPackSize(ctx, players, floor);
+        var maxHp = EnemyHpForEncounter(floor, partyLevel, players, count);
+        var atk = Math.Max(
+            1,
+            ScaleByBps(EnemyAtkForEncounter(floor, partyLevel, players), PackPowerBps(count))
+        );
+        var defense = EnemyDefenseBaseline(EncounterScaleLevel(floor, partyLevel));
 
         var picks = new List<EnemyArchetype>(count);
         for (var i = 0; i < count; i++)
@@ -1372,6 +1402,7 @@ public static partial class Module
                 ? labeled
                 : $"{labeled} {(char)('A' + index)}";
             var maxMana = Math.Max(1, arch.MaxMana);
+            var strength = Math.Max(1, arch.Strength);
             var dexterity = Math.Max(1, arch.Dexterity);
             var intelligence = Math.Max(1, arch.Intelligence);
             var speed = Math.Max(1, arch.Speed);
@@ -1397,7 +1428,7 @@ public static partial class Module
                     Intelligence = intelligence,
                     Speed = speed,
                     Atk = atk,
-                    Defense = 0,
+                    Defense = defense,
                     StrengthBuff = 0,
                     NextTurnStrengthBonus = 0,
                     GoFirstNextRound = false,
@@ -1428,12 +1459,16 @@ public static partial class Module
             1
         );
         var atk = ClampStat(
-            ScaleByBps(EnemyAtkForEncounter(floor, playerLevel), BossDamageMultiplierBps),
+            ScaleByBps(EnemyAtkForEncounter(floor, playerLevel, players), BossDamageMultiplierBps),
             1
         );
         var strength = ClampStat(
             ScaleByBps(EnemyStrengthForEncounter(floor, playerLevel), BossDamageMultiplierBps),
             1
+        );
+        var defense = ClampStat(
+            EnemyDefenseBaseline(EncounterScaleLevel(floor, playerLevel)) + 2,
+            0
         );
 
         ctx.Db.Entity.Insert(
@@ -1457,7 +1492,7 @@ public static partial class Module
                 Intelligence = 1,
                 Speed = 4,
                 Atk = atk,
-                Defense = 0,
+                Defense = defense,
                 StrengthBuff = 0,
                 NextTurnStrengthBonus = 0,
                 GoFirstNextRound = false,
@@ -1530,14 +1565,34 @@ public static partial class Module
     }
 
     /// Full party (MaxPartySize = 3) can face 1-4 enemies. Smaller parties cap
-    /// the pack at party size so a duo never walks into a four-pack.
-    static int RollEnemyPackSize(ReducerContext ctx, int playerCount)
+    /// the pack at party size so a duo never walks into a four-pack. Later floors
+    /// raise the minimum pack size.
+    static int RollEnemyPackSize(ReducerContext ctx, int playerCount, uint floor)
     {
         var maxPack =
             playerCount >= (int)MaxPartySize
                 ? (int)MaxEnemySlots
                 : Math.Clamp(playerCount, 1, (int)MaxEnemySlots);
-        return ctx.Rng.Next(1, maxPack + 1);
+        var minPack = 1;
+        if (floor >= 30 && playerCount >= 2)
+        {
+            minPack = Math.Min(maxPack, Math.Max(2, playerCount));
+        }
+        else if (floor >= 20 && playerCount >= 2)
+        {
+            minPack = 2;
+        }
+        else if (floor >= 15 && playerCount >= 3)
+        {
+            minPack = 2;
+        }
+
+        if (minPack >= maxPack)
+        {
+            return maxPack;
+        }
+
+        return ctx.Rng.Next(minPack, maxPack + 1);
     }
 
     /// Fastest combatant first. Rush / Grand Undertaking jump the queue for one round.
@@ -1559,7 +1614,8 @@ public static partial class Module
         var ordered = ctx
             .Db.Entity.Iter()
             .Where(e => e.Alive)
-            .OrderByDescending(e => e.GoFirstNextRound)
+            .OrderByDescending(e => HasForcedFirstSpeed(e))
+            .ThenByDescending(e => HasKnightHighPriority(ctx, e))
             .ThenByDescending(e => EffectiveSpeed(e))
             .ThenBy(e => e.Faction == Team.Players ? ClassTurnPriority(ClassOf(ctx, e)) : 2)
             .ThenBy(e => e.Faction == Team.Players ? 0 : 1)
@@ -1603,6 +1659,14 @@ public static partial class Module
 
     static int PendingCombatSpeed(Entity entity) =>
         entity.NextTurnSpeedSet != 0 ? entity.NextTurnSpeedSet : entity.Speed + entity.NextTurnSpeedDelta;
+
+    /// Knights act first unless Rush / Ninja first-action jumped the queue, or
+    /// Gallant Pride set their Speed to 1.
+    static bool HasKnightHighPriority(ReducerContext ctx, Entity entity) =>
+        entity.Faction == Team.Players
+        && ClassOf(ctx, entity) == PlayerClass.Knight
+        && !HasForcedFirstSpeed(entity)
+        && EffectiveSpeed(entity) > 1;
 
     static void RefreshRoundStatuses(ReducerContext ctx)
     {
@@ -1731,7 +1795,10 @@ public static partial class Module
 
     static void SetActive(ReducerContext ctx, uint round, uint idx, Entity entity)
     {
-        var stancePower = entity.FinishTheJobStance ? entity.FinishTheJobPower + 8 : entity.FinishTheJobPower;
+        var stancePower = entity.FinishTheJobStance
+            ? Math.Min(FinishTheJobPowerCap, entity.FinishTheJobPower + 8)
+            : entity.FinishTheJobPower;
+        var doubleStrength = entity.NextTurnDoubleStrength;
         var refreshed = entity with
         {
             Mana = Math.Min(entity.MaxMana, entity.Mana + ManaRegenPerTurn),
@@ -1743,8 +1810,25 @@ public static partial class Module
             EvadeFragileOnDodge = 0,
             EvadeStrengthOnDodge = 0,
             FinishTheJobPower = stancePower,
+            DoubleStrength = doubleStrength,
+            NextTurnDoubleStrength = false,
         };
         ctx.Db.Entity.EntityId.Update(refreshed);
+        if (doubleStrength != entity.DoubleStrength && TryPlayerIdentity(ctx, refreshed.EntityId, out var owner))
+        {
+            RecomputeStats(ctx, owner);
+            refreshed = ctx.Db.Entity.EntityId.Find(refreshed.EntityId) ?? refreshed;
+            if (doubleStrength)
+            {
+                AddLog(
+                    ctx,
+                    $"{refreshed.Name}'s Dragonfly Charm doubles Strength this turn.",
+                    LogKind.Focus,
+                    refreshed.EntityId,
+                    refreshed.EntityId
+                );
+            }
+        }
 
         var session = RequireSession(ctx);
         ctx.Db.GameSession.Id.Update(
@@ -1913,10 +1997,6 @@ public static partial class Module
 
         var attackerClass = ClassOf(ctx, attacker);
         var power = skillBaseDamage + attacker.StrengthBuff + attacker.NextAttackBonus;
-        if (attacker.Faction == Team.Enemies)
-        {
-            power += Math.Max(0, attacker.Strength);
-        }
         if (isSkill && attacker.Faction == Team.Players && attackerClass == PlayerClass.Ninja)
         {
             power += NinjaSpeedPowerBonus(attacker.Speed, target.Speed);
@@ -1933,6 +2013,7 @@ public static partial class Module
                 attacker.Strength,
                 attacker.Dexterity,
                 attacker.Intelligence,
+                attacker.BaseSpeed,
                 isSpell: attackerClass == PlayerClass.Mage && isSkill
             );
         }
@@ -1957,7 +2038,7 @@ public static partial class Module
         var dodgeBps = DodgeChanceBps(
             target.Dexterity,
             target.Faction,
-            target.DodgeBonusPercent,
+            target.DodgeBonusPercent + EquippedDodgeBonusPercent(ctx, target),
             targetClass == PlayerClass.Archer
         );
         var dodged = RollDodge(ctx.Rng, dodgeBps);
@@ -1985,13 +2066,24 @@ public static partial class Module
             {
                 damage = ApplyFragile(damage, target.FragileStacks);
             }
+
+            damage = ApplyReceivedDamageReduction(
+                damage,
+                HasAmulet(ctx, target, AmuletNames.GuardiansPendant)
+            );
         }
 
         var hp = Math.Max(0, target.Hp - damage);
         var alive = hp > 0;
         var wasAlive = target.Alive;
         ctx.Db.Entity.EntityId.Update(
-            target with { Hp = hp, Alive = alive, HasDodged = target.HasDodged || dodged || evaded }
+            target with
+            {
+                Hp = hp,
+                Alive = alive,
+                HasDodged = target.HasDodged || dodged || evaded,
+                DodgeCount = target.DodgeCount + (dodged || evaded ? 1 : 0),
+            }
         );
 
         if (dodged || evaded)
@@ -2027,6 +2119,9 @@ public static partial class Module
                     damage
                 );
             }
+
+            ApplyAmuletOnConnectedHit(ctx, attacker, target, damage);
+            ApplyAmuletOnDamageTaken(ctx, attacker, target, damage);
         }
 
         if (wasAlive && !alive)
@@ -2077,6 +2172,8 @@ public static partial class Module
             GrantKillXp(ctx, stage, target.IsBoss);
         }
 
+        ApplyAmuletOnKill(ctx, attacker);
+        ApplyAmuletOnAllyDefeat(ctx, target);
         RefreshTurnDisplay(ctx);
     }
 
@@ -2094,7 +2191,10 @@ public static partial class Module
             return;
         }
 
-        var damage = ApplyFragile(ScaleByBps(target.MaxHp, maxHpBps), target.FragileStacks);
+        var damage = ApplyReceivedDamageReduction(
+            ApplyFragile(ScaleByBps(target.MaxHp, maxHpBps), target.FragileStacks),
+            HasAmulet(ctx, target, AmuletNames.GuardiansPendant)
+        );
         var hp = Math.Max(0, target.Hp - damage);
         var alive = hp > 0;
         ctx.Db.Entity.EntityId.Update(target with { Hp = hp, Alive = alive });
@@ -2111,6 +2211,8 @@ public static partial class Module
         {
             HandleDefeat(ctx, attacker, target);
         }
+
+        ApplyAmuletOnDamageTaken(ctx, attacker, target, damage);
     }
 
     static void TickBurn(ReducerContext ctx, ulong entityId)
@@ -2125,7 +2227,10 @@ public static partial class Module
             return;
         }
 
-        var damage = ApplyFragile(entity.BurnStack, entity.FragileStacks);
+        var damage = ApplyReceivedDamageReduction(
+            ApplyFragile(entity.BurnStack, entity.FragileStacks),
+            HasAmulet(ctx, entity, AmuletNames.GuardiansPendant)
+        );
         var hp = Math.Max(0, entity.Hp - damage);
         var alive = hp > 0;
         var count = entity.BurnCount - 1;
@@ -2176,7 +2281,7 @@ public static partial class Module
 
     static void ApplyFocus(ReducerContext ctx, Entity actor)
     {
-        var mana = Math.Min(actor.MaxMana, actor.Mana + FocusManaGain);
+        var mana = Math.Min(actor.MaxMana, actor.Mana + FocusManaFor(HasAmulet(ctx, actor, AmuletNames.AmethystSash)));
         var restored = mana - actor.Mana;
         ctx.Db.Entity.EntityId.Update(actor with { Mana = mana });
         AddLog(
@@ -2278,12 +2383,13 @@ public static partial class Module
         );
 
         GrantUnlockedSkills(ctx, player.EntityId, player.Class, CheatCharacterLevel);
+        GrantMissingAmulets(ctx, ctx.Sender);
         RecomputeStats(ctx, ctx.Sender);
 
         var fresh = ctx.Db.Entity.EntityId.Find(player.EntityId) ?? entity;
         AddLog(
             ctx,
-            $"{fresh.Name} cheats to level {CheatCharacterLevel}. All skills unlocked.",
+            $"{fresh.Name} cheats to level {CheatCharacterLevel}. All skills and amulets unlocked.",
             LogKind.Focus,
             fresh.EntityId,
             fresh.EntityId

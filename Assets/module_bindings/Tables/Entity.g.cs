@@ -78,6 +78,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Entity, int> EvadeFragileOnDodge { get; }
         public global::SpacetimeDB.Col<Entity, int> EvadeStrengthOnDodge { get; }
         public global::SpacetimeDB.Col<Entity, bool> HasDodged { get; }
+        public global::SpacetimeDB.Col<Entity, int> DodgeCount { get; }
         public global::SpacetimeDB.Col<Entity, bool> UsedAttackThisTurn { get; }
         public global::SpacetimeDB.Col<Entity, bool> UsedAttackLastTurn { get; }
         public global::SpacetimeDB.Col<Entity, int> NextAttackBonus { get; }
@@ -95,6 +96,8 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Entity, int> TintB { get; }
         public global::SpacetimeDB.Col<Entity, bool> IsBoss { get; }
         public global::SpacetimeDB.Col<Entity, int> SkillCooldown { get; }
+        public global::SpacetimeDB.Col<Entity, bool> DoubleStrength { get; }
+        public global::SpacetimeDB.Col<Entity, bool> NextTurnDoubleStrength { get; }
 
         public EntityCols(string tableName)
         {
@@ -137,6 +140,7 @@ namespace SpacetimeDB.Types
             EvadeFragileOnDodge = new global::SpacetimeDB.Col<Entity, int>(tableName, "evade_fragile_on_dodge");
             EvadeStrengthOnDodge = new global::SpacetimeDB.Col<Entity, int>(tableName, "evade_strength_on_dodge");
             HasDodged = new global::SpacetimeDB.Col<Entity, bool>(tableName, "has_dodged");
+            DodgeCount = new global::SpacetimeDB.Col<Entity, int>(tableName, "dodge_count");
             UsedAttackThisTurn = new global::SpacetimeDB.Col<Entity, bool>(tableName, "used_attack_this_turn");
             UsedAttackLastTurn = new global::SpacetimeDB.Col<Entity, bool>(tableName, "used_attack_last_turn");
             NextAttackBonus = new global::SpacetimeDB.Col<Entity, int>(tableName, "next_attack_bonus");
@@ -154,6 +158,8 @@ namespace SpacetimeDB.Types
             TintB = new global::SpacetimeDB.Col<Entity, int>(tableName, "tint_b");
             IsBoss = new global::SpacetimeDB.Col<Entity, bool>(tableName, "is_boss");
             SkillCooldown = new global::SpacetimeDB.Col<Entity, int>(tableName, "skill_cooldown");
+            DoubleStrength = new global::SpacetimeDB.Col<Entity, bool>(tableName, "double_strength");
+            NextTurnDoubleStrength = new global::SpacetimeDB.Col<Entity, bool>(tableName, "next_turn_double_strength");
         }
     }
 
