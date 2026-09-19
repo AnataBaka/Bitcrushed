@@ -22,6 +22,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     Text _tagText;
     Text _readyBanner;
     Text _statusText;
+    Text _burnTag;
     Button _button;
     RectTransform _manaRow;
 
@@ -152,6 +153,22 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         view._statusText.rectTransform.pivot = new Vector2(0.5f, 0f);
         view._statusText.rectTransform.sizeDelta = new Vector2(0f, 16f);
         view._statusText.rectTransform.anchoredPosition = Vector2.zero;
+
+        view._burnTag = UiFactory.Label(
+            card.transform,
+            "BurnTag",
+            "BURN",
+            14,
+            TextAnchor.MiddleCenter,
+            new Color(1f, 0.42f, 0.12f, 1f)
+        );
+        view._burnTag.fontStyle = FontStyle.Bold;
+        view._burnTag.rectTransform.anchorMin = new Vector2(0.5f, 1f);
+        view._burnTag.rectTransform.anchorMax = new Vector2(0.5f, 1f);
+        view._burnTag.rectTransform.pivot = new Vector2(0.5f, 0f);
+        view._burnTag.rectTransform.sizeDelta = new Vector2(76f, 18f);
+        view._burnTag.rectTransform.anchoredPosition = new Vector2(0f, -16f);
+        view._burnTag.gameObject.SetActive(false);
 
         return view;
     }
@@ -300,6 +317,16 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         if (_statusText != null)
         {
             _statusText.text = StatusCaption(entity);
+        }
+
+        if (_burnTag != null)
+        {
+            var burning = entity.BurnStack > 0 && entity.BurnCount > 0;
+            _burnTag.gameObject.SetActive(burning);
+            if (burning)
+            {
+                _burnTag.text = entity.BurnStack > 1 ? $"BURN x{entity.BurnStack}" : "BURN";
+            }
         }
     }
 
