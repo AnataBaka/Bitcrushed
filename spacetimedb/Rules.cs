@@ -7,7 +7,10 @@ public static partial class Module
 {
     public const uint SessionId = 1;
     public const uint MaxPartySize = 3;
-    public const uint EnemyCount = 2;
+    public const uint MaxEnemySlots = 4;
+    public const uint MaxStageCount = 10;
+    public const uint RestStopEvery = 3;
+    public const int StageScalePercent = 8;
 
     public const int BagCapacity = 12;
     public const int FocusManaGain = 20;
@@ -179,6 +182,94 @@ public static partial class Module
     /// Each kill grants `25 * stage` EXP to every living party member.
     public static uint KillXp(uint stage) =>
         SaturatingMul(KillExpPerStage, stage == 0 ? 1u : stage);
+
+    public static int ApplyStageScale(int value, uint stage)
+    {
+        var n = stage < 1 ? 1u : stage;
+        var scaled = value;
+        for (uint i = 1; i < n; i++)
+        {
+            scaled = (scaled * (100 + StageScalePercent)) / 100;
+        }
+
+        return Math.Max(1, scaled);
+    }
+
+    /// 4-pack member is 1.0x. A solo spawn is beefier, not a raid boss.
+    public static int PackVitalityBps(int count) =>
+        count switch
+        {
+            1 => 18500,
+            2 => 13000,
+            3 => 11000,
+            _ => 10000,
+        };
+
+    public static int PackPowerBps(int count) =>
+        count switch
+        {
+            1 => 14500,
+            2 => 12000,
+            3 => 10800,
+            _ => 10000,
+        };
+
+    public static int ScaleByBps(int value, int bps) =>
+        Math.Max(1, (int)((long)value * bps / 10000));
+
+    public readonly struct EnemyArchetype
+    {
+        public EnemyArchetype(
+            string name,
+            string kind,
+            int maxHp,
+            int maxMana,
+            int strength,
+            int dexterity,
+            int intelligence,
+            int speed,
+            int atk,
+            int defense,
+            string basicAttackName,
+            string skillName
+        )
+        {
+            Name = name;
+            Kind = kind;
+            MaxHp = maxHp;
+            MaxMana = maxMana;
+            Strength = strength;
+            Dexterity = dexterity;
+            Intelligence = intelligence;
+            Speed = speed;
+            Atk = atk;
+            Defense = defense;
+            BasicAttackName = basicAttackName;
+            SkillName = skillName;
+        }
+
+        public string Name { get; }
+        public string Kind { get; }
+        public int MaxHp { get; }
+        public int MaxMana { get; }
+        public int Strength { get; }
+        public int Dexterity { get; }
+        public int Intelligence { get; }
+        public int Speed { get; }
+        public int Atk { get; }
+        public int Defense { get; }
+        public string BasicAttackName { get; }
+        public string SkillName { get; }
+    }
+
+    public static EnemyArchetype[] EnemyPool { get; } =
+    {
+        new EnemyArchetype("Goblin Raider", "Goblin", 90, 30, 4, 3, 1, 7, 4, 1, "Jab", "Rusty Slash"),
+        new EnemyArchetype("Cave Troll", "Troll", 150, 40, 8, 1, 1, 3, 6, 3, "Club Sweep", "Boulder Smash"),
+        new EnemyArchetype("Hex Shade", "Shade", 70, 55, 2, 3, 7, 8, 3, 0, "Hex Bolt", "Hex Bolt"),
+        new EnemyArchetype("Ash Wolf", "Wolf", 85, 20, 5, 4, 1, 9, 5, 1, "Bite", "Bite"),
+        new EnemyArchetype("Bone Guard", "Skeleton", 100, 25, 5, 2, 1, 5, 5, 2, "Bone Slash", "Bone Slash"),
+    };
 
     /// Main stat rolls 3-6, every other stat rolls 1-3.
     public static (int Strength, int Dexterity, int Intelligence, int Speed) RollStats(

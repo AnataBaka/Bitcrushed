@@ -25,6 +25,10 @@ namespace SpacetimeDB.Types
         public ulong EntityId;
         [DataMember(Name = "ready")]
         public bool Ready;
+        [DataMember(Name = "character_level")]
+        public uint CharacterLevel;
+        [DataMember(Name = "xp")]
+        public uint Xp;
 
         public Player(
             SpacetimeDB.Identity Identity,
@@ -32,7 +36,9 @@ namespace SpacetimeDB.Types
             bool Online,
             PlayerClass Class,
             ulong EntityId,
-            bool Ready
+            bool Ready,
+            uint CharacterLevel,
+            uint Xp
         )
         {
             this.Identity = Identity;
@@ -41,6 +47,8 @@ namespace SpacetimeDB.Types
             this.Class = Class;
             this.EntityId = EntityId;
             this.Ready = Ready;
+            this.CharacterLevel = CharacterLevel;
+            this.Xp = Xp;
         }
 
         public Player()

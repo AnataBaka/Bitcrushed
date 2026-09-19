@@ -74,6 +74,21 @@ public class BattleBootstrap : MonoBehaviour
         connectionLabel.rectTransform.sizeDelta = new Vector2(-32f, 24f);
         connectionLabel.rectTransform.anchoredPosition = new Vector2(0f, -6f);
 
+        var stageLabel = UiFactory.Label(
+            canvas,
+            "StageLabel",
+            "",
+            22,
+            TextAnchor.UpperCenter,
+            UiFactory.ActiveColor
+        );
+        stageLabel.fontStyle = FontStyle.Bold;
+        stageLabel.rectTransform.anchorMin = new Vector2(0f, 1f);
+        stageLabel.rectTransform.anchorMax = new Vector2(1f, 1f);
+        stageLabel.rectTransform.pivot = new Vector2(0.5f, 1f);
+        stageLabel.rectTransform.sizeDelta = new Vector2(-32f, 28f);
+        stageLabel.rectTransform.anchoredPosition = new Vector2(0f, -28f);
+
         // Battlefield fills everything above the bottom bar.
         var field = UiFactory.NewRect(canvas, "Field");
         UiFactory.Anchor(field, new Vector2(0f, 0.26f), new Vector2(1f, 1f));
@@ -103,7 +118,7 @@ public class BattleBootstrap : MonoBehaviour
         var popup = StatPopupView.Create(canvas);
 
         var hud = gameObject.AddComponent<BattleHud>();
-        hud.Init(field, log, menu, equipment, overlay, overlayText, connectionLabel, popup);
+        hud.Init(field, log, menu, equipment, overlay, overlayText, connectionLabel, stageLabel, popup);
     }
 
     static void EnsureEventSystem()

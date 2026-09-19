@@ -37,6 +37,38 @@ public static partial class Module
         AddEnemySkill(ctx, "Whirling Rust", 14, 4, 3, DamageType.Physical);
         AddEnemySkill(ctx, "Boulder Smash", 10, 12, 1, DamageType.Physical);
         AddEnemySkill(ctx, "Tremor", 18, 5, 3, DamageType.Physical);
+        AddEnemySkill(ctx, "Hex Bolt", 8, 10, 1, DamageType.Magical);
+        AddEnemySkill(ctx, "Bite", 5, 7, 1, DamageType.Physical);
+        AddEnemySkill(ctx, "Bone Slash", 7, 8, 1, DamageType.Physical);
+    }
+
+    public static void EnsureEnemyCatalog(ReducerContext ctx)
+    {
+        EnsureEnemySkill(ctx, "Hex Bolt", 8, 10, 1, DamageType.Magical);
+        EnsureEnemySkill(ctx, "Bite", 5, 7, 1, DamageType.Physical);
+        EnsureEnemySkill(ctx, "Bone Slash", 7, 8, 1, DamageType.Physical);
+        EnsureEnemySkill(ctx, "Rusty Slash", 6, 8, 1, DamageType.Physical);
+        EnsureEnemySkill(ctx, "Boulder Smash", 10, 12, 1, DamageType.Physical);
+    }
+
+    static void EnsureEnemySkill(
+        ReducerContext ctx,
+        string name,
+        int manaCost,
+        int baseDamage,
+        int targetCount,
+        DamageType damageType
+    )
+    {
+        foreach (var skill in ctx.Db.SkillDef.Iter())
+        {
+            if (skill.Name == name)
+            {
+                return;
+            }
+        }
+
+        AddEnemySkill(ctx, name, manaCost, baseDamage, targetCount, damageType);
     }
 
     static void AddPlayerSkill(

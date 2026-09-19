@@ -169,7 +169,7 @@ public class ActionMenuView : MonoBehaviour
         {
             _page = Page.Root;
             ApplyPage();
-            _status.text = session.Phase == BattlePhase.Victory ? "Level Complete" : "Defeat";
+            _status.text = session.Phase == BattlePhase.Victory ? "Final Victory" : "Defeat";
             SetPageInteractable(_root, false);
             return;
         }

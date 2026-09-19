@@ -22,6 +22,7 @@ public static partial class Module
                 Round = 0,
                 TurnIndex = 0,
                 ActiveEntityId = 0,
+                StageNumber = 0,
             }
         );
 
@@ -254,6 +255,7 @@ public static partial class Module
                 Round = 0,
                 TurnIndex = 0,
                 ActiveEntityId = 0,
+                StageNumber = 0,
             }
         );
         AddLog(ctx, "Stage reset. Waiting for players.");
@@ -671,11 +673,10 @@ public static partial class Module
             return;
         }
 
-        BeginBattle(ctx);
+        StartRun(ctx);
     }
 
-    /// Single phase gate for loadout changes. Rest station can allow battle
-    /// equipping later by changing this one predicate.
+    /// Single phase gate for loadout changes. Rest stop will share this predicate.
     static bool EquipmentChangesAllowed(BattlePhase phase) => phase != BattlePhase.InBattle;
 
     static void RejectEquipmentChangeInBattle(ReducerContext ctx)
@@ -687,8 +688,18 @@ public static partial class Module
         }
     }
 
-    static void BeginBattle(ReducerContext ctx)
+    static void StartRun(ReducerContext ctx)
     {
+        var session = RequireSession(ctx);
+        ctx.Db.GameSession.Id.Update(session with { StageNumber = 1 });
+        AddLog(ctx, "Stage 1 begins.");
+        EnterBattle(ctx);
+    }
+
+    static void EnterBattle(ReducerContext ctx)
+    {
+        ClearEnemySide(ctx);
+        PreparePlayersForStage(ctx);
         SpawnEnemies(ctx);
 
         var session = RequireSession(ctx);
@@ -702,7 +713,8 @@ public static partial class Module
             }
         );
 
-        AddLog(ctx, $"{EnemyCount} enemies appeared!");
+        var spawned = LivingMembers(ctx, Team.Enemies).Count;
+        AddLog(ctx, $"{spawned} enemies appeared!");
         BuildTurnOrder(ctx);
 
         if (EndBattleIfOver(ctx))
@@ -719,21 +731,128 @@ public static partial class Module
         }
     }
 
+    static void BeginNextStage(ReducerContext ctx)
+    {
+        var session = RequireSession(ctx);
+        var next = session.StageNumber + 1;
+        ctx.Db.GameSession.Id.Update(session with { StageNumber = next });
+        AddLog(ctx, $"Stage {next} begins.");
+        EnterBattle(ctx);
+    }
+
+    static void OnStageCleared(ReducerContext ctx)
+    {
+        var session = RequireSession(ctx);
+        var cleared = session.StageNumber < 1 ? 1u : session.StageNumber;
+        ClearEnemySide(ctx);
+        AddLog(ctx, $"Stage {cleared} cleared.");
+
+        if (cleared >= MaxStageCount)
+        {
+            ctx.Db.GameSession.Id.Update(
+                session with
+                {
+                    Phase = BattlePhase.Victory,
+                    ActiveEntityId = 0,
+                }
+            );
+            AddLog(ctx, "The party is victorious!");
+            return;
+        }
+
+        if (ShouldEnterRestStop(cleared))
+        {
+            EnterRestStop(ctx);
+            return;
+        }
+
+        BeginNextStage(ctx);
+    }
+
+    static bool ShouldEnterRestStop(uint clearedStage) => false;
+
+    static void EnterRestStop(ReducerContext ctx)
+    {
+        // Filled in with the rest-stop phase.
+    }
+
+    static void ClearEnemySide(ReducerContext ctx)
+    {
+        foreach (var timer in ctx.Db.EnemyTurnTimer.Iter().ToList())
+        {
+            ctx.Db.EnemyTurnTimer.ScheduledId.Delete(timer.ScheduledId);
+        }
+
+        foreach (var entry in ctx.Db.TurnOrder.Iter().ToList())
+        {
+            ctx.Db.TurnOrder.Idx.Delete(entry.Idx);
+        }
+
+        foreach (var entity in ctx.Db.Entity.Iter().ToList())
+        {
+            if (entity.Faction != Team.Enemies)
+            {
+                continue;
+            }
+
+            DeleteEntitySkills(ctx, entity.EntityId);
+            ctx.Db.Entity.EntityId.Delete(entity.EntityId);
+        }
+    }
+
+    static void PreparePlayersForStage(ReducerContext ctx)
+    {
+        foreach (var entity in ctx.Db.Entity.Iter().ToList())
+        {
+            if (entity.Faction != Team.Players)
+            {
+                continue;
+            }
+
+            if (!entity.Alive)
+            {
+                var revivedHp = Math.Max(1, entity.MaxHp / 2);
+                ctx.Db.Entity.EntityId.Update(
+                    entity with
+                    {
+                        Alive = true,
+                        Hp = revivedHp,
+                        Mana = entity.MaxMana,
+                    }
+                );
+                AddLog(ctx, $"{entity.Name} is revived at {revivedHp} HP.");
+                continue;
+            }
+
+            ctx.Db.Entity.EntityId.Update(entity with { Mana = entity.MaxMana });
+        }
+    }
+
     static void SpawnEnemies(ReducerContext ctx)
     {
-        for (uint slot = 0; slot < EnemyCount; slot++)
-        {
-            var isTroll = slot != 0;
-            var name = isTroll ? "Cave Troll" : "Goblin Raider";
-            var maxHp = isTroll ? 190 : 140;
-            var maxMana = isTroll ? 50 : 40;
+        EnsureEnemyCatalog(ctx);
+        var session = RequireSession(ctx);
+        var stage = session.StageNumber < 1 ? 1u : session.StageNumber;
+        var pool = EnemyPool;
+        var count = ctx.Rng.Next(1, (int)MaxEnemySlots + 1);
+        var vitalityBps = PackVitalityBps(count);
+        var powerBps = PackPowerBps(count);
 
-            // Enemies roll stats too, within a band that keeps the fight fair.
-            var strength = RollInclusive(ctx.Rng, isTroll ? 6 : 4, isTroll ? 9 : 7);
-            var dexterity = RollInclusive(ctx.Rng, 1, 4);
-            var intelligence = RollInclusive(ctx.Rng, 1, 3);
-            var speed = RollInclusive(ctx.Rng, isTroll ? 3 : 6, isTroll ? 5 : 9);
-            var atk = RollInclusive(ctx.Rng, isTroll ? 5 : 4, isTroll ? 7 : 6);
+        for (uint slot = 0; slot < (uint)count; slot++)
+        {
+            var arch = pool[ctx.Rng.Next(0, pool.Length)];
+            var maxHp = ScaleByBps(ApplyStageScale(arch.MaxHp, stage), vitalityBps);
+            var maxMana = ScaleByBps(ApplyStageScale(arch.MaxMana, stage), vitalityBps);
+            var strength = ScaleByBps(ApplyStageScale(arch.Strength, stage), powerBps);
+            var dexterity = ScaleByBps(ApplyStageScale(arch.Dexterity, stage), powerBps);
+            var intelligence = ScaleByBps(ApplyStageScale(arch.Intelligence, stage), powerBps);
+            var speed = ScaleByBps(ApplyStageScale(arch.Speed, stage), powerBps);
+            var atk = ScaleByBps(ApplyStageScale(arch.Atk, stage), powerBps);
+            var defense = ScaleByBps(ApplyStageScale(Math.Max(0, arch.Defense), stage), powerBps);
+            if (arch.Defense == 0)
+            {
+                defense = 0;
+            }
 
             var enemy = ctx.Db.Entity.Insert(
                 new Entity
@@ -741,8 +860,8 @@ public static partial class Module
                     EntityId = 0,
                     Faction = Team.Enemies,
                     Slot = slot,
-                    Name = name,
-                    ClassName = "Enemy",
+                    Name = arch.Name,
+                    ClassName = arch.Kind,
                     MaxHp = maxHp,
                     Hp = maxHp,
                     MaxMana = maxMana,
@@ -756,22 +875,16 @@ public static partial class Module
                     Intelligence = intelligence,
                     Speed = speed,
                     Atk = atk,
-                    Defense = isTroll ? 3 : 1,
+                    Defense = defense,
                     StrengthBuff = 0,
                     NextTurnStrengthBonus = 0,
                     GoFirstNextRound = false,
                     Alive = true,
-                    BasicAttackName = isTroll ? "Club Sweep" : "Jab",
+                    BasicAttackName = arch.BasicAttackName,
                 }
             );
 
-            GrantSkillsByName(
-                ctx,
-                enemy.EntityId,
-                isTroll
-                    ? new[] { "Boulder Smash", "Tremor" }
-                    : new[] { "Rusty Slash", "Whirling Rust" }
-            );
+            GrantSkillsByName(ctx, enemy.EntityId, new[] { arch.SkillName });
         }
     }
 
@@ -931,14 +1044,7 @@ public static partial class Module
 
         if (enemiesAlive == 0)
         {
-            ctx.Db.GameSession.Id.Update(
-                session with
-                {
-                    Phase = BattlePhase.Victory,
-                    ActiveEntityId = 0,
-                }
-            );
-            AddLog(ctx, "All enemies are defeated. Level Complete!");
+            OnStageCleared(ctx);
             return true;
         }
 
@@ -1029,7 +1135,8 @@ public static partial class Module
 
             if (target.Faction == Team.Enemies)
             {
-                GrantKillXp(ctx, 1u);
+                var session = RequireSession(ctx);
+                GrantKillXp(ctx, session.StageNumber < 1 ? 1u : session.StageNumber);
             }
         }
     }

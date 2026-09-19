@@ -27,6 +27,8 @@ namespace SpacetimeDB.Types
         public uint TurnIndex;
         [DataMember(Name = "active_entity_id")]
         public ulong ActiveEntityId;
+        [DataMember(Name = "stage_number")]
+        public uint StageNumber;
 
         public GameSession(
             uint Id,
@@ -35,7 +37,8 @@ namespace SpacetimeDB.Types
             BattlePhase Phase,
             uint Round,
             uint TurnIndex,
-            ulong ActiveEntityId
+            ulong ActiveEntityId,
+            uint StageNumber
         )
         {
             this.Id = Id;
@@ -45,6 +48,7 @@ namespace SpacetimeDB.Types
             this.Round = Round;
             this.TurnIndex = TurnIndex;
             this.ActiveEntityId = ActiveEntityId;
+            this.StageNumber = StageNumber;
         }
 
         public GameSession()

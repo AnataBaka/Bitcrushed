@@ -46,6 +46,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<GameSession, uint> Round { get; }
         public global::SpacetimeDB.Col<GameSession, uint> TurnIndex { get; }
         public global::SpacetimeDB.Col<GameSession, ulong> ActiveEntityId { get; }
+        public global::SpacetimeDB.Col<GameSession, uint> StageNumber { get; }
 
         public GameSessionCols(string tableName)
         {
@@ -56,6 +57,7 @@ namespace SpacetimeDB.Types
             Round = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "round");
             TurnIndex = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "turn_index");
             ActiveEntityId = new global::SpacetimeDB.Col<GameSession, ulong>(tableName, "active_entity_id");
+            StageNumber = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "stage_number");
         }
     }
 

@@ -113,6 +113,9 @@ public static partial class Module
         public uint TurnIndex;
         /// EntityId of whoever is acting right now; 0 when nobody is.
         public ulong ActiveEntityId;
+        /// 1-based battle stage. 0 in the lobby. Cap is MaxStageCount in Rules.
+        [Default(0u)]
+        public uint StageNumber;
     }
 
     /// A seat in the party. Owns exactly one Entity row once the player joins.
@@ -146,7 +149,7 @@ public static partial class Module
         [AutoInc]
         public ulong EntityId;
         public Team Faction;
-        /// Position within the team: 0..2 for players, 0..1 for enemies.
+        /// Position within the team: 0..2 for players, 0..3 for enemies.
         public uint Slot;
         public string Name;
         public string ClassName;

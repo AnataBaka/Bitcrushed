@@ -20,12 +20,14 @@ public class BattleHud : MonoBehaviour
 
     static readonly Vector2[] EnemySlots =
     {
-        new Vector2(1580f, 130f),
-        new Vector2(1460f, 390f),
+        new Vector2(1600f, 40f),
+        new Vector2(1440f, 200f),
+        new Vector2(1600f, 360f),
+        new Vector2(1440f, 520f),
     };
 
     static readonly Vector2 PlayerCardSize = new Vector2(300f, 215f);
-    static readonly Vector2 EnemyCardSize = new Vector2(340f, 240f);
+    static readonly Vector2 EnemyCardSize = new Vector2(280f, 190f);
 
     RectTransform _field;
     BattleLogView _log;
@@ -34,6 +36,7 @@ public class BattleHud : MonoBehaviour
     RectTransform _overlay;
     Text _overlayText;
     Text _connectionLabel;
+    Text _stageLabel;
     StatPopupView _popup;
 
     readonly Dictionary<ulong, EntityView> _views = new Dictionary<ulong, EntityView>();
@@ -56,6 +59,7 @@ public class BattleHud : MonoBehaviour
         RectTransform overlay,
         Text overlayText,
         Text connectionLabel,
+        Text stageLabel,
         StatPopupView popup
     )
     {
@@ -66,6 +70,7 @@ public class BattleHud : MonoBehaviour
         _overlay = overlay;
         _overlayText = overlayText;
         _connectionLabel = connectionLabel;
+        _stageLabel = stageLabel;
         _popup = popup;
 
         _menu.OnJoin = GameManager.JoinGame;
@@ -129,6 +134,18 @@ public class BattleHud : MonoBehaviour
         var me = GameManager.LocalEntity();
         var myTurn = GameManager.IsLocalTurn();
 
+        if (_stageLabel != null)
+        {
+            if (session != null && session.StageNumber > 0 && session.Phase != BattlePhase.Waiting)
+            {
+                _stageLabel.text = $"Stage {session.StageNumber}/10";
+            }
+            else
+            {
+                _stageLabel.text = "";
+            }
+        }
+
         if (!myTurn)
         {
             ClearTargeting();
@@ -155,7 +172,7 @@ public class BattleHud : MonoBehaviour
             _popup?.Close();
             _overlay.SetAsLastSibling();
             _overlayText.text =
-                session.Phase == BattlePhase.Victory ? "LEVEL COMPLETE" : "DEFEAT";
+                session.Phase == BattlePhase.Victory ? "FINAL VICTORY" : "DEFEAT";
             _overlayText.color =
                 session.Phase == BattlePhase.Victory
                     ? new Color(0.55f, 0.90f, 0.55f)
