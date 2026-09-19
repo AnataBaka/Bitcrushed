@@ -36,6 +36,7 @@ public class BattleHud : MonoBehaviour
     RectTransform _overlay;
     Text _overlayText;
     Text _overlaySubtext;
+    GameObject _resetButton;
     Text _connectionLabel;
     Text _stageLabel;
     StatPopupView _popup;
@@ -60,6 +61,7 @@ public class BattleHud : MonoBehaviour
         RectTransform overlay,
         Text overlayText,
         Text overlaySubtext,
+        GameObject resetButton,
         Text connectionLabel,
         Text stageLabel,
         StatPopupView popup
@@ -72,6 +74,7 @@ public class BattleHud : MonoBehaviour
         _overlay = overlay;
         _overlayText = overlayText;
         _overlaySubtext = overlaySubtext;
+        _resetButton = resetButton;
         _connectionLabel = connectionLabel;
         _stageLabel = stageLabel;
         _popup = popup;
@@ -181,6 +184,11 @@ public class BattleHud : MonoBehaviour
             session != null
             && (session.Phase == BattlePhase.Victory || session.Phase == BattlePhase.Defeat);
         _overlay.gameObject.SetActive(finished || transitioning);
+        if (_resetButton != null)
+        {
+            _resetButton.SetActive(finished);
+        }
+
         if (finished || transitioning)
         {
             _popup?.Close();

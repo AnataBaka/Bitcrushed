@@ -114,7 +114,7 @@ public class BattleBootstrap : MonoBehaviour
         menuRect.offsetMin = new Vector2(5f, 10f);
         menuRect.offsetMax = new Vector2(-10f, -10f);
 
-        var overlay = BuildOverlay(canvas, out var overlayText, out var overlaySubtext);
+        var overlay = BuildOverlay(canvas, out var overlayText, out var overlaySubtext, out var resetButton);
         var popup = StatPopupView.Create(canvas);
 
         var hud = gameObject.AddComponent<BattleHud>();
@@ -126,6 +126,7 @@ public class BattleBootstrap : MonoBehaviour
             overlay,
             overlayText,
             overlaySubtext,
+            resetButton,
             connectionLabel,
             stageLabel,
             popup
@@ -226,7 +227,12 @@ public class BattleBootstrap : MonoBehaviour
         return go.transform;
     }
 
-    static RectTransform BuildOverlay(Transform parent, out Text overlayText, out Text overlaySubtext)
+    static RectTransform BuildOverlay(
+        Transform parent,
+        out Text overlayText,
+        out Text overlaySubtext,
+        out GameObject resetButton
+    )
     {
         var panel = UiFactory.Panel(parent, "Overlay", new Color(0f, 0f, 0f, 0.82f));
         UiFactory.Anchor(panel.rectTransform, Vector2.zero, Vector2.one);
@@ -259,6 +265,7 @@ public class BattleBootstrap : MonoBehaviour
         resetRect.sizeDelta = new Vector2(320f, 56f);
         resetRect.anchoredPosition = Vector2.zero;
         reset.onClick.AddListener(GameManager.ResetStage);
+        resetButton = reset.gameObject;
 
         panel.gameObject.SetActive(false);
         return panel.rectTransform;
