@@ -441,10 +441,29 @@ public static partial class Module
         return Math.Max(1, 30 + 6 * n);
     }
 
-    public static int EnemyAtkForLevel(uint level)
+    /// Unrounded 3-player baseline: `4 + 0.6*L`. L1 = 4.6, not the rounded integer 5.
+    public static double EnemyAtkBaseline(uint level)
     {
         var n = level == 0 ? 1 : (int)level;
-        return Math.Max(1, (int)Math.Round(4 + 0.6 * n, MidpointRounding.AwayFromZero));
+        return 4 + 0.6 * n;
+    }
+
+    public static int EnemyAtkForLevel(uint level) =>
+        Math.Max(1, (int)Math.Round(EnemyAtkBaseline(level), MidpointRounding.AwayFromZero));
+
+    /// Apply P/3 to the unrounded baseline so L1 P=1 is 4.6/3 ≈ 1.53, then store as int.
+    public static int EnemyHpForParty(uint level, int playerCount)
+    {
+        var p = Math.Max(1, playerCount);
+        var scaled = EnemyHpForLevel(level) * (p / (double)EnemyScalePartyBaseline);
+        return Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero));
+    }
+
+    public static int EnemyAtkForParty(uint level, int playerCount)
+    {
+        var p = Math.Max(1, playerCount);
+        var scaled = EnemyAtkBaseline(level) * (p / (double)EnemyScalePartyBaseline);
+        return Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero));
     }
 
     /// Existing enemy formulas were balanced for a 3-player party. Scale both
