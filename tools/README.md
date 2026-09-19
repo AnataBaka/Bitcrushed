@@ -15,7 +15,7 @@ Talks to the module over the HTTP API with three independent identities, so it
 needs nothing but Python. Good for a quick check that the rules hold.
 
 ```bash
-python3 spacetimedb/tools/playtest.py hophacks-merge
+python3 tools/playtest.py hophacks-merge
 ```
 
 It resets the stage, joins three clients, and asserts that the party rolls random
@@ -32,7 +32,7 @@ the HTTP check cannot: subscriptions, BSATN decoding of every table, the index
 filters the HUD reads through, and reducer argument encoding.
 
 ```bash
-dotnet run --project spacetimedb/tools/clientcheck -- hophacks-merge http://127.0.0.1:3000
+dotnet run --project tools/clientcheck -- hophacks-merge http://127.0.0.1:3000
 ```
 
 It plays the same battle as `playtest.py` and additionally asserts that battle log
