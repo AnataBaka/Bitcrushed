@@ -162,25 +162,119 @@ public static partial class Module
     {
         if (ctx.Db.Player.Identity.Find(ctx.Sender) is not Player player)
         {
-            throw new Exception("Not in the party.");
+            return;
+        }
+
+        RemovePlayerFromRun(ctx, player);
+    }
+
+    /// Deletes a party member and everything tied to their seat. Shared by the
+    /// explicit LeaveGame reducer. Disconnect keeps the row so a reconnect can
+    /// resume; only LeaveGame removes the character from the run.
+    static void RemovePlayerFromRun(ReducerContext ctx, Player player)
+    {
+        var session = RequireSession(ctx);
+        var entityId = player.EntityId;
+        var name = ctx.Db.Entity.EntityId.Find(entityId) is Entity entity
+            ? entity.Name
+            : $"slot {player.Slot}";
+        var inBattle = session.Phase == BattlePhase.InBattle;
+        var wasActive = inBattle && session.ActiveEntityId == entityId;
+        var previousTurnIndex = session.TurnIndex;
+        var previousActiveId = session.ActiveEntityId;
+
+        if (wasActive)
+        {
+            ctx.Db.GameSession.Id.Update(session with { ActiveEntityId = 0 });
+        }
+
+        DeleteEntitySkills(ctx, entityId);
+        DeleteOwnedItems(ctx, player.Identity);
+        RemoveTurnOrderEntry(ctx, entityId);
+        ctx.Db.Entity.EntityId.Delete(entityId);
+        ctx.Db.Player.Identity.Delete(player.Identity);
+
+        session = RequireSession(ctx);
+        var playerCount = (uint)ctx.Db.Player.Count;
+        ctx.Db.GameSession.Id.Update(session with { PlayerCount = playerCount });
+        AddLog(ctx, $"{name} left the party.");
+
+        if (playerCount == 0)
+        {
+            ResetStageState(ctx);
+            return;
+        }
+
+        session = RequireSession(ctx);
+        if (session.Phase == BattlePhase.InBattle)
+        {
+            if (LivingMembers(ctx, Team.Players).Count == 0)
+            {
+                EndBattleIfOver(ctx);
+                return;
+            }
+
+            ContinueTurnsAfterRemoval(ctx, wasActive, previousTurnIndex, previousActiveId);
+            return;
+        }
+
+        TryStartIfAllReady(ctx);
+    }
+
+    static void RemoveTurnOrderEntry(ReducerContext ctx, ulong entityId)
+    {
+        var remaining = ctx
+            .Db.TurnOrder.Iter()
+            .OrderBy(t => t.Idx)
+            .Where(t => t.EntityId != entityId)
+            .ToList();
+
+        foreach (var entry in ctx.Db.TurnOrder.Iter().ToList())
+        {
+            ctx.Db.TurnOrder.Idx.Delete(entry.Idx);
+        }
+
+        for (var i = 0; i < remaining.Count; i++)
+        {
+            var row = remaining[i];
+            ctx.Db.TurnOrder.Insert(row with { Idx = (uint)i });
+        }
+    }
+
+    static void ContinueTurnsAfterRemoval(
+        ReducerContext ctx,
+        bool wasActive,
+        uint previousTurnIndex,
+        ulong previousActiveId
+    )
+    {
+        if (EndBattleIfOver(ctx))
+        {
+            return;
         }
 
         var session = RequireSession(ctx);
-        if (session.Phase == BattlePhase.InBattle)
+        if (session.Phase != BattlePhase.InBattle)
         {
-            throw new Exception("Cannot leave during a battle.");
+            return;
         }
 
-        DeleteEntitySkills(ctx, player.EntityId);
-        DeleteOwnedItems(ctx, player.Identity);
-        ctx.Db.Entity.EntityId.Delete(player.EntityId);
-        ctx.Db.Player.Identity.Delete(ctx.Sender);
+        if (wasActive)
+        {
+            FindNextActor(ctx, session.Round, previousTurnIndex);
+            return;
+        }
 
-        var playerCount = session.PlayerCount == 0 ? 0 : session.PlayerCount - 1;
-        ctx.Db.GameSession.Id.Update(session with { PlayerCount = playerCount });
-        AddLog(ctx, $"A player in slot {player.Slot} left the party.");
+        foreach (var entry in ctx.Db.TurnOrder.Iter())
+        {
+            if (entry.EntityId == previousActiveId)
+            {
+                ctx.Db.GameSession.Id.Update(session with { TurnIndex = entry.Idx });
+                return;
+            }
+        }
 
-        TryStartIfAllReady(ctx);
+        FindNextActor(ctx, session.Round, previousTurnIndex);
     }
 
     /// Ready-up for the lobby and rest stop. A player may un-ready until the
@@ -662,31 +756,26 @@ public static partial class Module
 
     // ------------------------------------------------------------ battle rules
 
-    /// Starts the next fight once every currently connected player is ready.
-    /// Offline seats do not count, so a disconnect can unblock the rest.
+    /// Starts the next fight once every living connected player is ready.
+    /// Offline seats and corpses do not count, so a leave or disconnect can
+    /// unblock the rest. Never starts a stage with an empty party.
     static void TryStartIfAllReady(ReducerContext ctx)
     {
         var session = RequireSession(ctx);
-        if (!IsReadyUpPhase(session.Phase))
+        if (!IsReadyUpPhase(session.Phase) || ctx.Db.Player.Count == 0)
         {
             return;
         }
 
-        var online = ctx.Db.Player.Iter().Where(p => p.Online).ToList();
+        var living = ctx.Db.Player.Iter().Where(p => p.Online && IsLivingPlayer(ctx, p)).ToList();
+        if (living.Count == 0 || living.Any(p => !p.Ready))
+        {
+            return;
+        }
+
         if (session.Phase == BattlePhase.RestStop)
         {
-            var living = online.Where(p => IsLivingPlayer(ctx, p)).ToList();
-            if (living.Count == 0 || living.Any(p => !p.Ready))
-            {
-                return;
-            }
-
             BeginNextStage(ctx);
-            return;
-        }
-
-        if (online.Count == 0 || online.Any(p => !p.Ready))
-        {
             return;
         }
 
@@ -715,6 +804,11 @@ public static partial class Module
 
     static void StartRun(ReducerContext ctx)
     {
+        if (LivingMembers(ctx, Team.Players).Count == 0)
+        {
+            return;
+        }
+
         var session = RequireSession(ctx);
         ctx.Db.GameSession.Id.Update(session with { StageNumber = 1 });
         AddLog(ctx, "Stage 1 begins.");
@@ -760,6 +854,11 @@ public static partial class Module
 
     static void BeginNextStage(ReducerContext ctx)
     {
+        if (LivingMembers(ctx, Team.Players).Count == 0)
+        {
+            return;
+        }
+
         var session = RequireSession(ctx);
         var next = session.StageNumber + 1;
         ctx.Db.GameSession.Id.Update(session with { StageNumber = next });
@@ -1053,10 +1152,11 @@ public static partial class Module
         }
 
         var session = RequireSession(ctx);
-        var round = session.Round;
-        var idx = session.TurnIndex + 1;
+        FindNextActor(ctx, session.Round, session.TurnIndex + 1);
+    }
 
-        // Bounded so a logic slip can never hang the reducer.
+    static void FindNextActor(ReducerContext ctx, uint round, uint idx)
+    {
         for (var guard = 0; guard < 128; guard++)
         {
             if (idx >= (uint)ctx.Db.TurnOrder.Count)

@@ -402,4 +402,17 @@ public class GameManager : MonoBehaviour
     public static void Focus() => Conn?.Reducers.Focus();
 
     public static void ResetStage() => Conn?.Reducers.ResetStage();
+
+    public static void LeaveGame() => Conn?.Reducers.LeaveGame();
+
+    public static void Disconnect()
+    {
+        if (Conn == null)
+        {
+            return;
+        }
+
+        Conn.Disconnect();
+        Conn = null;
+    }
 }

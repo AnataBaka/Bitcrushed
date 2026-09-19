@@ -41,6 +41,7 @@ public class BattleHud : MonoBehaviour
     Text _stageLabel;
     StatPopupView _popup;
     TurnOrderStripView _turnStrip;
+    EscapeMenuView _escape;
 
     readonly Dictionary<ulong, EntityView> _views = new Dictionary<ulong, EntityView>();
     readonly List<ulong> _stale = new List<ulong>();
@@ -66,7 +67,8 @@ public class BattleHud : MonoBehaviour
         Text connectionLabel,
         Text stageLabel,
         StatPopupView popup,
-        TurnOrderStripView turnStrip
+        TurnOrderStripView turnStrip,
+        EscapeMenuView escape
     )
     {
         _field = field;
@@ -81,6 +83,7 @@ public class BattleHud : MonoBehaviour
         _stageLabel = stageLabel;
         _popup = popup;
         _turnStrip = turnStrip;
+        _escape = escape;
 
         _menu.OnJoin = GameManager.JoinGame;
         _menu.OnReady = HandleReadyClicked;
@@ -125,11 +128,22 @@ public class BattleHud : MonoBehaviour
 
         HandleInspectDismiss();
         HandleTargetingCancel();
+        HandleEscapeMenu();
+    }
+
+    void HandleEscapeMenu()
+    {
+        if (_escape == null || !EscapePressedThisFrame())
+        {
+            return;
+        }
+
+        _escape.HandleEscape();
     }
 
     void HandleTargetingCancel()
     {
-        if (!_targeting)
+        if (!_targeting || (_escape != null && _escape.IsOpen))
         {
             return;
         }
@@ -215,6 +229,7 @@ public class BattleHud : MonoBehaviour
         {
             _popup?.Close();
             _overlay.SetAsLastSibling();
+            _escape?.transform.SetAsLastSibling();
             if (transitioning)
             {
                 _overlayText.fontSize = 64;
@@ -399,6 +414,11 @@ public class BattleHud : MonoBehaviour
 
     void HandleInspectDismiss()
     {
+        if (_escape != null && _escape.IsOpen)
+        {
+            return;
+        }
+
         if (_popup == null || !_popup.IsOpen || !PointerPressedThisFrame())
         {
             return;
@@ -451,6 +471,15 @@ public class BattleHud : MonoBehaviour
         return Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame;
 #else
         return Input.GetMouseButtonDown(1);
+#endif
+    }
+
+    static bool EscapePressedThisFrame()
+    {
+#if ENABLE_INPUT_SYSTEM
+        return Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
+#else
+        return Input.GetKeyDown(KeyCode.Escape);
 #endif
     }
 
