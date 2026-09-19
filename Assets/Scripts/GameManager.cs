@@ -25,7 +25,7 @@ public class GameManager : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap()
     {
-        if (FindFirstObjectByType<GameManager>() != null)
+        if (FindAnyObjectByType<GameManager>() != null)
         {
             return;
         }
@@ -58,7 +58,7 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
-        if (Conn != null && FindFirstObjectByType<SpacetimeDBNetworkManager>() == null)
+        if (Conn != null && FindAnyObjectByType<SpacetimeDBNetworkManager>() == null)
         {
             Conn.FrameTick();
         }
@@ -80,7 +80,7 @@ public class GameManager : MonoBehaviour
             .OnConnectError(HandleConnectError)
             .OnDisconnect(HandleDisconnect)
             .WithUri(ServerUrl)
-            .WithModuleName(DatabaseName);
+            .WithDatabaseName(DatabaseName);
 
         var savedToken = PlayerPrefs.GetString(TokenPrefsKey, string.Empty);
         if (!string.IsNullOrEmpty(savedToken))
