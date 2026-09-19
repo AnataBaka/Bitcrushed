@@ -16,7 +16,7 @@ public static partial class Module
     public const uint MaxPartySize = 3;
     public const uint StatCap = 99;
     public const uint MaxDodgePercent = 25;
-    public const uint MpRegenPerTurn = 10;
+    public const uint MpRegenPerTurn = 2;
     public const uint FocusManaRecover = 20;
     public const uint StatPointsPerLevel = 2;
     public const uint MainStatMin = 3;
