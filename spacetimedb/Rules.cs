@@ -436,11 +436,19 @@ public static partial class Module
         return (uint)Math.Round(xp, MidpointRounding.AwayFromZero);
     }
 
-    /// EnemyHP(L) = 30 + 6*L. L1 = 36, L10 = 90, L35 = 240.
+    /// EnemyHP(L) = 30 + 6*L where L is the floor/stage, not character level.
     public static int EnemyHpForLevel(uint level)
     {
         var n = level == 0 ? 1 : (int)level;
         return Math.Max(1, 30 + 6 * n);
+    }
+
+    /// 3-player baseline is EnemyHP(floor). Solo is 1/3, 2 players 2/3, etc.
+    public static int EnemyHpForFloor(uint floor, int playerCount)
+    {
+        var p = Math.Max(1, playerCount);
+        var scaled = EnemyHpForLevel(floor) * (p / 3.0);
+        return Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero));
     }
 
     /// EnemyATK(L) = 4 + 0.6*L. L1 ≈ 5, L10 = 10, L35 = 25.

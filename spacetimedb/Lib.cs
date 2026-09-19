@@ -1117,12 +1117,12 @@ public static partial class Module
     static void SpawnEnemies(ReducerContext ctx)
     {
         EnsureEnemyCatalog(ctx);
-        var level = PartyCombatLevel(ctx);
+        var floor = CombatFloor(ctx);
         var players = PartyEncounterSize(ctx);
         var pool = EnemyPool;
         var count = RollEnemyPackSize(ctx, players);
-        var maxHp = EnemyHpForLevel(level);
-        var atk = EnemyAtkForLevel(level);
+        var maxHp = EnemyHpForFloor(floor, players);
+        var atk = EnemyAtkForLevel(PartyCombatLevel(ctx));
 
         for (uint slot = 0; slot < (uint)count; slot++)
         {
@@ -1185,6 +1185,12 @@ public static partial class Module
         }
 
         return level;
+    }
+
+    static uint CombatFloor(ReducerContext ctx)
+    {
+        var stage = RequireSession(ctx).StageNumber;
+        return stage == 0 ? 1u : stage;
     }
 
     static int PartyEncounterSize(ReducerContext ctx)
