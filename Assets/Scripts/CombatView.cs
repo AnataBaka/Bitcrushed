@@ -108,7 +108,7 @@ public class CombatView : MonoBehaviour
 
     void CreateButtons()
     {
-        if (FindFirstObjectByType<EventSystem>() == null)
+        if (FindAnyObjectByType<EventSystem>() == null)
         {
             var eventSystem = new GameObject("EventSystem");
             eventSystem.AddComponent<EventSystem>();
