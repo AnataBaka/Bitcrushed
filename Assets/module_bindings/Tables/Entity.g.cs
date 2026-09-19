@@ -90,6 +90,12 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Entity, bool> NecromancyUsed { get; }
         public global::SpacetimeDB.Col<Entity, bool> SkipNextTurn { get; }
         public global::SpacetimeDB.Col<Entity, bool> GrandUndertakingPending { get; }
+        public global::SpacetimeDB.Col<Entity, string> VariantPrefix { get; }
+        public global::SpacetimeDB.Col<Entity, int> TintR { get; }
+        public global::SpacetimeDB.Col<Entity, int> TintG { get; }
+        public global::SpacetimeDB.Col<Entity, int> TintB { get; }
+        public global::SpacetimeDB.Col<Entity, bool> IsBoss { get; }
+        public global::SpacetimeDB.Col<Entity, int> SkillCooldown { get; }
 
         public EntityCols(string tableName)
         {
@@ -144,6 +150,12 @@ namespace SpacetimeDB.Types
             NecromancyUsed = new global::SpacetimeDB.Col<Entity, bool>(tableName, "necromancy_used");
             SkipNextTurn = new global::SpacetimeDB.Col<Entity, bool>(tableName, "skip_next_turn");
             GrandUndertakingPending = new global::SpacetimeDB.Col<Entity, bool>(tableName, "grand_undertaking_pending");
+            VariantPrefix = new global::SpacetimeDB.Col<Entity, string>(tableName, "variant_prefix");
+            TintR = new global::SpacetimeDB.Col<Entity, int>(tableName, "tint_r");
+            TintG = new global::SpacetimeDB.Col<Entity, int>(tableName, "tint_g");
+            TintB = new global::SpacetimeDB.Col<Entity, int>(tableName, "tint_b");
+            IsBoss = new global::SpacetimeDB.Col<Entity, bool>(tableName, "is_boss");
+            SkillCooldown = new global::SpacetimeDB.Col<Entity, int>(tableName, "skill_cooldown");
         }
     }
 

@@ -294,6 +294,19 @@ public static partial class Module
         public bool SkipNextTurn;
         [Default(false)]
         public bool GrandUndertakingPending;
+        /// Cosmetic biome variant prefix stored so every client shows the same name and tint.
+        [Default("")]
+        public string VariantPrefix;
+        [Default(255)]
+        public int TintR;
+        [Default(255)]
+        public int TintG;
+        [Default(255)]
+        public int TintB;
+        [Default(false)]
+        public bool IsBoss;
+        [Default(0)]
+        public int SkillCooldown;
     }
 
     /// Rebuilt at the start of every round by BuildTurnOrder, fastest first.

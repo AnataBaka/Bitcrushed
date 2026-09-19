@@ -115,6 +115,18 @@ namespace SpacetimeDB.Types
         public bool SkipNextTurn;
         [DataMember(Name = "grand_undertaking_pending")]
         public bool GrandUndertakingPending;
+        [DataMember(Name = "variant_prefix")]
+        public string VariantPrefix;
+        [DataMember(Name = "tint_r")]
+        public int TintR;
+        [DataMember(Name = "tint_g")]
+        public int TintG;
+        [DataMember(Name = "tint_b")]
+        public int TintB;
+        [DataMember(Name = "is_boss")]
+        public bool IsBoss;
+        [DataMember(Name = "skill_cooldown")]
+        public int SkillCooldown;
 
         public Entity(
             ulong EntityId,
@@ -167,7 +179,13 @@ namespace SpacetimeDB.Types
             int FinishTheJobPower,
             bool NecromancyUsed,
             bool SkipNextTurn,
-            bool GrandUndertakingPending
+            bool GrandUndertakingPending,
+            string VariantPrefix,
+            int TintR,
+            int TintG,
+            int TintB,
+            bool IsBoss,
+            int SkillCooldown
         )
         {
             this.EntityId = EntityId;
@@ -221,6 +239,12 @@ namespace SpacetimeDB.Types
             this.NecromancyUsed = NecromancyUsed;
             this.SkipNextTurn = SkipNextTurn;
             this.GrandUndertakingPending = GrandUndertakingPending;
+            this.VariantPrefix = VariantPrefix;
+            this.TintR = TintR;
+            this.TintG = TintG;
+            this.TintB = TintB;
+            this.IsBoss = IsBoss;
+            this.SkillCooldown = SkillCooldown;
         }
 
         public Entity()
@@ -228,6 +252,7 @@ namespace SpacetimeDB.Types
             this.Name = "";
             this.ClassName = "";
             this.BasicAttackName = "";
+            this.VariantPrefix = "";
         }
     }
 }

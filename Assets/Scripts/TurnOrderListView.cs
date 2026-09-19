@@ -9,11 +9,11 @@ public class TurnOrderListView : MonoBehaviour
 {
     public const float ShiftSeconds = 0.35f;
     const float FadeSeconds = 0.22f;
-    const float Width = 110f;
+    const float Width = 186f;
     const float RowHeight = 22f;
     const float TopPad = 8f;
     const int MaxSlots = 7;
-    const int NameClip = 11;
+    const int NameClip = 20;
 
     static readonly Color Backing = new Color(0.06f, 0.07f, 0.09f, 0.55f);
     static readonly Color PlayerColor = new Color(0.82f, 0.90f, 0.98f, 1f);

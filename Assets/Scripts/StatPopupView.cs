@@ -92,6 +92,9 @@ public class StatPopupView : MonoBehaviour
             UiFactory.TextColor
         );
         view._title.fontStyle = FontStyle.Bold;
+        view._title.resizeTextForBestFit = true;
+        view._title.resizeTextMinSize = 14;
+        view._title.resizeTextMaxSize = 22;
         view._title.horizontalOverflow = HorizontalWrapMode.Overflow;
         UiFactory.Anchor(view._title.rectTransform, new Vector2(0f, 0.42f), new Vector2(1f, 1f));
         view._title.rectTransform.offsetMin = new Vector2(12f, 0f);

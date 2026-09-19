@@ -105,6 +105,10 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             TextAnchor.MiddleCenter,
             UiFactory.TextColor
         );
+        view._nameText.resizeTextForBestFit = true;
+        view._nameText.resizeTextMinSize = 10;
+        view._nameText.resizeTextMaxSize = 20;
+        view._nameText.horizontalOverflow = HorizontalWrapMode.Overflow;
         view._nameText.rectTransform.anchorMin = new Vector2(0f, 1f);
         view._nameText.rectTransform.anchorMax = new Vector2(1f, 1f);
         view._nameText.rectTransform.pivot = new Vector2(0.5f, 1f);
@@ -245,6 +249,16 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         var color = isEnemy
             ? PlaceholderArt.EnemyVisual(entity.ClassName).Color
             : PlaceholderArt.ClassColor(entity.ClassName);
+        if (isEnemy)
+        {
+            color *= new Color(
+                Mathf.Clamp01(entity.TintR / 255f),
+                Mathf.Clamp01(entity.TintG / 255f),
+                Mathf.Clamp01(entity.TintB / 255f),
+                1f
+            );
+        }
+
         var shape = isEnemy
             ? PlaceholderArt.EnemyVisual(entity.ClassName).Shape
             : PlaceholderArt.ClassShape(entity.ClassName);

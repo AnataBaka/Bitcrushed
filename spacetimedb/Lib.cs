@@ -128,6 +128,12 @@ public static partial class Module
                 Alive = true,
                 BasicAttackName = BasicAttackName(playerClass),
                 MagicBulletStage = 1,
+                VariantPrefix = "",
+                TintR = 255,
+                TintG = 255,
+                TintB = 255,
+                IsBoss = false,
+                SkillCooldown = 0,
             }
         );
 
@@ -1228,22 +1234,32 @@ public static partial class Module
             picks.Add(pool[ctx.Rng.Next(0, pool.Length)]);
         }
 
+        var session = RequireSession(ctx);
+        var biome = session.CurrentBiome;
+        var def = FindBiomeDef(ctx, biome);
+        var prefix = def?.VariantPrefix ?? "";
+        var tintR = def?.TintR ?? 255;
+        var tintG = def?.TintG ?? 255;
+        var tintB = def?.TintB ?? 255;
+
         var copies = new Dictionary<string, int>();
         foreach (var pick in picks)
         {
-            copies.TryGetValue(pick.Name, out var n);
-            copies[pick.Name] = n + 1;
+            var labeled = VariantDisplayName(prefix, pick.Name);
+            copies.TryGetValue(labeled, out var n);
+            copies[labeled] = n + 1;
         }
 
         var seen = new Dictionary<string, int>();
         for (uint slot = 0; slot < (uint)picks.Count; slot++)
         {
             var arch = picks[(int)slot];
-            seen.TryGetValue(arch.Name, out var index);
-            seen[arch.Name] = index + 1;
-            var name = copies[arch.Name] <= 1
-                ? arch.Name
-                : $"{arch.Name} {(char)('A' + index)}";
+            var labeled = VariantDisplayName(prefix, arch.Name);
+            seen.TryGetValue(labeled, out var index);
+            seen[labeled] = index + 1;
+            var name = copies[labeled] <= 1
+                ? labeled
+                : $"{labeled} {(char)('A' + index)}";
             var maxMana = Math.Max(1, arch.MaxMana);
             var dexterity = Math.Max(1, arch.Dexterity);
             var intelligence = Math.Max(1, arch.Intelligence);
@@ -1277,11 +1293,27 @@ public static partial class Module
                     Alive = true,
                     BasicAttackName = arch.BasicAttackName,
                     MagicBulletStage = 1,
+                    VariantPrefix = prefix,
+                    TintR = tintR,
+                    TintG = tintG,
+                    TintB = tintB,
+                    IsBoss = false,
+                    SkillCooldown = 0,
                 }
             );
 
             GrantSkillsByName(ctx, enemy.EntityId, new[] { arch.SkillName });
         }
+    }
+
+    static string VariantDisplayName(string prefix, string baseName)
+    {
+        if (string.IsNullOrEmpty(prefix))
+        {
+            return baseName;
+        }
+
+        return $"{prefix} {baseName}";
     }
 
     static uint CombatFloor(ReducerContext ctx)
