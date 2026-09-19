@@ -233,6 +233,9 @@ public static partial class Module
         public int EvadeStrengthOnDodge;
         [Default(false)]
         public bool HasDodged;
+        /// Successful dodges/evades this battle. Grandshot scales off this, capped at 4.
+        [Default(0)]
+        public int DodgeCount;
 
         [Default(false)]
         public bool UsedAttackThisTurn;

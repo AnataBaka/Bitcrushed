@@ -59,9 +59,9 @@ public static partial class Module
     public const int FuriosoBonusPerHit = 3;
     public const int GrandshotManaCost = 100;
     public const uint GrandshotLevelRequired = 30;
-    public const int GrandshotCoinCount = 9;
-    public const int GrandshotDamagePerHeads = 6;
-    public const int GrandshotBaseDamage = 30;
+    public const int GrandshotBaseDamage = 50;
+    public const int GrandshotDamagePerDodge = 50;
+    public const int GrandshotDodgeCap = 4;
     public const int SpearBaseManaCost = 45;
     public const int VerticalCutBaseManaCost = 80;
     public const int SkillManaDiscountPerUse = 15;
@@ -398,6 +398,12 @@ public static partial class Module
 
     public static int NextDiscountedManaCost(int currentCost) =>
         Math.Max(0, currentCost - SkillManaDiscountPerUse);
+
+    public static int GrandshotCountedDodges(int dodgeCount) =>
+        Math.Clamp(dodgeCount, 0, GrandshotDodgeCap);
+
+    public static int GrandshotDamageOf(int dodgeCount) =>
+        GrandshotBaseDamage + (GrandshotCountedDodges(dodgeCount) * GrandshotDamagePerDodge);
 
     /// Weapon/skill core. Class passives and Enraged stacks are added separately.
     public static int DealtDamage(int characterDamage, int atk) =>

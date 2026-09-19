@@ -1105,6 +1105,7 @@ public static partial class Module
                 FinishTheJobStance = false,
                 FinishTheJobPower = 0,
                 HasDodged = false,
+                DodgeCount = 0,
                 SkipNextTurn = false,
                 GrandUndertakingPending = false,
             };
@@ -1600,7 +1601,13 @@ public static partial class Module
         var alive = hp > 0;
         var wasAlive = target.Alive;
         ctx.Db.Entity.EntityId.Update(
-            target with { Hp = hp, Alive = alive, HasDodged = target.HasDodged || dodged || evaded }
+            target with
+            {
+                Hp = hp,
+                Alive = alive,
+                HasDodged = target.HasDodged || dodged || evaded,
+                DodgeCount = target.DodgeCount + (dodged || evaded ? 1 : 0),
+            }
         );
 
         if (dodged || evaded)

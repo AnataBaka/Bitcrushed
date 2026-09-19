@@ -162,11 +162,20 @@ public static partial class Module
 
             if (
                 skill.Name == SkillNames.Grandshot
-                && (skill.ManaCost != GrandshotManaCost || skill.LevelRequired != GrandshotLevelRequired)
+                && (
+                    skill.ManaCost != GrandshotManaCost
+                    || skill.LevelRequired != GrandshotLevelRequired
+                    || skill.BaseDamage != GrandshotBaseDamage
+                )
             )
             {
                 ctx.Db.SkillDef.Id.Update(
-                    skill with { ManaCost = GrandshotManaCost, LevelRequired = GrandshotLevelRequired }
+                    skill with
+                    {
+                        ManaCost = GrandshotManaCost,
+                        LevelRequired = GrandshotLevelRequired,
+                        BaseDamage = GrandshotBaseDamage,
+                    }
                 );
             }
         }

@@ -410,7 +410,7 @@ public class GameManager : MonoBehaviour
             return false;
         }
 
-        if (skill.Name == "Grandshot" && !caster.HasDodged)
+        if (skill.Name == "Grandshot" && caster.DodgeCount < 1)
         {
             return false;
         }

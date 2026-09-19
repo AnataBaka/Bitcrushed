@@ -1,3 +1,4 @@
+using System;
 using SpacetimeDB.Types;
 
 /// Client-side inspect copy for the skill menu. Mirrors named skill rules so
@@ -167,8 +168,10 @@ public static class SkillInspect
                 description = "Two shots against every living enemy. If any hit connects on an enemy, that enemy gains 4 Fragile.";
                 return;
             case "Grandshot":
-                damage = "30 + 6 per heads (9 coins)";
-                description = "Can only be used after you have dodged once this battle. Flip 9 coins in a row; each heads adds +6 base power. Deals 30 plus the coin bonus.";
+                var dodges = caster == null ? 0 : Math.Clamp(caster.DodgeCount, 0, 4);
+                var grandshot = 50 + (dodges * 50);
+                damage = $"{grandshot} (50 + 50 per dodge, cap 4)";
+                description = "Can only be used after you have dodged once this battle. Base 50 power, plus 50 for each dodge this battle (max 4 dodges, 250 power).";
                 return;
             case "Magic Missile":
                 damage = "10 to one enemy";
@@ -215,7 +218,7 @@ public static class SkillInspect
                 return;
             case "Overthrow":
                 damage = "42 to all enemies";
-                description = "Hit every living enemy. Requires Finish the Job stance. Ninja attacks gain +0.5 per base Speed (not combat Speed), and skills also gain +1 power per Speed above the target (max +5).";
+                description = "Gain 12 Enraged, then hit every living enemy for 42. Requires Finish the Job stance. Ninja attacks gain +0.5 per base Speed (not combat Speed), and skills also gain +1 power per Speed above the target (max +5).";
                 return;
             default:
                 damage = "See battle log";

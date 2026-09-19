@@ -208,19 +208,11 @@ public static partial class Module
 
                 break;
             case SkillNames.Grandshot:
-                var heads = 0;
-                for (var coin = 0; coin < GrandshotCoinCount; coin++)
-                {
-                    if (ctx.Rng.Next(0, 2) == 1)
-                    {
-                        heads += 1;
-                    }
-                }
-
-                var grandshotDamage = GrandshotBaseDamage + (heads * GrandshotDamagePerHeads);
+                var countedDodges = GrandshotCountedDodges(caster.DodgeCount);
+                var grandshotDamage = GrandshotDamageOf(caster.DodgeCount);
                 AddLog(
                     ctx,
-                    $"{caster.Name} flips {GrandshotCoinCount} coins for {skill.Name}: {heads} heads (+{heads * GrandshotDamagePerHeads} damage).",
+                    $"{caster.Name} fires {skill.Name} with {countedDodges} dodge{(countedDodges == 1 ? "" : "s")} this battle (+{countedDodges * GrandshotDamagePerDodge} power).",
                     LogKind.Focus,
                     caster.EntityId,
                     caster.EntityId
@@ -286,6 +278,14 @@ public static partial class Module
                 EnterFinishTheJob(ctx, caster);
                 break;
             case SkillNames.Overthrow:
+                GainStrengthNow(ctx, caster.EntityId, 12);
+                AddLog(
+                    ctx,
+                    $"{caster.Name} uses {skill.Name} and gains 12 Enraged.",
+                    LogKind.Focus,
+                    caster.EntityId,
+                    caster.EntityId
+                );
                 StrikeLivingEnemies(ctx, caster, skill.Name, 42, hits: 1);
                 break;
             default:
@@ -300,7 +300,7 @@ public static partial class Module
         ulong targetEntityId
     )
     {
-        if (skill.Name == SkillNames.Grandshot && !caster.HasDodged)
+        if (skill.Name == SkillNames.Grandshot && caster.DodgeCount < 1)
         {
             throw new Exception("Grandshot requires having dodged at least once.");
         }

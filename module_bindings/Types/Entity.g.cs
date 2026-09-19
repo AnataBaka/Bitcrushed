@@ -91,6 +91,8 @@ namespace SpacetimeDB.Types
         public int EvadeStrengthOnDodge;
         [DataMember(Name = "has_dodged")]
         public bool HasDodged;
+        [DataMember(Name = "dodge_count")]
+        public int DodgeCount;
         [DataMember(Name = "used_attack_this_turn")]
         public bool UsedAttackThisTurn;
         [DataMember(Name = "used_attack_last_turn")]
@@ -156,6 +158,7 @@ namespace SpacetimeDB.Types
             int EvadeFragileOnDodge,
             int EvadeStrengthOnDodge,
             bool HasDodged,
+            int DodgeCount,
             bool UsedAttackThisTurn,
             bool UsedAttackLastTurn,
             int NextAttackBonus,
@@ -209,6 +212,7 @@ namespace SpacetimeDB.Types
             this.EvadeFragileOnDodge = EvadeFragileOnDodge;
             this.EvadeStrengthOnDodge = EvadeStrengthOnDodge;
             this.HasDodged = HasDodged;
+            this.DodgeCount = DodgeCount;
             this.UsedAttackThisTurn = UsedAttackThisTurn;
             this.UsedAttackLastTurn = UsedAttackLastTurn;
             this.NextAttackBonus = NextAttackBonus;
