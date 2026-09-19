@@ -1122,7 +1122,7 @@ public static partial class Module
         var pool = EnemyPool;
         var count = RollEnemyPackSize(ctx, players);
         var maxHp = EnemyHpForFloor(floor, players);
-        var atk = EnemyAtkForLevel(PartyCombatLevel(ctx));
+        var atk = EnemyAtkForFloor(floor, players);
 
         for (uint slot = 0; slot < (uint)count; slot++)
         {
@@ -1165,26 +1165,6 @@ public static partial class Module
 
             GrantSkillsByName(ctx, enemy.EntityId, new[] { arch.SkillName });
         }
-    }
-
-    static uint PartyCombatLevel(ReducerContext ctx)
-    {
-        uint level = 1;
-        foreach (var player in ctx.Db.Player.Iter())
-        {
-            if (!IsLivingPlayer(ctx, player))
-            {
-                continue;
-            }
-
-            var characterLevel = player.CharacterLevel == 0 ? 1u : player.CharacterLevel;
-            if (characterLevel > level)
-            {
-                level = characterLevel;
-            }
-        }
-
-        return level;
     }
 
     static uint CombatFloor(ReducerContext ctx)

@@ -451,7 +451,7 @@ public static partial class Module
         return Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero));
     }
 
-    /// EnemyATK(L) = 4 + 0.6*L. L1 ≈ 5, L10 = 10, L35 = 25.
+    /// EnemyATK(L) = 4 + 0.6*L where L is the floor/stage.
     public static double EnemyAtkBaseline(uint level)
     {
         var n = level == 0 ? 1 : (int)level;
@@ -460,6 +460,14 @@ public static partial class Module
 
     public static int EnemyAtkForLevel(uint level) =>
         Math.Max(1, (int)Math.Round(EnemyAtkBaseline(level), MidpointRounding.AwayFromZero));
+
+    /// 3-player baseline is EnemyATK(floor). Solo is 1/3, 2 players 2/3, etc.
+    public static int EnemyAtkForFloor(uint floor, int playerCount)
+    {
+        var p = Math.Max(1, playerCount);
+        var scaled = EnemyAtkBaseline(floor) * (p / 3.0);
+        return Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero));
+    }
 
     /// Each kill grants `25 * stage` EXP to every living party member.
     public static uint KillXp(uint stage) =>
