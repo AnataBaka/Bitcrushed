@@ -226,7 +226,7 @@ public class GameManager : MonoBehaviour
     public static GameSession Session() =>
         Conn == null ? null : Conn.Db.GameSession.Id.Find(SessionId);
 
-    public static BiomeDef? FindBiomeDef(WorldBiome biome)
+    public static BiomeDef FindBiomeDef(WorldBiome biome)
     {
         if (Conn == null)
         {
