@@ -47,6 +47,8 @@ public class GameManager : MonoBehaviour
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
+        Screen.fullScreenMode = FullScreenMode.FullScreenWindow;
+        Screen.fullScreen = true;
         TryAddNetworkManager(gameObject);
         if (GetComponent<CombatView>() == null)
         {

@@ -8,7 +8,7 @@ using SpacetimeDB;
 //   Dealt = (CHR DAMAGE + Strength + ATK) + floor(Strength / 10).
 //   CHR DAMAGE is skill/weapon base plus the class stat (DEX/INT/SPD). Warrior STR
 //   is not added there because Strength is already in the published formula.
-//   Taken damage subtracts current Defense so Defend (+20 DEF, +50 MP) has an effect.
+//   Taken damage subtracts current Defense. Focus restores 20 MP.
 //   XP to next level = Level * 100. Kill XP = 25 * Floor. Each level grants 2 stats.
 public static partial class Module
 {
@@ -17,8 +17,7 @@ public static partial class Module
     public const uint StatCap = 99;
     public const uint MaxDodgePercent = 25;
     public const uint MpRegenPerTurn = 10;
-    public const uint DefendDefenseBonus = 20;
-    public const uint DefendManaRecover = 50;
+    public const uint FocusManaRecover = 20;
     public const uint StatPointsPerLevel = 2;
     public const uint MainStatMin = 3;
     public const uint MainStatMax = 6;

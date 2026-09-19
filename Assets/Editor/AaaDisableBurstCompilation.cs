@@ -19,7 +19,29 @@ static class AaaDisableBurstCompilation
     {
         PersistBurstCompilationOff();
         BurstGpuDrivenLogFilter.Install();
+        EnableMaximizeOnPlay();
         EditorApplication.delayCall += DisableGpuDrivenRendering;
+    }
+
+    static void EnableMaximizeOnPlay()
+    {
+        var gameViewType = typeof(EditorWindow).Assembly.GetType("UnityEditor.GameView");
+        var property = gameViewType?.GetProperty(
+            "maximizeOnPlay",
+            BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        if (property == null || !property.CanWrite)
+        {
+            return;
+        }
+
+        if (property.GetSetMethod(true)?.IsStatic == true)
+        {
+            property.SetValue(null, true);
+            return;
+        }
+
+        var window = EditorWindow.GetWindow(gameViewType, false, null, false);
+        property.SetValue(window, true);
     }
 
     static void PersistBurstCompilationOff()
