@@ -713,8 +713,6 @@ public static partial class Module
                 if (ctx.Db.Entity.EntityId.Find(target.EntityId) is Entity fresh && fresh.Alive)
                 {
                     var current = ctx.Db.Entity.EntityId.Find(enemy.EntityId) ?? enemy;
-                    // Skill catalog still stores legacy BaseDamage; combat uses
-                    // scaled entity.Atk only. Debug logs compare the two.
                     ResolveHit(ctx, current, fresh, chosen.Name, 0, isSkill: true);
                 }
             }
@@ -1123,19 +1121,8 @@ public static partial class Module
         var players = PartyEncounterSize(ctx);
         var pool = EnemyPool;
         var count = RollEnemyPackSize(ctx, players);
-        var baselineHp = EnemyHpForLevel(level);
-        var baselineAtk = EnemyAtkBaseline(level);
-        var specAtk = baselineAtk * players / EnemyScalePartyBaseline;
-        var maxHp = EnemyHpForParty(level, players);
-        var atk = EnemyAtkForParty(level, players);
-
-        AddLog(
-            ctx,
-            $"[spawn-debug] P={players} L={level} enemies={count} baselineHP={baselineHp} scaledHP={maxHp} baselineATK={baselineAtk:0.00} specATK={specAtk:0.00} storedATK={atk}."
-        );
-        Log.Info(
-            $"[spawn-debug] P={players} L={level} enemies={count} baselineHP={baselineHp} scaledHP={maxHp} specATK={specAtk:0.00} storedATK={atk}"
-        );
+        var maxHp = EnemyHpForLevel(level);
+        var atk = EnemyAtkForLevel(level);
 
         for (uint slot = 0; slot < (uint)count; slot++)
         {
@@ -1608,11 +1595,6 @@ public static partial class Module
             {
                 damage = ApplyFragile(damage, target.FragileStacks);
             }
-
-            if (attacker.Faction == Team.Enemies)
-            {
-                damage = ScaleEnemyOutgoingDamage(damage);
-            }
         }
 
         var hp = Math.Max(0, target.Hp - damage);
@@ -1657,62 +1639,12 @@ public static partial class Module
             }
         }
 
-        if (attacker.Faction == Team.Enemies)
-        {
-            LogEnemyHitDebug(
-                ctx,
-                attacker,
-                target,
-                actionName,
-                skillBaseDamage,
-                power,
-                raw,
-                damage,
-                hpBefore: target.Hp,
-                hpAfter: hp
-            );
-        }
-
         if (wasAlive && !alive)
         {
             HandleDefeat(ctx, attacker, target);
         }
 
         return new HitResult(connected, damage, wasAlive && !alive);
-    }
-
-    static void LogEnemyHitDebug(
-        ReducerContext ctx,
-        Entity attacker,
-        Entity target,
-        string actionName,
-        int skillBaseDamage,
-        int power,
-        int raw,
-        int damage,
-        int hpBefore,
-        int hpAfter
-    )
-    {
-        var catalogBase = 0;
-        foreach (var skill in ctx.Db.SkillDef.Iter())
-        {
-            if (skill.Name == actionName)
-            {
-                catalogBase = skill.BaseDamage;
-                break;
-            }
-        }
-
-        var p = PartyEncounterSize(ctx);
-        var level = PartyCombatLevel(ctx);
-        var specAtk = EnemyAtkBaseline(level) * p / EnemyScalePartyBaseline;
-        var enemies = LivingMembers(ctx, Team.Enemies).Count;
-        var inverted = EnemyAtkBaseline(level) * EnemyScalePartyBaseline / Math.Max(1, p);
-        var message =
-            $"[dmg-debug] {attacker.Name} {actionName}: storedAtk={attacker.Atk} catalogBase={catalogBase} appliedBase={skillBaseDamage} power={power} strBuff={attacker.StrengthBuff} strStat={attacker.Strength} raw={raw} fragile={target.FragileStacks} def={target.Defense} dealt={damage} {target.Name} HP {hpBefore}->{hpAfter} P={p} L={level} specAtk={specAtk:0.00} invertedAtk={inverted:0.00} enemies={enemies}";
-        AddLog(ctx, message, LogKind.Attack, attacker.EntityId, target.EntityId, damage);
-        Log.Info(message);
     }
 
     static void OnSuccessfulDodge(ReducerContext ctx, Entity attacker, Entity target, bool evaded)

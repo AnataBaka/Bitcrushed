@@ -7,9 +7,6 @@ public static partial class Module
 {
     public const uint SessionId = 1;
     public const uint MaxPartySize = 3;
-    public const int EnemyScalePartyBaseline = 3;
-    /// Every enemy hit deals this fraction of computed damage (1/3).
-    public const int EnemyOutgoingDamageDivisor = 3;
     public const uint MaxEnemySlots = 4;
     public const uint MaxStageCount = 10;
     public const uint RestStopEvery = 3;
@@ -439,13 +436,14 @@ public static partial class Module
         return (uint)Math.Round(xp, MidpointRounding.AwayFromZero);
     }
 
+    /// EnemyHP(L) = 30 + 6*L. L1 = 36, L10 = 90, L35 = 240.
     public static int EnemyHpForLevel(uint level)
     {
         var n = level == 0 ? 1 : (int)level;
         return Math.Max(1, 30 + 6 * n);
     }
 
-    /// Unrounded 3-player baseline: `4 + 0.6*L`. L1 = 4.6, not the rounded integer 5.
+    /// EnemyATK(L) = 4 + 0.6*L. L1 ≈ 5, L10 = 10, L35 = 25.
     public static double EnemyAtkBaseline(uint level)
     {
         var n = level == 0 ? 1 : (int)level;
@@ -454,45 +452,6 @@ public static partial class Module
 
     public static int EnemyAtkForLevel(uint level) =>
         Math.Max(1, (int)Math.Round(EnemyAtkBaseline(level), MidpointRounding.AwayFromZero));
-
-    /// Apply P/3 to the unrounded baseline so L1 P=1 is 4.6/3 ≈ 1.53, then store as int.
-    public static int EnemyHpForParty(uint level, int playerCount)
-    {
-        var p = Math.Max(1, playerCount);
-        var scaled = EnemyHpForLevel(level) * (p / (double)EnemyScalePartyBaseline);
-        return Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero));
-    }
-
-    public static int EnemyAtkForParty(uint level, int playerCount)
-    {
-        var p = Math.Max(1, playerCount);
-        var scaled = EnemyAtkBaseline(level) * (p / (double)EnemyScalePartyBaseline);
-        return Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero));
-    }
-
-    /// Existing enemy formulas were balanced for a 3-player party. Scale both
-    /// HP and ATK by P/3 so solo and larger parties keep the same time-to-kill.
-    public static int ScaleEnemyStatForParty(int baseline, int playerCount)
-    {
-        var p = Math.Max(1, playerCount);
-        var scaled = baseline * (p / (double)EnemyScalePartyBaseline);
-        return Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero));
-    }
-
-    /// Final enemy-outgoing damage. Connected hits that would round to 0 still chip for 1.
-    public static int ScaleEnemyOutgoingDamage(int damage)
-    {
-        if (damage <= 0)
-        {
-            return 0;
-        }
-
-        var scaled = (int)Math.Round(
-            damage / (double)EnemyOutgoingDamageDivisor,
-            MidpointRounding.AwayFromZero
-        );
-        return Math.Max(1, scaled);
-    }
 
     /// Each kill grants `25 * stage` EXP to every living party member.
     public static uint KillXp(uint stage) =>
