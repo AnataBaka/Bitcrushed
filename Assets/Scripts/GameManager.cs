@@ -490,9 +490,6 @@ public class GameManager : MonoBehaviour
         return skills.OrderBy(s => s.LevelRequired).ThenBy(s => s.ManaCost).ThenBy(s => s.Id).ToList();
     }
 
-    public static bool SkillTargetsFallenAlly(SkillDef skill) =>
-        skill != null && skill.Name == "Necromancy";
-
     public static int EffectiveManaCost(SkillDef skill, Entity caster)
     {
         if (skill == null || caster == null)

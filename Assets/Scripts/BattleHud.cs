@@ -344,7 +344,7 @@ public class BattleHud : MonoBehaviour
             // Defeated combatants keep an existing card so the killing blow can
             // finish, but a later attack must never spawn a new one. AnimationsPending
             // used to force a recreate, which is what flickered dead entities back in.
-            if (!entity.Alive && !hasView && entity.Faction == Team.Enemies)
+            if (!entity.Alive && !hasView)
             {
                 continue;
             }
@@ -365,16 +365,8 @@ public class BattleHud : MonoBehaviour
             view.SetPosition(entity.IsBoss ? BossSlot : slots[index]);
 
             var isLocal = me != null && me.EntityId == entity.EntityId;
-            var pending = GameManager.Conn?.Db.SkillDef.Id.Find(_pendingSkillId);
-            var revive = GameManager.SkillTargetsFallenAlly(pending);
             var targetable =
-                _targeting
-                && myTurn
-                && (
-                    revive
-                        ? entity.Faction == Team.Players && !entity.Alive && !isLocal
-                        : entity.Faction == Team.Enemies && entity.Alive
-                );
+                _targeting && myTurn && entity.Faction == Team.Enemies && entity.Alive;
             view.Bind(entity, activeId == entity.EntityId, isLocal, targetable, HandleEntityClicked);
 
             var occupant = GameManager.FindPlayer(entity.EntityId);
@@ -401,7 +393,7 @@ public class BattleHud : MonoBehaviour
             {
                 _stale.Add(pair.Key);
             }
-            else if (!entity.Alive && !AnimationsPending() && entity.Faction == Team.Enemies)
+            else if (!entity.Alive && !AnimationsPending())
             {
                 _stale.Add(pair.Key);
             }
@@ -473,19 +465,6 @@ public class BattleHud : MonoBehaviour
             }
 
             var skillDefId = _pendingSkillId;
-            var skill = GameManager.Conn?.Db.SkillDef.Id.Find(skillDefId);
-            if (GameManager.SkillTargetsFallenAlly(skill))
-            {
-                if (entity.Faction != Team.Players || entity.Alive)
-                {
-                    return;
-                }
-
-                ClearTargeting();
-                GameManager.CastSkill(skillDefId, entityId);
-                return;
-            }
-
             if (!entity.Alive || entity.Faction != Team.Enemies)
             {
                 return;

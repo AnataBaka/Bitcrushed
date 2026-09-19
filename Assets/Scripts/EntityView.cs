@@ -329,7 +329,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             _card.color = new Color(0f, 0f, 0f, 0f);
         }
 
-        _button.interactable = entity.Alive || targetable;
+        _button.interactable = entity.Alive;
 
         if (_statusText != null)
         {
@@ -393,11 +393,6 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         if (entity.FinishTheJobStance)
         {
             parts.Add("Stance");
-        }
-
-        if (!entity.Alive)
-        {
-            parts.Add("Fallen");
         }
 
         return string.Join("  ", parts);
