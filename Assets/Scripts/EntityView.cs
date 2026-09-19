@@ -8,6 +8,9 @@ using UnityEngine.UI;
 public class EntityView : MonoBehaviour
 {
     public ulong EntityId { get; private set; }
+    public RectTransform Root => _root;
+    public Vector2 Home { get; private set; }
+    public bool Busy;
 
     RectTransform _root;
     Image _card;
@@ -123,10 +126,14 @@ public class EntityView : MonoBehaviour
 
     public void SetPosition(Vector2 anchoredPosition)
     {
+        Home = anchoredPosition;
         _root.anchorMin = Vector2.zero;
         _root.anchorMax = Vector2.zero;
         _root.pivot = new Vector2(0.5f, 0f);
-        _root.anchoredPosition = anchoredPosition;
+        if (!Busy)
+        {
+            _root.anchoredPosition = anchoredPosition;
+        }
     }
 
     public void Bind(

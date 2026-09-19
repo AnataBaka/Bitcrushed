@@ -23,13 +23,40 @@ namespace SpacetimeDB.Types
         public PlayerClass Class;
         [DataMember(Name = "entity_id")]
         public ulong EntityId;
+        [DataMember(Name = "base_strength")]
+        public uint BaseStrength;
+        [DataMember(Name = "base_dexterity")]
+        public uint BaseDexterity;
+        [DataMember(Name = "base_intelligence")]
+        public uint BaseIntelligence;
+        [DataMember(Name = "base_speed")]
+        public uint BaseSpeed;
+        [DataMember(Name = "equipped_weapon_def_id")]
+        public uint EquippedWeaponDefId;
+        [DataMember(Name = "equipped_helmet_def_id")]
+        public uint EquippedHelmetDefId;
+        [DataMember(Name = "equipped_chestplate_def_id")]
+        public uint EquippedChestplateDefId;
+        [DataMember(Name = "equipped_leggings_def_id")]
+        public uint EquippedLeggingsDefId;
+        [DataMember(Name = "equipped_boots_def_id")]
+        public uint EquippedBootsDefId;
 
         public Player(
             SpacetimeDB.Identity Identity,
             uint Slot,
             bool Online,
             PlayerClass Class,
-            ulong EntityId
+            ulong EntityId,
+            uint BaseStrength,
+            uint BaseDexterity,
+            uint BaseIntelligence,
+            uint BaseSpeed,
+            uint EquippedWeaponDefId,
+            uint EquippedHelmetDefId,
+            uint EquippedChestplateDefId,
+            uint EquippedLeggingsDefId,
+            uint EquippedBootsDefId
         )
         {
             this.Identity = Identity;
@@ -37,10 +64,20 @@ namespace SpacetimeDB.Types
             this.Online = Online;
             this.Class = Class;
             this.EntityId = EntityId;
+            this.BaseStrength = BaseStrength;
+            this.BaseDexterity = BaseDexterity;
+            this.BaseIntelligence = BaseIntelligence;
+            this.BaseSpeed = BaseSpeed;
+            this.EquippedWeaponDefId = EquippedWeaponDefId;
+            this.EquippedHelmetDefId = EquippedHelmetDefId;
+            this.EquippedChestplateDefId = EquippedChestplateDefId;
+            this.EquippedLeggingsDefId = EquippedLeggingsDefId;
+            this.EquippedBootsDefId = EquippedBootsDefId;
         }
 
         public Player()
         {
+
         }
     }
 }

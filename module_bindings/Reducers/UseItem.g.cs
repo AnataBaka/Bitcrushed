@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UseItemHandler(ReducerEventContext ctx, SpacetimeDB.Types.ItemKind item);
+        public delegate void UseItemHandler(ReducerEventContext ctx, uint itemInstanceId);
         public event UseItemHandler? OnUseItem;
 
-        public void UseItem(SpacetimeDB.Types.ItemKind item)
+        public void UseItem(ItemInstanceId)
         {
-            conn.InternalCallReducer(new Reducer.UseItem(item));
+            conn.InternalCallReducer(new Reducer.UseItem(ItemInstanceId));
         }
 
         public bool InvokeUseItem(ReducerEventContext ctx, Reducer.UseItem args)
@@ -36,7 +36,7 @@ namespace SpacetimeDB.Types
             }
             OnUseItem(
                 ctx,
-                args.Item
+                args.ItemInstanceId
             );
             return true;
         }
@@ -48,12 +48,12 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UseItem : Reducer, IReducerArgs
         {
-            [DataMember(Name = "item")]
-            public ItemKind Item;
+            [DataMember(Name = "item_instance_id")]
+            public uint ItemInstanceId;
 
-            public UseItem(ItemKind Item)
+            public UseItem(uint ItemInstanceId)
             {
-                this.Item = Item;
+                this.ItemInstanceId = ItemInstanceId;
             }
 
             public UseItem()

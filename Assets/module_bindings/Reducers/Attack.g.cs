@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void AttackHandler(ReducerEventContext ctx, ulong targetEntityId);
+        public delegate void AttackHandler(ReducerEventContext ctx, ulong targetEntityId, uint skillDefId);
         public event AttackHandler? OnAttack;
 
-        public void Attack(ulong targetEntityId)
+        public void Attack(ulong TargetEntityId, uint SkillDefId)
         {
-            conn.InternalCallReducer(new Reducer.Attack(targetEntityId));
+            conn.InternalCallReducer(new Reducer.Attack(TargetEntityId, SkillDefId));
         }
 
         public bool InvokeAttack(ReducerEventContext ctx, Reducer.Attack args)
@@ -36,7 +36,8 @@ namespace SpacetimeDB.Types
             }
             OnAttack(
                 ctx,
-                args.TargetEntityId
+                args.TargetEntityId,
+                args.SkillDefId
             );
             return true;
         }
@@ -50,10 +51,13 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "target_entity_id")]
             public ulong TargetEntityId;
+            [DataMember(Name = "skill_def_id")]
+            public uint SkillDefId;
 
-            public Attack(ulong TargetEntityId)
+            public Attack(ulong TargetEntityId, uint SkillDefId)
             {
                 this.TargetEntityId = TargetEntityId;
+                this.SkillDefId = SkillDefId;
             }
 
             public Attack()

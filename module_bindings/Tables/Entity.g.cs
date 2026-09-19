@@ -29,6 +29,7 @@ namespace SpacetimeDB.Types
             internal EntityHandle(DbConnection conn) : base(conn)
             {
                 EntityId = new(this);
+
             }
 
             protected override object GetPrimaryKey(Entity row) => row.EntityId;
@@ -49,13 +50,16 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Entity, int> MaxMana { get; }
         public global::SpacetimeDB.Col<Entity, int> Mana { get; }
         public global::SpacetimeDB.Col<Entity, int> Strength { get; }
-        public global::SpacetimeDB.Col<Entity, int> Damage { get; }
+        public global::SpacetimeDB.Col<Entity, int> Dexterity { get; }
+        public global::SpacetimeDB.Col<Entity, int> Intelligence { get; }
+        public global::SpacetimeDB.Col<Entity, int> Atk { get; }
+        public global::SpacetimeDB.Col<Entity, int> Defense { get; }
         public global::SpacetimeDB.Col<Entity, int> Speed { get; }
         public global::SpacetimeDB.Col<Entity, bool> Alive { get; }
-        public global::SpacetimeDB.Col<Entity, int> Potions { get; }
-        public global::SpacetimeDB.Col<Entity, string> SkillName { get; }
-        public global::SpacetimeDB.Col<Entity, int> SkillAtk { get; }
-        public global::SpacetimeDB.Col<Entity, int> SkillManaCost { get; }
+        public global::SpacetimeDB.Col<Entity, uint> StrengthBuff { get; }
+        public global::SpacetimeDB.Col<Entity, uint> NextTurnStrengthBonus { get; }
+        public global::SpacetimeDB.Col<Entity, uint> NextTurnSpeedOverride { get; }
+        public global::SpacetimeDB.Col<Entity, bool> GoFirstNextRound { get; }
 
         public EntityCols(string tableName)
         {
@@ -69,13 +73,16 @@ namespace SpacetimeDB.Types
             MaxMana = new global::SpacetimeDB.Col<Entity, int>(tableName, "max_mana");
             Mana = new global::SpacetimeDB.Col<Entity, int>(tableName, "mana");
             Strength = new global::SpacetimeDB.Col<Entity, int>(tableName, "strength");
-            Damage = new global::SpacetimeDB.Col<Entity, int>(tableName, "damage");
+            Dexterity = new global::SpacetimeDB.Col<Entity, int>(tableName, "dexterity");
+            Intelligence = new global::SpacetimeDB.Col<Entity, int>(tableName, "intelligence");
+            Atk = new global::SpacetimeDB.Col<Entity, int>(tableName, "atk");
+            Defense = new global::SpacetimeDB.Col<Entity, int>(tableName, "defense");
             Speed = new global::SpacetimeDB.Col<Entity, int>(tableName, "speed");
             Alive = new global::SpacetimeDB.Col<Entity, bool>(tableName, "alive");
-            Potions = new global::SpacetimeDB.Col<Entity, int>(tableName, "potions");
-            SkillName = new global::SpacetimeDB.Col<Entity, string>(tableName, "skill_name");
-            SkillAtk = new global::SpacetimeDB.Col<Entity, int>(tableName, "skill_atk");
-            SkillManaCost = new global::SpacetimeDB.Col<Entity, int>(tableName, "skill_mana_cost");
+            StrengthBuff = new global::SpacetimeDB.Col<Entity, uint>(tableName, "strength_buff");
+            NextTurnStrengthBonus = new global::SpacetimeDB.Col<Entity, uint>(tableName, "next_turn_strength_bonus");
+            NextTurnSpeedOverride = new global::SpacetimeDB.Col<Entity, uint>(tableName, "next_turn_speed_override");
+            GoFirstNextRound = new global::SpacetimeDB.Col<Entity, bool>(tableName, "go_first_next_round");
         }
     }
 

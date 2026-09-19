@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using SpacetimeDB.Types;
 using UnityEngine;
@@ -9,36 +10,46 @@ public class BattleHud : MonoBehaviour
 {
     static readonly Vector2[] PlayerSlots =
     {
-        new Vector2(330f, 120f),
-        new Vector2(510f, 290f),
-        new Vector2(690f, 460f),
+        new Vector2(360f, 120f),
+        new Vector2(540f, 290f),
+        new Vector2(720f, 460f),
     };
 
     static readonly Vector2[] EnemySlots =
     {
-        new Vector2(1580f, 130f),
-        new Vector2(1460f, 390f),
+        new Vector2(1580f, 110f),
+        new Vector2(1460f, 340f),
+        new Vector2(1340f, 570f),
     };
 
     static readonly Vector2 PlayerCardSize = new Vector2(300f, 215f);
-    static readonly Vector2 EnemyCardSize = new Vector2(340f, 240f);
+    static readonly Vector2 EnemyCardSize = new Vector2(320f, 230f);
 
     RectTransform _field;
     BattleLogView _log;
     ActionMenuView _menu;
+    InventoryView _inventory;
+    TurnMeterView _turns;
     RectTransform _overlay;
     Text _overlayText;
     Text _connectionLabel;
 
     readonly Dictionary<ulong, EntityView> _views = new Dictionary<ulong, EntityView>();
     readonly List<ulong> _stale = new List<ulong>();
+    readonly Queue<CombatEvent> _lunges = new Queue<CombatEvent>();
 
     bool _targeting;
+    uint _pendingSkillId;
+    bool _lunging;
+    uint _lastEventId;
+    bool _eventsBound;
 
     public void Init(
         RectTransform field,
         BattleLogView log,
         ActionMenuView menu,
+        InventoryView inventory,
+        TurnMeterView turns,
         RectTransform overlay,
         Text overlayText,
         Text connectionLabel
@@ -47,6 +58,8 @@ public class BattleHud : MonoBehaviour
         _field = field;
         _log = log;
         _menu = menu;
+        _inventory = inventory;
+        _turns = turns;
         _overlay = overlay;
         _overlayText = overlayText;
         _connectionLabel = connectionLabel;
@@ -63,7 +76,19 @@ public class BattleHud : MonoBehaviour
             _targeting = false;
             GameManager.UseItem(item);
         };
-        _menu.OnSkillSelected = () => _targeting = true;
+        _menu.OnSkillSelected = skillId =>
+        {
+            var skill = GameManager.SkillDefOf(skillId);
+            _pendingSkillId = skillId;
+            if (skill != null && (skill.TargetCount == 0 || skill.BaseDamage == 0))
+            {
+                _targeting = false;
+                GameManager.Attack(0, skillId);
+                return;
+            }
+
+            _targeting = true;
+        };
 
         Refresh();
     }
@@ -73,6 +98,116 @@ public class BattleHud : MonoBehaviour
     void OnDisable() => GameManager.StateChanged -= Refresh;
 
     void Start() => Refresh();
+
+    void Update()
+    {
+        BindEvents();
+        if (!_lunging && _lunges.Count > 0)
+        {
+            StartCoroutine(PlayLunge(_lunges.Dequeue()));
+        }
+    }
+
+    void BindEvents()
+    {
+        if (_eventsBound || GameManager.Conn == null)
+        {
+            return;
+        }
+
+        GameManager.Conn.Db.CombatEvent.OnInsert += OnCombatEvent;
+        _eventsBound = true;
+    }
+
+    void OnCombatEvent(EventContext _, CombatEvent row)
+    {
+        if (row.Id <= _lastEventId)
+        {
+            return;
+        }
+
+        _lastEventId = row.Id;
+        if (
+            (
+                row.ActionType == SpacetimeDB.Types.CombatActionType.Attack
+                || row.ActionType == SpacetimeDB.Types.CombatActionType.Spell
+            )
+            && row.ActorEntityId != row.TargetEntityId
+        )
+        {
+            _lunges.Enqueue(row);
+        }
+    }
+
+    IEnumerator PlayLunge(CombatEvent row)
+    {
+        _lunging = true;
+        if (!_views.TryGetValue(row.ActorEntityId, out var actor) || actor == null)
+        {
+            _lunging = false;
+            yield break;
+        }
+
+        _views.TryGetValue(row.TargetEntityId, out var target);
+        actor.Busy = true;
+        var start = actor.Root.anchoredPosition;
+        var dest =
+            target == null
+                ? Vector2.Lerp(actor.Home, actor.Home + new Vector2(80f, 0f), 1f)
+                : Vector2.Lerp(actor.Home, target.Home, 0.78f);
+        yield return MoveTo(actor.Root, start, dest, 0.16f);
+        if (target != null)
+        {
+            StartCoroutine(PunchScale(target.Root));
+        }
+
+        yield return new WaitForSeconds(0.08f);
+        if (!NextLungeSameActor(row))
+        {
+            yield return MoveTo(actor.Root, dest, actor.Home, 0.2f);
+            actor.Root.anchoredPosition = actor.Home;
+            actor.Busy = false;
+        }
+
+        _lunging = false;
+    }
+
+    bool NextLungeSameActor(CombatEvent row)
+    {
+        if (_lunges.Count == 0)
+        {
+            return false;
+        }
+
+        return _lunges.Peek().ActorEntityId == row.ActorEntityId;
+    }
+
+    static IEnumerator MoveTo(RectTransform actor, Vector2 from, Vector2 to, float duration)
+    {
+        var t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime / duration;
+            var s = t * t * (3f - 2f * t);
+            actor.anchoredPosition = Vector2.Lerp(from, to, s);
+            yield return null;
+        }
+    }
+
+    static IEnumerator PunchScale(RectTransform target)
+    {
+        var home = target.localScale;
+        var t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime / 0.18f;
+            var bump = 1f + Mathf.Sin(t * Mathf.PI) * 0.18f;
+            target.localScale = home * bump;
+            yield return null;
+        }
+
+        target.localScale = home;
+    }
 
     void Refresh()
     {
@@ -94,6 +229,7 @@ public class BattleHud : MonoBehaviour
         if (!myTurn)
         {
             _targeting = false;
+            _pendingSkillId = 0;
         }
 
         SyncTeam(GameManager.TeamMembers(Team.Players), PlayerSlots, PlayerCardSize, true, me);
@@ -102,6 +238,8 @@ public class BattleHud : MonoBehaviour
 
         _log.SetLines(GameManager.LogLines(60));
         _menu.Render(session, me, myTurn, _targeting);
+        _inventory.Render(GameManager.LocalPlayer(), me);
+        _turns.Render(session);
 
         var finished =
             session != null
@@ -132,7 +270,6 @@ public class BattleHud : MonoBehaviour
 
         foreach (var entity in entities)
         {
-            // Defeated combatants leave the screen.
             if (!entity.Alive)
             {
                 continue;
@@ -179,12 +316,14 @@ public class BattleHud : MonoBehaviour
 
     void HandleTargetClicked(ulong entityId)
     {
-        if (!_targeting || !GameManager.IsLocalTurn())
+        if (!_targeting || !GameManager.IsLocalTurn() || _pendingSkillId == 0)
         {
             return;
         }
 
+        var skillId = _pendingSkillId;
         _targeting = false;
-        GameManager.Attack(entityId);
+        _pendingSkillId = 0;
+        GameManager.Attack(entityId, skillId);
     }
 }

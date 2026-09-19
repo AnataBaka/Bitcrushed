@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using SpacetimeDB.Types;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,10 +20,8 @@ public class ActionMenuView : MonoBehaviour
     public Action OnJoin;
     public Action OnStartBattle;
     public Action OnFocus;
-    public Action<ItemKind> OnUseItem;
-
-    /// Raised when the player picked their attack skill and must now click a target.
-    public Action OnSkillSelected;
+    public Action<uint> OnUseItem;
+    public Action<uint> OnSkillSelected;
 
     Text _status;
     RectTransform _lobby;
@@ -35,13 +34,16 @@ public class ActionMenuView : MonoBehaviour
     Button _attackButton;
     Button _itemsButton;
     Button _focusButton;
-    Button _skillButton;
-    Text _skillLabel;
-    Button _potionButton;
-    Text _potionLabel;
+
+    readonly List<Button> _skillButtons = new List<Button>();
+    readonly List<Button> _itemButtons = new List<Button>();
+    Button _skillBack;
+    Button _itemBack;
 
     Page _page = Page.Root;
     ulong _pageOwner;
+    string _skillKey = "";
+    string _itemKey = "";
 
     public static ActionMenuView Create(Transform parent)
     {
@@ -74,13 +76,8 @@ public class ActionMenuView : MonoBehaviour
         view._itemsButton = UiFactory.TextButton(view._root, "Items", "Items");
         view._focusButton = UiFactory.TextButton(view._root, "Focus", "Focus");
 
-        view._skillButton = UiFactory.TextButton(view._skills, "Skill", "Skill", 20);
-        view._skillLabel = view._skillButton.GetComponentInChildren<Text>();
-        var skillBack = UiFactory.TextButton(view._skills, "Back", "Back", 20);
-
-        view._potionButton = UiFactory.TextButton(view._items, "Potion", "Health Potion", 20);
-        view._potionLabel = view._potionButton.GetComponentInChildren<Text>();
-        var itemBack = UiFactory.TextButton(view._items, "Back", "Back", 20);
+        view._skillBack = UiFactory.TextButton(view._skills, "Back", "Back", 20);
+        view._itemBack = UiFactory.TextButton(view._items, "Back", "Back", 20);
 
         view._joinButton.onClick.AddListener(() => view.OnJoin?.Invoke());
         view._startButton.onClick.AddListener(() => view.OnStartBattle?.Invoke());
@@ -95,25 +92,8 @@ public class ActionMenuView : MonoBehaviour
             }
         );
 
-        skillBack.onClick.AddListener(() => view.Go(Page.Root));
-        itemBack.onClick.AddListener(() => view.Go(Page.Root));
-
-        view._skillButton.onClick.AddListener(
-            () =>
-            {
-                view.Go(Page.Root);
-                view.OnSkillSelected?.Invoke();
-            }
-        );
-
-        view._potionButton.onClick.AddListener(
-            () =>
-            {
-                view.Go(Page.Root);
-                view.OnUseItem?.Invoke(ItemKind.HealthPotion);
-            }
-        );
-
+        view._skillBack.onClick.AddListener(() => view.Go(Page.Root));
+        view._itemBack.onClick.AddListener(() => view.Go(Page.Root));
         return view;
     }
 
@@ -126,7 +106,7 @@ public class ActionMenuView : MonoBehaviour
         page.offsetMax = new Vector2(-12f, -52f);
 
         var layout = page.gameObject.AddComponent<VerticalLayoutGroup>();
-        layout.spacing = 10f;
+        layout.spacing = 8f;
         layout.childControlHeight = true;
         layout.childControlWidth = true;
         layout.childForceExpandHeight = false;
@@ -161,7 +141,6 @@ public class ActionMenuView : MonoBehaviour
             return;
         }
 
-        // Collapse any open submenu as soon as the active entity changes.
         if (_pageOwner != session.ActiveEntityId)
         {
             _pageOwner = session.ActiveEntityId;
@@ -216,18 +195,146 @@ public class ActionMenuView : MonoBehaviour
         }
 
         var canAct = myTurn && !targeting;
+        var player = GameManager.LocalPlayer();
         SetPageInteractable(_root, canAct);
-        SetPageInteractable(_skills, canAct);
-        SetPageInteractable(_items, canAct);
+        _attackButton.interactable = canAct && GameManager.HasWeapon(player);
 
-        if (me != null)
+        RebuildSkills(me, canAct);
+        RebuildItems(canAct);
+    }
+
+    void RebuildSkills(Entity me, bool canAct)
+    {
+        var skills = GameManager.LocalSkills();
+        var key = "";
+        foreach (var skill in skills)
         {
-            _skillLabel.text = $"{me.SkillName}  ({me.SkillManaCost} mp)";
-            _skillButton.interactable = canAct && me.Mana >= me.SkillManaCost;
-
-            _potionLabel.text = $"Health Potion  x{me.Potions}";
-            _potionButton.interactable = canAct && me.Potions > 0;
+            key += $"{skill.Id}:{skill.ManaCost};";
         }
+
+        if (key != _skillKey)
+        {
+            _skillKey = key;
+            foreach (var button in _skillButtons)
+            {
+                if (button != null)
+                {
+                    DestroyImmediate(button.gameObject);
+                }
+            }
+
+            _skillButtons.Clear();
+            foreach (var skill in skills)
+            {
+                var captured = skill;
+                var aoe = captured.TargetCount > 1 ? $" AoE{captured.TargetCount}" : "";
+                var caption =
+                    captured.BaseDamage == 0
+                        ? $"{captured.Name}  ({captured.ManaCost} mp)"
+                        : $"{captured.Name}  ({captured.ManaCost} mp){aoe}";
+                var button = UiFactory.TextButton(_skills, captured.Name, caption, 16, 44f);
+                button.transform.SetSiblingIndex(_skillButtons.Count);
+                button.onClick.AddListener(
+                    () =>
+                    {
+                        Go(Page.Root);
+                        OnSkillSelected?.Invoke(captured.Id);
+                    }
+                );
+                _skillButtons.Add(button);
+            }
+
+            _skillBack.transform.SetAsLastSibling();
+        }
+
+        if (me == null)
+        {
+            return;
+        }
+
+        foreach (var button in _skillButtons)
+        {
+            if (button == null)
+            {
+                continue;
+            }
+
+            var skill = FindSkillByButton(skills, button);
+            button.interactable = canAct && skill != null && me.Mana >= (int)skill.ManaCost;
+        }
+
+        _skillBack.interactable = true;
+    }
+
+    static SkillDef FindSkillByButton(List<SkillDef> skills, Button button)
+    {
+        foreach (var skill in skills)
+        {
+            if (button.gameObject.name == skill.Name)
+            {
+                return skill;
+            }
+        }
+
+        return null;
+    }
+
+    void RebuildItems(bool canAct)
+    {
+        var potions = GameManager.LocalPotions();
+        var key = "";
+        foreach (var potion in potions)
+        {
+            key += $"{potion.Id}:{potion.Quantity};";
+        }
+
+        if (key != _itemKey)
+        {
+            _itemKey = key;
+            foreach (var button in _itemButtons)
+            {
+                if (button != null)
+                {
+                    DestroyImmediate(button.gameObject);
+                }
+            }
+
+            _itemButtons.Clear();
+            foreach (var potion in potions)
+            {
+                var captured = potion;
+                var def = GameManager.ItemDefOf(captured);
+                var name = def == null ? "Potion" : def.Name;
+                var button = UiFactory.TextButton(
+                    _items,
+                    name,
+                    $"{name}  x{captured.Quantity}",
+                    16,
+                    44f
+                );
+                button.transform.SetSiblingIndex(_itemButtons.Count);
+                button.onClick.AddListener(
+                    () =>
+                    {
+                        Go(Page.Root);
+                        OnUseItem?.Invoke(captured.Id);
+                    }
+                );
+                _itemButtons.Add(button);
+            }
+
+            _itemBack.transform.SetAsLastSibling();
+        }
+
+        foreach (var button in _itemButtons)
+        {
+            if (button != null)
+            {
+                button.interactable = canAct;
+            }
+        }
+
+        _itemBack.interactable = true;
     }
 
     static void SetPageInteractable(RectTransform page, bool interactable)

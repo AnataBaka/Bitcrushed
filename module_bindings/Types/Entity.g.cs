@@ -33,20 +33,26 @@ namespace SpacetimeDB.Types
         public int Mana;
         [DataMember(Name = "strength")]
         public int Strength;
-        [DataMember(Name = "damage")]
-        public int Damage;
+        [DataMember(Name = "dexterity")]
+        public int Dexterity;
+        [DataMember(Name = "intelligence")]
+        public int Intelligence;
+        [DataMember(Name = "atk")]
+        public int Atk;
+        [DataMember(Name = "defense")]
+        public int Defense;
         [DataMember(Name = "speed")]
         public int Speed;
         [DataMember(Name = "alive")]
         public bool Alive;
-        [DataMember(Name = "potions")]
-        public int Potions;
-        [DataMember(Name = "skill_name")]
-        public string SkillName;
-        [DataMember(Name = "skill_atk")]
-        public int SkillAtk;
-        [DataMember(Name = "skill_mana_cost")]
-        public int SkillManaCost;
+        [DataMember(Name = "strength_buff")]
+        public uint StrengthBuff;
+        [DataMember(Name = "next_turn_strength_bonus")]
+        public uint NextTurnStrengthBonus;
+        [DataMember(Name = "next_turn_speed_override")]
+        public uint NextTurnSpeedOverride;
+        [DataMember(Name = "go_first_next_round")]
+        public bool GoFirstNextRound;
 
         public Entity(
             ulong EntityId,
@@ -59,13 +65,16 @@ namespace SpacetimeDB.Types
             int MaxMana,
             int Mana,
             int Strength,
-            int Damage,
+            int Dexterity,
+            int Intelligence,
+            int Atk,
+            int Defense,
             int Speed,
             bool Alive,
-            int Potions,
-            string SkillName,
-            int SkillAtk,
-            int SkillManaCost
+            uint StrengthBuff,
+            uint NextTurnStrengthBonus,
+            uint NextTurnSpeedOverride,
+            bool GoFirstNextRound
         )
         {
             this.EntityId = EntityId;
@@ -78,20 +87,22 @@ namespace SpacetimeDB.Types
             this.MaxMana = MaxMana;
             this.Mana = Mana;
             this.Strength = Strength;
-            this.Damage = Damage;
+            this.Dexterity = Dexterity;
+            this.Intelligence = Intelligence;
+            this.Atk = Atk;
+            this.Defense = Defense;
             this.Speed = Speed;
             this.Alive = Alive;
-            this.Potions = Potions;
-            this.SkillName = SkillName;
-            this.SkillAtk = SkillAtk;
-            this.SkillManaCost = SkillManaCost;
+            this.StrengthBuff = StrengthBuff;
+            this.NextTurnStrengthBonus = NextTurnStrengthBonus;
+            this.NextTurnSpeedOverride = NextTurnSpeedOverride;
+            this.GoFirstNextRound = GoFirstNextRound;
         }
 
         public Entity()
         {
             this.Name = "";
             this.ClassName = "";
-            this.SkillName = "";
         }
     }
 }

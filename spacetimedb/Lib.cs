@@ -5,188 +5,7 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    // ------------------------------------------------------------------ tuning
-
-    public const uint SessionId = 1;
-    public const uint MaxPartySize = 3;
-    public const uint EnemyCount = 2;
-
-    public const int StartingPotions = 3;
-    public const int PotionHeal = 20;
-    public const int FocusManaGain = 20;
-
-    // Enemy actions are spaced out so the battle log stays readable.
-    public const long EnemyTurnDelayMicros = 2_000_000;
-
     static readonly string[] PartyNames = { "Aria", "Bran", "Cael" };
-
-    // ------------------------------------------------------------------- types
-
-    [SpacetimeDB.Type]
-    public enum PlayerClass
-    {
-        Warrior,
-        Mage,
-        Rogue,
-        Archer,
-    }
-
-    [SpacetimeDB.Type]
-    public enum Team
-    {
-        Players,
-        Enemies,
-    }
-
-    [SpacetimeDB.Type]
-    public enum BattlePhase
-    {
-        Waiting,
-        InBattle,
-        Victory,
-        Defeat,
-    }
-
-    [SpacetimeDB.Type]
-    public enum ItemKind
-    {
-        HealthPotion,
-    }
-
-    // ------------------------------------------------------------------ tables
-
-    /// Singleton row (Id == SessionId) describing the one and only battle.
-    [SpacetimeDB.Table(Accessor = "GameSession", Public = true)]
-    public partial struct GameSession
-    {
-        [PrimaryKey]
-        public uint Id;
-        public uint PlayerCount;
-        public uint MaxPlayers;
-        public BattlePhase Phase;
-        public uint Round;
-        public uint TurnIndex;
-        /// EntityId of whoever is acting right now; 0 when nobody is.
-        public ulong ActiveEntityId;
-    }
-
-    /// A seat in the party. Owns exactly one Entity row once the player joins.
-    [SpacetimeDB.Table(Accessor = "Player", Public = true)]
-    public partial struct Player
-    {
-        [PrimaryKey]
-        public Identity Identity;
-        [Unique]
-        public uint Slot;
-        public bool Online;
-        public PlayerClass Class;
-        [Unique]
-        public ulong EntityId;
-    }
-
-    /// Every combatant, player or enemy, lives here so turn order and damage
-    /// only ever have to deal with one shape of row.
-    [SpacetimeDB.Table(Accessor = "Entity", Public = true)]
-    public partial struct Entity
-    {
-        [PrimaryKey]
-        [AutoInc]
-        public ulong EntityId;
-        public Team Faction;
-        /// Position within the team: 0..2 for players, 0..1 for enemies.
-        public uint Slot;
-        public string Name;
-        public string ClassName;
-
-        public int MaxHp;
-        public int Hp;
-        public int MaxMana;
-        public int Mana;
-        public int Strength;
-        public int Damage;
-        public int Speed;
-        public bool Alive;
-        public int Potions;
-
-        public string SkillName;
-        public int SkillAtk;
-        public int SkillManaCost;
-    }
-
-    /// Rebuilt at the start of every round by BuildTurnOrder.
-    [SpacetimeDB.Table(Accessor = "TurnOrder", Public = true)]
-    public partial struct TurnOrder
-    {
-        [PrimaryKey]
-        public uint Idx;
-        public ulong EntityId;
-    }
-
-    /// Append-only battle log. Clients sort by Id, which is monotonic.
-    [SpacetimeDB.Table(Accessor = "BattleLog", Public = true)]
-    public partial struct BattleLog
-    {
-        [PrimaryKey]
-        [AutoInc]
-        public ulong Id;
-        public uint Round;
-        public string Message;
-        public Timestamp CreatedAt;
-    }
-
-    /// One-shot timer that drives a single enemy action.
-    [SpacetimeDB.Table(
-        Accessor = "EnemyTurnTimer",
-        Scheduled = nameof(EnemyTurn),
-        ScheduledAt = nameof(ScheduledAt)
-    )]
-    public partial struct EnemyTurnTimer
-    {
-        [PrimaryKey]
-        [AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-        public ulong EntityId;
-    }
-
-    // --------------------------------------------------------------- templates
-
-    static (
-        string ClassName,
-        int MaxHp,
-        int MaxMana,
-        int Strength,
-        int Damage,
-        int Speed,
-        string SkillName,
-        int SkillAtk,
-        int SkillManaCost
-    ) TemplateFor(PlayerClass playerClass) =>
-        playerClass switch
-        {
-            PlayerClass.Warrior => ("Warrior", 120, 30, 12, 8, 5, "Cleaving Strike", 10, 5),
-            PlayerClass.Mage => ("Mage", 70, 80, 3, 4, 6, "Fireball", 25, 18),
-            PlayerClass.Rogue => ("Rogue", 85, 45, 8, 9, 12, "Backstab", 14, 10),
-            PlayerClass.Archer => ("Archer", 90, 50, 7, 10, 9, "Piercing Arrow", 13, 9),
-            _ => throw new Exception("Unknown class."),
-        };
-
-    static (
-        string Name,
-        int MaxHp,
-        int MaxMana,
-        int Strength,
-        int Damage,
-        int Speed,
-        string SkillName,
-        int SkillAtk,
-        int SkillManaCost
-    ) EnemyTemplate(uint slot) =>
-        slot switch
-        {
-            0 => ("Goblin Raider", 180, 40, 6, 6, 7, "Rusty Slash", 8, 6),
-            _ => ("Cave Troll", 240, 50, 10, 8, 4, "Boulder Smash", 12, 10),
-        };
 
     // -------------------------------------------------------------- lifecycle
 
@@ -205,6 +24,7 @@ public static partial class Module
                 ActiveEntityId = 0,
             }
         );
+        SeedCatalog(ctx);
         Log.Info("Testing Fight Stage initialized.");
     }
 
@@ -225,8 +45,6 @@ public static partial class Module
     [SpacetimeDB.Reducer(ReducerKind.ClientDisconnected)]
     public static void ClientDisconnected(ReducerContext ctx)
     {
-        // Only the presence flag changes. The character keeps its slot, stats and
-        // place in the turn order so a reconnecting client picks up where it left off.
         if (ctx.Db.Player.Identity.Find(ctx.Sender) is Player player)
         {
             ctx.Db.Player.Identity.Update(player with { Online = false });
@@ -245,7 +63,6 @@ public static partial class Module
             throw new Exception("Already joined the party.");
         }
 
-        // Checked before the phase so the 4th joiner always hears why.
         if (session.PlayerCount >= session.MaxPlayers)
         {
             throw new Exception("Party is Full");
@@ -257,9 +74,12 @@ public static partial class Module
         }
 
         var slot = FindFreeSlot(ctx);
-        var playerClass = (PlayerClass)ctx.Rng.Next(0, 4);
-        var template = TemplateFor(playerClass);
+        var playerClass = RollClass(ctx);
+        var rolled = RollStarterStats(ctx.Rng, playerClass);
         var name = PartyNames[slot % (uint)PartyNames.Length];
+        var className = ClassNameOf(playerClass);
+        var maxHealth = ClassMaxHealth(playerClass);
+        var maxMana = SaturatingAdd(ClassBaseMana(playerClass), rolled.Intelligence);
 
         var entity = ctx.Db.Entity.Insert(
             new Entity
@@ -268,19 +88,22 @@ public static partial class Module
                 Faction = Team.Players,
                 Slot = slot,
                 Name = name,
-                ClassName = template.ClassName,
-                MaxHp = template.MaxHp,
-                Hp = template.MaxHp,
-                MaxMana = template.MaxMana,
-                Mana = template.MaxMana,
-                Strength = template.Strength,
-                Damage = template.Damage,
-                Speed = template.Speed,
+                ClassName = className,
+                MaxHp = ToInt(maxHealth),
+                Hp = ToInt(maxHealth),
+                MaxMana = ToInt(maxMana),
+                Mana = ToInt(maxMana),
+                Strength = ToInt(rolled.Strength),
+                Dexterity = ToInt(rolled.Dexterity),
+                Intelligence = ToInt(rolled.Intelligence),
+                Atk = 0,
+                Defense = 0,
+                Speed = ToInt(rolled.Speed),
                 Alive = true,
-                Potions = StartingPotions,
-                SkillName = template.SkillName,
-                SkillAtk = template.SkillAtk,
-                SkillManaCost = template.SkillManaCost,
+                StrengthBuff = 0,
+                NextTurnStrengthBonus = 0,
+                NextTurnSpeedOverride = 0,
+                GoFirstNextRound = false,
             }
         );
 
@@ -292,12 +115,29 @@ public static partial class Module
                 Online = true,
                 Class = playerClass,
                 EntityId = entity.EntityId,
+                BaseStrength = rolled.Strength,
+                BaseDexterity = rolled.Dexterity,
+                BaseIntelligence = rolled.Intelligence,
+                BaseSpeed = rolled.Speed,
+                EquippedWeaponDefId = 0,
+                EquippedHelmetDefId = 0,
+                EquippedChestplateDefId = 0,
+                EquippedLeggingsDefId = 0,
+                EquippedBootsDefId = 0,
             }
         );
 
+        var weapon = RequireItemDefByName(ctx, StarterWeaponName(playerClass));
+        GiveItem(ctx, ctx.Sender, weapon.Id, 1);
+        EquipFromCatalog(ctx, ctx.Sender, weapon);
+        GiveStarterArmor(ctx, ctx.Sender);
+        GiveConsumable(ctx, ctx.Sender, "Health Potion", 2);
+        GiveConsumable(ctx, ctx.Sender, "Mana Potion", 1);
+        GrantClassSkills(ctx, ctx.Sender, playerClass);
+
         var playerCount = session.PlayerCount + 1;
         ctx.Db.GameSession.Id.Update(session with { PlayerCount = playerCount });
-        AddLog(ctx, $"{name} the {template.ClassName} joined the party.");
+        AddLog(ctx, $"{name} the {className} joined the party.");
 
         if (playerCount >= MaxPartySize)
         {
@@ -319,6 +159,7 @@ public static partial class Module
             throw new Exception("Cannot leave during a battle.");
         }
 
+        DeletePlayerOwnedRows(ctx, player.Identity);
         ctx.Db.Entity.EntityId.Delete(player.EntityId);
         ctx.Db.Player.Identity.Delete(ctx.Sender);
 
@@ -327,7 +168,6 @@ public static partial class Module
         AddLog(ctx, $"A player in slot {player.Slot} left the party.");
     }
 
-    /// Starts the fight without a full party. Handy for testing with 1-2 clients.
     [SpacetimeDB.Reducer]
     public static void StartBattle(ReducerContext ctx)
     {
@@ -345,18 +185,26 @@ public static partial class Module
         BeginBattle(ctx);
     }
 
-    /// Wipes the stage back to an empty lobby. Testing affordance only.
     [SpacetimeDB.Reducer]
     public static void ResetStage(ReducerContext ctx)
     {
-        foreach (var timer in ctx.Db.EnemyTurnTimer.Iter().ToList())
+        ClearTimers(ctx);
+        ClearTurnOrder(ctx);
+        ClearCombatEvents(ctx);
+
+        foreach (var skill in ctx.Db.EntitySkill.Iter().ToList())
         {
-            ctx.Db.EnemyTurnTimer.ScheduledId.Delete(timer.ScheduledId);
+            ctx.Db.EntitySkill.Id.Delete(skill.Id);
         }
 
-        foreach (var entry in ctx.Db.TurnOrder.Iter().ToList())
+        foreach (var skill in ctx.Db.PlayerSkill.Iter().ToList())
         {
-            ctx.Db.TurnOrder.Idx.Delete(entry.Idx);
+            ctx.Db.PlayerSkill.Id.Delete(skill.Id);
+        }
+
+        foreach (var item in ctx.Db.PlayerItem.Iter().ToList())
+        {
+            ctx.Db.PlayerItem.Id.Delete(item.Id);
         }
 
         foreach (var entity in ctx.Db.Entity.Iter().ToList())
@@ -391,61 +239,147 @@ public static partial class Module
     // ---------------------------------------------------------- player actions
 
     [SpacetimeDB.Reducer]
-    public static void Attack(ReducerContext ctx, ulong targetEntityId)
+    public static void Attack(ReducerContext ctx, ulong targetEntityId, uint skillDefId)
     {
-        var attacker = RequireActingEntity(ctx);
+        var actor = RequireActingEntity(ctx);
+        var player = RequirePlayer(ctx);
+        RequireWeapon(player);
 
-        if (ctx.Db.Entity.EntityId.Find(targetEntityId) is not Entity target)
+        if (!OwnsUnlockedSkill(ctx, player.Identity, skillDefId))
         {
-            throw new Exception("That target does not exist.");
+            throw new Exception("Skill is not unlocked for this character.");
         }
 
-        if (target.Faction == attacker.Faction)
+        if (ctx.Db.SkillDef.Id.Find(skillDefId) is not SkillDef skill || skill.IsEnemySkill)
         {
-            throw new Exception("You cannot attack your own team.");
+            throw new Exception("Unknown skill.");
         }
 
-        if (!target.Alive)
+        if (ToUInt(actor.Mana) < skill.ManaCost)
         {
-            AddLog(ctx, $"{target.Name} is already defeated.");
+            AddLog(ctx, $"Not enough mana. {actor.Name} needs {skill.ManaCost} mana for {skill.Name}.");
             return;
         }
 
-        if (attacker.Mana < attacker.SkillManaCost)
+        ctx.Db.Entity.EntityId.Update(actor with { Mana = actor.Mana - ToInt(skill.ManaCost) });
+        actor = ctx.Db.Entity.EntityId.Find(actor.EntityId)!.Value;
+
+        if (skill.AlwaysGoFirst)
         {
-            AddLog(
-                ctx,
-                $"Not enough mana. {attacker.Name} needs {attacker.SkillManaCost} mana for {attacker.SkillName}."
+            ctx.Db.Entity.EntityId.Update(actor with { GoFirstNextRound = true });
+            actor = ctx.Db.Entity.EntityId.Find(actor.EntityId)!.Value;
+        }
+
+        if (skill.NextTurnStrengthBonus > 0 || skill.NextTurnSpeedOverride > 0)
+        {
+            ctx.Db.Entity.EntityId.Update(
+                actor with
+                {
+                    NextTurnStrengthBonus = SaturatingAdd(
+                        actor.NextTurnStrengthBonus,
+                        skill.NextTurnStrengthBonus
+                    ),
+                    NextTurnSpeedOverride =
+                        skill.NextTurnSpeedOverride > 0
+                            ? skill.NextTurnSpeedOverride
+                            : actor.NextTurnSpeedOverride,
+                }
             );
-            return;
+            actor = ctx.Db.Entity.EntityId.Find(actor.EntityId)!.Value;
+            PushCombatEvent(
+                ctx,
+                actor.EntityId,
+                actor.EntityId,
+                CombatActionType.Spell,
+                skill.Name,
+                0,
+                0,
+                false,
+                false,
+                $"{actor.Name} used {skill.Name}."
+            );
+            AddLog(ctx, $"{actor.Name} used {skill.Name}.");
         }
 
-        ResolveAttack(ctx, attacker, target);
+        if (skill.TargetCount > 0 && skill.BaseDamage > 0)
+        {
+            foreach (var target in SelectEnemyTargets(ctx, targetEntityId, skill.TargetCount))
+            {
+                ApplyOutgoingDamage(ctx, actor, target, CombatActionType.Spell, skill.Name, skill.BaseDamage);
+                actor = ctx.Db.Entity.EntityId.Find(actor.EntityId)!.Value;
+            }
+        }
+
         AdvanceTurn(ctx);
     }
 
     [SpacetimeDB.Reducer]
-    public static void UseItem(ReducerContext ctx, ItemKind item)
+    public static void UseItem(ReducerContext ctx, uint itemInstanceId)
     {
         var actor = RequireActingEntity(ctx);
+        var player = RequirePlayer(ctx);
 
-        if (item != ItemKind.HealthPotion)
+        if (
+            ctx.Db.PlayerItem.Id.Find(itemInstanceId) is not PlayerItem instance
+            || instance.Owner != player.Identity
+        )
         {
-            throw new Exception("Unknown item.");
+            throw new Exception("Item not in inventory.");
         }
 
-        if (actor.Potions <= 0)
+        if (ctx.Db.ItemDef.Id.Find(instance.ItemDefId) is not ItemDef item || item.Kind != ItemKind.Consumable)
         {
-            AddLog(ctx, $"{actor.Name} has no Health Potions left.");
-            return;
+            throw new Exception("That item cannot be used.");
         }
 
-        var healed = Math.Min(actor.MaxHp, actor.Hp + PotionHeal);
-        var restored = healed - actor.Hp;
-        ctx.Db.Entity.EntityId.Update(actor with { Hp = healed, Potions = actor.Potions - 1 });
+        var heal = item.HealAmount;
+        var mana = item.ManaRestoreAmount;
+        var newHealth = SaturatingAdd(ToUInt(actor.Hp), heal);
+        if (newHealth > ToUInt(actor.MaxHp))
+        {
+            newHealth = ToUInt(actor.MaxHp);
+        }
+
+        var newMana = SaturatingAdd(ToUInt(actor.Mana), mana);
+        if (newMana > ToUInt(actor.MaxMana))
+        {
+            newMana = ToUInt(actor.MaxMana);
+        }
+
+        var restoredHp = SaturatingSub(newHealth, ToUInt(actor.Hp));
+        var restoredMp = SaturatingSub(newMana, ToUInt(actor.Mana));
+        ctx.Db.Entity.EntityId.Update(
+            actor with
+            {
+                Hp = ToInt(newHealth),
+                Mana = ToInt(newMana),
+            }
+        );
+
+        if (instance.Quantity <= 1)
+        {
+            ctx.Db.PlayerItem.Id.Delete(instance.Id);
+        }
+        else
+        {
+            ctx.Db.PlayerItem.Id.Update(instance with { Quantity = instance.Quantity - 1 });
+        }
+
+        PushCombatEvent(
+            ctx,
+            actor.EntityId,
+            actor.EntityId,
+            CombatActionType.Item,
+            item.Name,
+            0,
+            restoredHp,
+            false,
+            false,
+            $"{actor.Name} used {item.Name}."
+        );
         AddLog(
             ctx,
-            $"{actor.Name} drinks a Health Potion and restores {restored} HP ({healed}/{actor.MaxHp})."
+            $"{actor.Name} uses {item.Name} (+{restoredHp} HP, +{restoredMp} MP)."
         );
         AdvanceTurn(ctx);
     }
@@ -456,6 +390,62 @@ public static partial class Module
         var actor = RequireActingEntity(ctx);
         ApplyFocus(ctx, actor);
         AdvanceTurn(ctx);
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void EquipItem(ReducerContext ctx, uint itemInstanceId)
+    {
+        var player = RequirePlayer(ctx);
+        if (
+            ctx.Db.PlayerItem.Id.Find(itemInstanceId) is not PlayerItem instance
+            || instance.Owner != ctx.Sender
+        )
+        {
+            throw new Exception("Item not in inventory.");
+        }
+
+        if (ctx.Db.ItemDef.Id.Find(instance.ItemDefId) is not ItemDef item)
+        {
+            throw new Exception("Unknown item.");
+        }
+
+        if (item.Kind == ItemKind.Consumable)
+        {
+            throw new Exception("Consumables are used, not equipped.");
+        }
+
+        if (item.Kind == ItemKind.Weapon && item.WeaponType != ClassWeapon(player.Class))
+        {
+            throw new Exception($"{player.Class} can only equip a {ClassWeapon(player.Class)}.");
+        }
+
+        if (item.Kind == ItemKind.Armor && item.ArmorSlot == ArmorSlot.None)
+        {
+            throw new Exception("That armor has no slot.");
+        }
+
+        if (instance.EquippedSlot != EquipSlot.Bag)
+        {
+            UnequipOwnedItem(ctx, player.Identity, instance);
+            return;
+        }
+
+        EquipOwnedItem(ctx, player.Identity, instance, item);
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void UnequipItem(ReducerContext ctx, uint itemInstanceId)
+    {
+        var player = RequirePlayer(ctx);
+        if (
+            ctx.Db.PlayerItem.Id.Find(itemInstanceId) is not PlayerItem instance
+            || instance.Owner != ctx.Sender
+        )
+        {
+            throw new Exception("Item not in inventory.");
+        }
+
+        UnequipOwnedItem(ctx, player.Identity, instance);
     }
 
     // ------------------------------------------------------------- enemy turns
@@ -487,14 +477,71 @@ public static partial class Module
             return;
         }
 
-        if (enemy.Mana >= enemy.SkillManaCost)
+        var skill = PickEnemySkill(ctx, enemy);
+        if (skill is SkillDef chosen && ToUInt(enemy.Mana) >= chosen.ManaCost)
         {
-            var target = targets[ctx.Rng.Next(0, targets.Count)];
-            ResolveAttack(ctx, enemy, target);
+            ctx.Db.Entity.EntityId.Update(enemy with { Mana = enemy.Mana - ToInt(chosen.ManaCost) });
+            enemy = ctx.Db.Entity.EntityId.Find(enemy.EntityId)!.Value;
+
+            if (chosen.NextTurnStrengthBonus > 0)
+            {
+                ctx.Db.Entity.EntityId.Update(
+                    enemy with
+                    {
+                        NextTurnStrengthBonus = SaturatingAdd(
+                            enemy.NextTurnStrengthBonus,
+                            chosen.NextTurnStrengthBonus
+                        ),
+                    }
+                );
+                enemy = ctx.Db.Entity.EntityId.Find(enemy.EntityId)!.Value;
+                PushCombatEvent(
+                    ctx,
+                    enemy.EntityId,
+                    enemy.EntityId,
+                    CombatActionType.Spell,
+                    chosen.Name,
+                    0,
+                    0,
+                    false,
+                    false,
+                    $"{enemy.Name} used {chosen.Name}."
+                );
+                AddLog(ctx, $"{enemy.Name} used {chosen.Name}.");
+                if (chosen.BaseDamage == 0)
+                {
+                    AdvanceTurn(ctx);
+                    return;
+                }
+            }
+
+            if (chosen.TargetCount > 0 && chosen.BaseDamage > 0)
+            {
+                var picked = chosen.TargetCount > 1
+                    ? targets.Take((int)chosen.TargetCount).ToList()
+                    : new List<Entity> { targets[ctx.Rng.Next(0, targets.Count)] };
+                foreach (var target in picked)
+                {
+                    ApplyOutgoingDamage(
+                        ctx,
+                        enemy,
+                        target,
+                        CombatActionType.Spell,
+                        chosen.Name,
+                        chosen.BaseDamage
+                    );
+                    enemy = ctx.Db.Entity.EntityId.Find(enemy.EntityId)!.Value;
+                }
+            }
+        }
+        else if (ToUInt(enemy.Mana) < 6)
+        {
+            ApplyFocus(ctx, enemy);
         }
         else
         {
-            ApplyFocus(ctx, enemy);
+            var target = targets[ctx.Rng.Next(0, targets.Count)];
+            ApplyOutgoingDamage(ctx, enemy, target, CombatActionType.Attack, "Attack", 4);
         }
 
         AdvanceTurn(ctx);
@@ -536,54 +583,117 @@ public static partial class Module
 
     static void SpawnEnemies(ReducerContext ctx)
     {
-        for (uint slot = 0; slot < EnemyCount; slot++)
+        SpawnEnemy(ctx, 0, "Goblin Raider", 90, 40, 6, 6, 4, 6, 7, "Rusty Slash", "Howl");
+        SpawnEnemy(ctx, 1, "Cave Troll", 140, 50, 10, 2, 2, 8, 4, "Boulder Smash");
+        SpawnEnemy(ctx, 2, "Shadow Wisp", 70, 60, 4, 8, 8, 5, 11, "Shadow Volley");
+    }
+
+    static void SpawnEnemy(
+        ReducerContext ctx,
+        uint slot,
+        string name,
+        uint hp,
+        uint mana,
+        uint strength,
+        uint dexterity,
+        uint intelligence,
+        uint atk,
+        uint speed,
+        params string[] skillNames
+    )
+    {
+        var entity = ctx.Db.Entity.Insert(
+            new Entity
+            {
+                EntityId = 0,
+                Faction = Team.Enemies,
+                Slot = slot,
+                Name = name,
+                ClassName = "Enemy",
+                MaxHp = ToInt(hp),
+                Hp = ToInt(hp),
+                MaxMana = ToInt(mana),
+                Mana = ToInt(mana),
+                Strength = ToInt(strength),
+                Dexterity = ToInt(dexterity),
+                Intelligence = ToInt(intelligence),
+                Atk = ToInt(atk),
+                Defense = 0,
+                Speed = ToInt(speed),
+                Alive = true,
+                StrengthBuff = 0,
+                NextTurnStrengthBonus = 0,
+                NextTurnSpeedOverride = 0,
+                GoFirstNextRound = false,
+            }
+        );
+
+        foreach (var skillName in skillNames)
         {
-            var template = EnemyTemplate(slot);
-            ctx.Db.Entity.Insert(
-                new Entity
-                {
-                    EntityId = 0,
-                    Faction = Team.Enemies,
-                    Slot = slot,
-                    Name = template.Name,
-                    ClassName = "Enemy",
-                    MaxHp = template.MaxHp,
-                    Hp = template.MaxHp,
-                    MaxMana = template.MaxMana,
-                    Mana = template.MaxMana,
-                    Strength = template.Strength,
-                    Damage = template.Damage,
-                    Speed = template.Speed,
-                    Alive = true,
-                    Potions = 0,
-                    SkillName = template.SkillName,
-                    SkillAtk = template.SkillAtk,
-                    SkillManaCost = template.SkillManaCost,
-                }
-            );
+            if (FindSkillDefByName(ctx, skillName) is SkillDef skill)
+            {
+                ctx.Db.EntitySkill.Insert(
+                    new EntitySkill
+                    {
+                        Id = 0,
+                        EntityId = entity.EntityId,
+                        SkillDefId = skill.Id,
+                    }
+                );
+            }
         }
     }
 
-    /// The single place that decides ordering. Today: players by slot, then
-    /// enemies by slot. Swap the comparer here to order by Speed descending.
     static void BuildTurnOrder(ReducerContext ctx)
     {
-        foreach (var entry in ctx.Db.TurnOrder.Iter().ToList())
+        ClearTurnOrder(ctx);
+
+        var entries = new List<(ulong EntityId, uint Speed, bool Rush)>();
+        foreach (var entity in ctx.Db.Entity.Iter().ToList())
         {
-            ctx.Db.TurnOrder.Idx.Delete(entry.Idx);
+            if (!entity.Alive)
+            {
+                continue;
+            }
+
+            var speed = entity.NextTurnSpeedOverride > 0
+                ? entity.NextTurnSpeedOverride
+                : ToUInt(entity.Speed);
+            entries.Add((entity.EntityId, speed, entity.GoFirstNextRound));
+            ctx.Db.Entity.EntityId.Update(
+                entity with
+                {
+                    NextTurnSpeedOverride = 0,
+                    GoFirstNextRound = false,
+                }
+            );
         }
 
-        var ordered = ctx
-            .Db.Entity.Iter()
-            .Where(e => e.Alive)
-            .OrderBy(e => e.Faction == Team.Players ? 0 : 1)
-            .ThenBy(e => e.Slot)
-            .ToList();
+        entries.Sort(
+            (a, b) =>
+            {
+                var rush = b.Rush.CompareTo(a.Rush);
+                if (rush != 0)
+                {
+                    return rush;
+                }
 
-        for (var i = 0; i < ordered.Count; i++)
+                var speed = b.Speed.CompareTo(a.Speed);
+                return speed != 0 ? speed : a.EntityId.CompareTo(b.EntityId);
+            }
+        );
+
+        for (var i = 0; i < entries.Count; i++)
         {
             ctx.Db.TurnOrder.Insert(
-                new TurnOrder { Idx = (uint)i, EntityId = ordered[i].EntityId }
+                new TurnOrder
+                {
+                    Idx = (uint)i,
+                    EntityId = entries[i].EntityId,
+                    Speed = entries[i].Speed,
+                    HasActed = false,
+                    IsRush = entries[i].Rush,
+                }
             );
         }
     }
@@ -599,7 +709,6 @@ public static partial class Module
         var round = session.Round;
         var idx = session.TurnIndex + 1;
 
-        // Bounded so a logic slip can never hang the reducer.
         for (var guard = 0; guard < 128; guard++)
         {
             if (idx >= (uint)ctx.Db.TurnOrder.Count)
@@ -643,6 +752,28 @@ public static partial class Module
             }
         );
 
+        if (ctx.Db.TurnOrder.Idx.Find(idx) is TurnOrder row)
+        {
+            ctx.Db.TurnOrder.Idx.Update(row with { HasActed = true });
+        }
+
+        if (entity.Faction == Team.Players)
+        {
+            StartPlayerTurn(ctx, entity);
+            entity = ctx.Db.Entity.EntityId.Find(entity.EntityId)!.Value;
+        }
+        else if (entity.NextTurnStrengthBonus > 0)
+        {
+            ctx.Db.Entity.EntityId.Update(
+                entity with
+                {
+                    StrengthBuff = entity.NextTurnStrengthBonus,
+                    NextTurnStrengthBonus = 0,
+                }
+            );
+            entity = ctx.Db.Entity.EntityId.Find(entity.EntityId)!.Value;
+        }
+
         AddLog(ctx, $"Round {round} - {entity.Name}'s turn.");
 
         if (entity.Faction == Team.Enemies)
@@ -658,6 +789,24 @@ public static partial class Module
                 }
             );
         }
+    }
+
+    static void StartPlayerTurn(ReducerContext ctx, Entity entity)
+    {
+        var mana = SaturatingAdd(ToUInt(entity.Mana), MpRegenPerTurn);
+        if (mana > ToUInt(entity.MaxMana))
+        {
+            mana = ToUInt(entity.MaxMana);
+        }
+
+        ctx.Db.Entity.EntityId.Update(
+            entity with
+            {
+                Mana = ToInt(mana),
+                StrengthBuff = entity.NextTurnStrengthBonus,
+                NextTurnStrengthBonus = 0,
+            }
+        );
     }
 
     static bool EndBattleIfOver(ReducerContext ctx)
@@ -700,34 +849,67 @@ public static partial class Module
         return false;
     }
 
-    static void ResolveAttack(ReducerContext ctx, Entity attacker, Entity target)
+    static void ApplyOutgoingDamage(
+        ReducerContext ctx,
+        Entity attacker,
+        Entity target,
+        CombatActionType action,
+        string skillName,
+        uint skillBaseDamage
+    )
     {
-        var damage = attacker.Damage + attacker.Strength + attacker.SkillAtk;
-        if (damage < 0)
+        if (!target.Alive)
         {
-            damage = 0;
+            return;
         }
 
-        var hp = target.Hp - damage;
-        if (hp < 0)
+        uint chrDamage;
+        if (attacker.Faction == Team.Players && ctx.Db.Player.EntityId.Find(attacker.EntityId) is Player owner)
         {
-            hp = 0;
+            chrDamage = CharacterDamage(
+                owner.Class,
+                skillBaseDamage,
+                ToUInt(attacker.Dexterity),
+                ToUInt(attacker.Intelligence),
+                ToUInt(attacker.Speed)
+            );
+        }
+        else
+        {
+            chrDamage = skillBaseDamage;
         }
 
+        var strength = EffectiveStrength(ToUInt(attacker.Strength), attacker.StrengthBuff);
+        var incoming = DealtDamage(chrDamage, strength, ToUInt(attacker.Atk));
+        var clashed = attacker.Faction == Team.Players && attacker.Speed > target.Speed;
+        if (clashed)
+        {
+            incoming = SaturatingAdd(incoming, ClashDamageBonus);
+        }
+
+        var dodged = (uint)ctx.Rng.Next(1, 101) <= DodgeChance(ToUInt(target.Dexterity));
+        var damage = dodged ? 0u : IncomingAfterDefense(incoming, ToUInt(target.Defense));
+
+        var hp = SaturatingSub(ToUInt(target.Hp), damage);
         var alive = hp > 0;
+        ctx.Db.Entity.EntityId.Update(target with { Hp = ToInt(hp), Alive = alive });
 
-        ctx.Db.Entity.EntityId.Update(target with { Hp = hp, Alive = alive });
-        ctx.Db.Entity.EntityId.Update(
-            attacker with
-            {
-                Mana = attacker.Mana - attacker.SkillManaCost,
-            }
-        );
-
-        AddLog(
+        var clashText = clashed ? " Clash!" : "";
+        var result = dodged ? $"{target.Name} dodged." : $"{target.Name} took {damage} damage.";
+        var message = $"{attacker.Name} used {skillName}. {result}{clashText}";
+        PushCombatEvent(
             ctx,
-            $"{attacker.Name} uses {attacker.SkillName} on {target.Name} for {damage} damage."
+            attacker.EntityId,
+            target.EntityId,
+            action,
+            skillName,
+            damage,
+            0,
+            dodged,
+            clashed,
+            message
         );
+        AddLog(ctx, message);
 
         if (!alive)
         {
@@ -737,19 +919,547 @@ public static partial class Module
 
     static void ApplyFocus(ReducerContext ctx, Entity actor)
     {
-        var mana = Math.Min(actor.MaxMana, actor.Mana + FocusManaGain);
-        var restored = mana - actor.Mana;
-        ctx.Db.Entity.EntityId.Update(actor with { Mana = mana });
-        AddLog(
+        var mana = SaturatingAdd(ToUInt(actor.Mana), FocusManaRecover);
+        if (mana > ToUInt(actor.MaxMana))
+        {
+            mana = ToUInt(actor.MaxMana);
+        }
+
+        var restored = SaturatingSub(mana, ToUInt(actor.Mana));
+        ctx.Db.Entity.EntityId.Update(actor with { Mana = ToInt(mana) });
+        PushCombatEvent(
             ctx,
-            $"{actor.Name} focuses and restores {restored} mana ({mana}/{actor.MaxMana})."
+            actor.EntityId,
+            actor.EntityId,
+            CombatActionType.Defend,
+            "Focus",
+            0,
+            restored,
+            false,
+            false,
+            $"{actor.Name} focuses (+{FocusManaRecover} MP)."
+        );
+        AddLog(ctx, $"{actor.Name} focuses and restores {restored} mana ({mana}/{actor.MaxMana}).");
+    }
+
+    static List<Entity> SelectEnemyTargets(ReducerContext ctx, ulong preferredId, uint count)
+    {
+        var living = new List<Entity>();
+        Entity? preferred = null;
+        foreach (var enemy in LivingMembers(ctx, Team.Enemies))
+        {
+            if (enemy.EntityId == preferredId)
+            {
+                preferred = enemy;
+            }
+            else
+            {
+                living.Add(enemy);
+            }
+        }
+
+        var selected = new List<Entity>();
+        if (preferred is Entity chosen)
+        {
+            selected.Add(chosen);
+        }
+
+        foreach (var enemy in living)
+        {
+            if (selected.Count >= count)
+            {
+                break;
+            }
+
+            selected.Add(enemy);
+        }
+
+        if (selected.Count == 0)
+        {
+            throw new Exception("No living enemies to target.");
+        }
+
+        return selected;
+    }
+
+    static SkillDef? PickEnemySkill(ReducerContext ctx, Entity enemy)
+    {
+        var options = new List<SkillDef>();
+        foreach (var owned in ctx.Db.EntitySkill.EntityId.Filter(enemy.EntityId))
+        {
+            if (ctx.Db.SkillDef.Id.Find(owned.SkillDefId) is SkillDef skill)
+            {
+                options.Add(skill);
+            }
+        }
+
+        return options.Count == 0 ? null : options[ctx.Rng.Next(options.Count)];
+    }
+
+    // ----------------------------------------------------------- inventory
+
+    static void EquipFromCatalog(ReducerContext ctx, Identity owner, ItemDef item)
+    {
+        foreach (var instance in ctx.Db.PlayerItem.Owner.Filter(owner))
+        {
+            if (instance.ItemDefId == item.Id && instance.EquippedSlot == EquipSlot.Bag)
+            {
+                EquipOwnedItem(ctx, owner, instance, item);
+                return;
+            }
+        }
+
+        throw new Exception($"{item.Name} is not in the bag.");
+    }
+
+    static void EquipOwnedItem(ReducerContext ctx, Identity owner, PlayerItem instance, ItemDef item)
+    {
+        if (ctx.Db.Player.Identity.Find(owner) is not Player player)
+        {
+            throw new Exception("Not in the party.");
+        }
+
+        var slot = EquipSlotFor(item);
+        if (slot == EquipSlot.Bag)
+        {
+            throw new Exception("That item cannot be equipped.");
+        }
+
+        foreach (var other in ctx.Db.PlayerItem.Owner.Filter(owner).ToList())
+        {
+            if (other.Id != instance.Id && other.EquippedSlot == slot)
+            {
+                ctx.Db.PlayerItem.Id.Update(other with { EquippedSlot = EquipSlot.Bag });
+            }
+        }
+
+        ctx.Db.PlayerItem.Id.Update(instance with { EquippedSlot = slot });
+        ctx.Db.Player.Identity.Update(
+            player with
+            {
+                EquippedWeaponDefId = slot == EquipSlot.Weapon ? item.Id : player.EquippedWeaponDefId,
+                EquippedHelmetDefId = slot == EquipSlot.Helmet ? item.Id : player.EquippedHelmetDefId,
+                EquippedChestplateDefId =
+                    slot == EquipSlot.Chestplate ? item.Id : player.EquippedChestplateDefId,
+                EquippedLeggingsDefId = slot == EquipSlot.Leggings ? item.Id : player.EquippedLeggingsDefId,
+                EquippedBootsDefId = slot == EquipSlot.Boots ? item.Id : player.EquippedBootsDefId,
+            }
+        );
+        RefreshDerivedStats(ctx, owner);
+    }
+
+    static void UnequipOwnedItem(ReducerContext ctx, Identity owner, PlayerItem instance)
+    {
+        if (instance.EquippedSlot == EquipSlot.Bag)
+        {
+            throw new Exception("That item is not equipped.");
+        }
+
+        if (BagCount(ctx, owner) >= BagCapacity)
+        {
+            throw new Exception("Inventory is full.");
+        }
+
+        if (ctx.Db.Player.Identity.Find(owner) is not Player player)
+        {
+            throw new Exception("Not in the party.");
+        }
+
+        var slot = instance.EquippedSlot;
+        ctx.Db.PlayerItem.Id.Update(instance with { EquippedSlot = EquipSlot.Bag });
+        ctx.Db.Player.Identity.Update(
+            player with
+            {
+                EquippedWeaponDefId = slot == EquipSlot.Weapon ? 0 : player.EquippedWeaponDefId,
+                EquippedHelmetDefId = slot == EquipSlot.Helmet ? 0 : player.EquippedHelmetDefId,
+                EquippedChestplateDefId = slot == EquipSlot.Chestplate ? 0 : player.EquippedChestplateDefId,
+                EquippedLeggingsDefId = slot == EquipSlot.Leggings ? 0 : player.EquippedLeggingsDefId,
+                EquippedBootsDefId = slot == EquipSlot.Boots ? 0 : player.EquippedBootsDefId,
+            }
+        );
+        RefreshDerivedStats(ctx, owner);
+    }
+
+    static EquipSlot EquipSlotFor(ItemDef item) =>
+        item.Kind switch
+        {
+            ItemKind.Weapon => EquipSlot.Weapon,
+            ItemKind.Armor => item.ArmorSlot switch
+            {
+                ArmorSlot.Helmet => EquipSlot.Helmet,
+                ArmorSlot.Chestplate => EquipSlot.Chestplate,
+                ArmorSlot.Leggings => EquipSlot.Leggings,
+                ArmorSlot.Boots => EquipSlot.Boots,
+                _ => EquipSlot.Bag,
+            },
+            _ => EquipSlot.Bag,
+        };
+
+    static uint BagCount(ReducerContext ctx, Identity owner)
+    {
+        uint count = 0;
+        foreach (var item in ctx.Db.PlayerItem.Owner.Filter(owner))
+        {
+            if (item.EquippedSlot != EquipSlot.Bag)
+            {
+                continue;
+            }
+
+            if (ctx.Db.ItemDef.Id.Find(item.ItemDefId) is ItemDef def && def.Kind == ItemKind.Consumable)
+            {
+                continue;
+            }
+
+            count++;
+        }
+
+        return count;
+    }
+
+    static void RefreshDerivedStats(ReducerContext ctx, Identity owner)
+    {
+        if (ctx.Db.Player.Identity.Find(owner) is not Player player)
+        {
+            throw new Exception("Not in the party.");
+        }
+
+        if (ctx.Db.Entity.EntityId.Find(player.EntityId) is not Entity entity)
+        {
+            throw new Exception("Your character is missing.");
+        }
+
+        var gear = EquippedGear(ctx, player);
+        var pips = EquippedHealthPips(ctx, owner);
+        var strength = ClampStat(SaturatingAdd(player.BaseStrength, GearStat(gear, StatType.Strength)));
+        var dexterity = ClampStat(SaturatingAdd(player.BaseDexterity, GearStat(gear, StatType.Dexterity)));
+        var intelligence = ClampStat(
+            SaturatingAdd(player.BaseIntelligence, GearStat(gear, StatType.Intelligence))
+        );
+        var speed = ClampStat(SaturatingAdd(player.BaseSpeed, GearStat(gear, StatType.Speed)));
+        var atk = 0u;
+        var manaBonus = 0u;
+        foreach (var piece in gear)
+        {
+            atk = SaturatingAdd(atk, piece.AtkBonus);
+            manaBonus = SaturatingAdd(manaBonus, piece.MaxManaBonus);
+        }
+
+        var maxHealth = SaturatingAdd(ClassMaxHealth(player.Class), pips);
+        var maxMana = SaturatingAdd(
+            SaturatingAdd(ClassBaseMana(player.Class), intelligence),
+            manaBonus
+        );
+
+        var currHealth = ToUInt(entity.Hp);
+        if (currHealth > maxHealth)
+        {
+            currHealth = maxHealth;
+        }
+
+        var currMana = ToUInt(entity.Mana);
+        if (maxMana > ToUInt(entity.MaxMana))
+        {
+            currMana = SaturatingAdd(currMana, SaturatingSub(maxMana, ToUInt(entity.MaxMana)));
+        }
+        else if (currMana > maxMana)
+        {
+            currMana = maxMana;
+        }
+
+        ctx.Db.Entity.EntityId.Update(
+            entity with
+            {
+                Strength = ToInt(strength),
+                Dexterity = ToInt(dexterity),
+                Intelligence = ToInt(intelligence),
+                Speed = ToInt(speed),
+                Atk = ToInt(atk),
+                MaxHp = ToInt(maxHealth),
+                Hp = ToInt(currHealth),
+                MaxMana = ToInt(maxMana),
+                Mana = ToInt(currMana),
+            }
+        );
+    }
+
+    static List<ItemDef> EquippedGear(ReducerContext ctx, Player player)
+    {
+        var gear = new List<ItemDef>();
+        AddGear(ctx, gear, player.EquippedWeaponDefId);
+        AddGear(ctx, gear, player.EquippedHelmetDefId);
+        AddGear(ctx, gear, player.EquippedChestplateDefId);
+        AddGear(ctx, gear, player.EquippedLeggingsDefId);
+        AddGear(ctx, gear, player.EquippedBootsDefId);
+        return gear;
+    }
+
+    static void AddGear(ReducerContext ctx, List<ItemDef> gear, uint itemDefId)
+    {
+        if (itemDefId != 0 && ctx.Db.ItemDef.Id.Find(itemDefId) is ItemDef item)
+        {
+            gear.Add(item);
+        }
+    }
+
+    static uint EquippedHealthPips(ReducerContext ctx, Identity owner)
+    {
+        uint pips = 0;
+        foreach (var item in ctx.Db.PlayerItem.Owner.Filter(owner))
+        {
+            if (item.EquippedSlot != EquipSlot.Bag && item.EquippedSlot != EquipSlot.Weapon)
+            {
+                pips = SaturatingAdd(pips, item.HealthPips);
+            }
+        }
+
+        return pips;
+    }
+
+    static void RequireWeapon(Player player)
+    {
+        if (player.EquippedWeaponDefId == 0)
+        {
+            throw new Exception("Equip a weapon to attack.");
+        }
+    }
+
+    static uint GearStat(List<ItemDef> gear, StatType stat)
+    {
+        uint bonus = 0;
+        foreach (var item in gear)
+        {
+            bonus = SaturatingAdd(bonus, StatBonus(item, stat));
+        }
+
+        return bonus;
+    }
+
+    static uint StatBonus(ItemDef item, StatType stat) =>
+        stat switch
+        {
+            StatType.Strength => item.StrengthBonus,
+            StatType.Dexterity => item.DexterityBonus,
+            StatType.Intelligence => item.IntelligenceBonus,
+            StatType.Speed => item.SpeedBonus,
+            _ => 0,
+        };
+
+    static (uint Strength, uint Dexterity, uint Intelligence, uint Speed) RollStarterStats(
+        Random rng,
+        PlayerClass classChoice
+    )
+    {
+        var main = RollInclusive(rng, MainStatMin, MainStatMax);
+        var strength = RollInclusive(rng, OffStatMin, OffStatMax);
+        var dexterity = RollInclusive(rng, OffStatMin, OffStatMax);
+        var intelligence = RollInclusive(rng, OffStatMin, OffStatMax);
+        var speed = RollInclusive(rng, OffStatMin, OffStatMax);
+        switch (MainStat(classChoice))
+        {
+            case StatType.Strength:
+                strength = main;
+                break;
+            case StatType.Dexterity:
+                dexterity = main;
+                break;
+            case StatType.Intelligence:
+                intelligence = main;
+                break;
+            default:
+                speed = main;
+                break;
+        }
+
+        return (strength, dexterity, intelligence, speed);
+    }
+
+    static void GrantClassSkills(ReducerContext ctx, Identity owner, PlayerClass classChoice)
+    {
+        foreach (var skill in ctx.Db.SkillDef.Iter())
+        {
+            if (skill.IsEnemySkill || skill.Class != classChoice)
+            {
+                continue;
+            }
+
+            ctx.Db.PlayerSkill.Insert(
+                new PlayerSkill
+                {
+                    Id = 0,
+                    Owner = owner,
+                    SkillDefId = skill.Id,
+                    Unlocked = skill.UnlockFloor == 0,
+                }
+            );
+        }
+    }
+
+    static bool OwnsUnlockedSkill(ReducerContext ctx, Identity owner, uint skillDefId)
+    {
+        foreach (var owned in ctx.Db.PlayerSkill.Owner.Filter(owner))
+        {
+            if (owned.SkillDefId == skillDefId && owned.Unlocked)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static PlayerClass RollClass(ReducerContext ctx)
+    {
+        var classes = new[]
+        {
+            PlayerClass.Warrior,
+            PlayerClass.Archer,
+            PlayerClass.Mage,
+            PlayerClass.Rogue,
+        };
+        var mix =
+            ctx.Timestamp.MicrosecondsSinceUnixEpoch
+            ^ ctx.Rng.Next()
+            ^ ctx.Rng.Next()
+            ^ ctx.Sender.GetHashCode();
+        return classes[(int)(mix & 3)];
+    }
+
+    static void GiveStarterArmor(ReducerContext ctx, Identity owner)
+    {
+        GiveItem(ctx, owner, RequireItemDefByName(ctx, "Leather Helm").Id, 1);
+        GiveItem(ctx, owner, RequireItemDefByName(ctx, "Leather Vest").Id, 1);
+        GiveItem(ctx, owner, RequireItemDefByName(ctx, "Leather Leggings").Id, 1);
+        GiveItem(ctx, owner, RequireItemDefByName(ctx, "Leather Boots").Id, 1);
+    }
+
+    static void GiveConsumable(ReducerContext ctx, Identity owner, string name, uint quantity)
+    {
+        if (quantity == 0)
+        {
+            return;
+        }
+
+        GiveItem(ctx, owner, RequireItemDefByName(ctx, name).Id, quantity);
+    }
+
+    static void GiveItem(ReducerContext ctx, Identity owner, uint itemDefId, uint quantity)
+    {
+        if (ctx.Db.ItemDef.Id.Find(itemDefId) is not ItemDef def)
+        {
+            throw new Exception("Unknown item.");
+        }
+
+        var pips = 0u;
+        if (def.Kind == ItemKind.Armor)
+        {
+            pips = RollArmorPips(ctx.Rng, def.ArmorSlot);
+        }
+
+        if (def.Kind != ItemKind.Consumable && BagCount(ctx, owner) >= BagCapacity)
+        {
+            throw new Exception("Inventory is full.");
+        }
+
+        ctx.Db.PlayerItem.Insert(
+            new PlayerItem
+            {
+                Id = 0,
+                Owner = owner,
+                ItemDefId = itemDefId,
+                Quantity = quantity,
+                EquippedSlot = EquipSlot.Bag,
+                HealthPips = pips,
+            }
+        );
+    }
+
+    static uint RollArmorPips(Random rng, ArmorSlot slot)
+    {
+        var cap = ArmorPipCap(slot);
+        return cap == 0 ? 0 : RollInclusive(rng, ArmorPipMin, cap);
+    }
+
+    static string StarterWeaponName(PlayerClass classChoice) =>
+        classChoice switch
+        {
+            PlayerClass.Warrior => "Starter Sword",
+            PlayerClass.Archer => "Starter Bow",
+            PlayerClass.Mage => "Starter Staff",
+            PlayerClass.Rogue => "Starter Dagger",
+            _ => "Starter Sword",
+        };
+
+    static void DeletePlayerOwnedRows(ReducerContext ctx, Identity owner)
+    {
+        foreach (var skill in ctx.Db.PlayerSkill.Owner.Filter(owner).ToList())
+        {
+            ctx.Db.PlayerSkill.Id.Delete(skill.Id);
+        }
+
+        foreach (var item in ctx.Db.PlayerItem.Owner.Filter(owner).ToList())
+        {
+            ctx.Db.PlayerItem.Id.Delete(item.Id);
+        }
+    }
+
+    static void ClearTimers(ReducerContext ctx)
+    {
+        foreach (var timer in ctx.Db.EnemyTurnTimer.Iter().ToList())
+        {
+            ctx.Db.EnemyTurnTimer.ScheduledId.Delete(timer.ScheduledId);
+        }
+    }
+
+    static void ClearTurnOrder(ReducerContext ctx)
+    {
+        foreach (var entry in ctx.Db.TurnOrder.Iter().ToList())
+        {
+            ctx.Db.TurnOrder.Idx.Delete(entry.Idx);
+        }
+    }
+
+    static void ClearCombatEvents(ReducerContext ctx)
+    {
+        foreach (var row in ctx.Db.CombatEvent.Iter().ToList())
+        {
+            ctx.Db.CombatEvent.Id.Delete(row.Id);
+        }
+    }
+
+    static void PushCombatEvent(
+        ReducerContext ctx,
+        ulong actorEntityId,
+        ulong targetEntityId,
+        CombatActionType action,
+        string skillName,
+        uint damage,
+        uint healing,
+        bool dodged,
+        bool clashed,
+        string message
+    )
+    {
+        var session = RequireSession(ctx);
+        ctx.Db.CombatEvent.Insert(
+            new CombatEvent
+            {
+                Id = 0,
+                Round = session.Round,
+                ActorEntityId = actorEntityId,
+                TargetEntityId = targetEntityId,
+                ActionType = action,
+                SkillName = skillName,
+                Damage = damage,
+                Healing = healing,
+                Dodged = dodged,
+                Clashed = clashed,
+                Message = message,
+            }
         );
     }
 
     // ---------------------------------------------------------------- helpers
 
-    /// Every player action funnels through here: right phase, right caller,
-    /// right turn, still alive.
     static Entity RequireActingEntity(ReducerContext ctx)
     {
         var session = RequireSession(ctx);
@@ -781,11 +1491,18 @@ public static partial class Module
         return entity;
     }
 
+    static Player RequirePlayer(ReducerContext ctx)
+    {
+        if (ctx.Db.Player.Identity.Find(ctx.Sender) is Player player)
+        {
+            return player;
+        }
+
+        throw new Exception("You are not in the party.");
+    }
+
     static List<Entity> LivingMembers(ReducerContext ctx, Team faction) =>
-        ctx.Db.Entity.Iter()
-            .Where(e => e.Faction == faction && e.Alive)
-            .OrderBy(e => e.Slot)
-            .ToList();
+        ctx.Db.Entity.Iter().Where(e => e.Faction == faction && e.Alive).OrderBy(e => e.Slot).ToList();
 
     static GameSession RequireSession(ReducerContext ctx)
     {
@@ -821,9 +1538,7 @@ public static partial class Module
 
     static void AddLog(ReducerContext ctx, string message)
     {
-        var round = ctx.Db.GameSession.Id.Find(SessionId) is GameSession session
-            ? session.Round
-            : 0u;
+        var round = ctx.Db.GameSession.Id.Find(SessionId) is GameSession session ? session.Round : 0u;
 
         ctx.Db.BattleLog.Insert(
             new BattleLog

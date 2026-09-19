@@ -64,6 +64,15 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Player, bool> Online { get; }
         public global::SpacetimeDB.Col<Player, PlayerClass> Class { get; }
         public global::SpacetimeDB.Col<Player, ulong> EntityId { get; }
+        public global::SpacetimeDB.Col<Player, uint> BaseStrength { get; }
+        public global::SpacetimeDB.Col<Player, uint> BaseDexterity { get; }
+        public global::SpacetimeDB.Col<Player, uint> BaseIntelligence { get; }
+        public global::SpacetimeDB.Col<Player, uint> BaseSpeed { get; }
+        public global::SpacetimeDB.Col<Player, uint> EquippedWeaponDefId { get; }
+        public global::SpacetimeDB.Col<Player, uint> EquippedHelmetDefId { get; }
+        public global::SpacetimeDB.Col<Player, uint> EquippedChestplateDefId { get; }
+        public global::SpacetimeDB.Col<Player, uint> EquippedLeggingsDefId { get; }
+        public global::SpacetimeDB.Col<Player, uint> EquippedBootsDefId { get; }
 
         public PlayerCols(string tableName)
         {
@@ -72,6 +81,15 @@ namespace SpacetimeDB.Types
             Online = new global::SpacetimeDB.Col<Player, bool>(tableName, "online");
             Class = new global::SpacetimeDB.Col<Player, PlayerClass>(tableName, "class");
             EntityId = new global::SpacetimeDB.Col<Player, ulong>(tableName, "entity_id");
+            BaseStrength = new global::SpacetimeDB.Col<Player, uint>(tableName, "base_strength");
+            BaseDexterity = new global::SpacetimeDB.Col<Player, uint>(tableName, "base_dexterity");
+            BaseIntelligence = new global::SpacetimeDB.Col<Player, uint>(tableName, "base_intelligence");
+            BaseSpeed = new global::SpacetimeDB.Col<Player, uint>(tableName, "base_speed");
+            EquippedWeaponDefId = new global::SpacetimeDB.Col<Player, uint>(tableName, "equipped_weapon_def_id");
+            EquippedHelmetDefId = new global::SpacetimeDB.Col<Player, uint>(tableName, "equipped_helmet_def_id");
+            EquippedChestplateDefId = new global::SpacetimeDB.Col<Player, uint>(tableName, "equipped_chestplate_def_id");
+            EquippedLeggingsDefId = new global::SpacetimeDB.Col<Player, uint>(tableName, "equipped_leggings_def_id");
+            EquippedBootsDefId = new global::SpacetimeDB.Col<Player, uint>(tableName, "equipped_boots_def_id");
         }
     }
 

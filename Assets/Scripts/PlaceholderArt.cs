@@ -183,7 +183,40 @@ public static class PlaceholderArt
     }
 
     public static Color EnemyColor(uint slot) =>
-        slot == 0 ? new Color(0.44f, 0.56f, 0.28f) : new Color(0.50f, 0.34f, 0.26f);
+        slot == 0
+            ? new Color(0.44f, 0.56f, 0.28f)
+            : slot == 1
+                ? new Color(0.50f, 0.34f, 0.26f)
+                : new Color(0.38f, 0.28f, 0.52f);
+
+    public static Sprite ItemIcon(SpacetimeDB.Types.ItemDef def)
+    {
+        if (def == null)
+        {
+            return Solid(new Color(0.22f, 0.22f, 0.27f, 1f));
+        }
+
+        if (def.Kind == SpacetimeDB.Types.ItemKind.Weapon)
+        {
+            return Shape(ShapeKind.Diamond, new Color(0.82f, 0.72f, 0.32f));
+        }
+
+        if (def.Kind == SpacetimeDB.Types.ItemKind.Armor)
+        {
+            return def.ArmorSlot switch
+            {
+                SpacetimeDB.Types.ArmorSlot.Helmet => Shape(ShapeKind.Circle, new Color(0.62f, 0.58f, 0.48f)),
+                SpacetimeDB.Types.ArmorSlot.Chestplate => Shape(ShapeKind.Rect, new Color(0.55f, 0.42f, 0.30f)),
+                SpacetimeDB.Types.ArmorSlot.Leggings => Shape(ShapeKind.Triangle, new Color(0.48f, 0.40f, 0.32f)),
+                _ => Shape(ShapeKind.Mound, new Color(0.40f, 0.34f, 0.28f)),
+            };
+        }
+
+        return Shape(
+            ShapeKind.Circle,
+            def.HealAmount > 0 ? new Color(0.78f, 0.28f, 0.32f) : new Color(0.30f, 0.48f, 0.86f)
+        );
+    }
 }
 
 /// Small helpers for hand-building uGUI hierarchies from code.

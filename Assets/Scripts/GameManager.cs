@@ -119,6 +119,15 @@ public class GameManager : MonoBehaviour
         conn.Db.Player.OnUpdate += (_, _, _) => Changed();
         conn.Db.Player.OnDelete += (_, _) => Changed();
         conn.Db.BattleLog.OnInsert += (_, _) => Changed();
+        conn.Db.TurnOrder.OnInsert += (_, _) => Changed();
+        conn.Db.TurnOrder.OnUpdate += (_, _, _) => Changed();
+        conn.Db.TurnOrder.OnDelete += (_, _) => Changed();
+        conn.Db.PlayerItem.OnInsert += (_, _) => Changed();
+        conn.Db.PlayerItem.OnUpdate += (_, _, _) => Changed();
+        conn.Db.PlayerItem.OnDelete += (_, _) => Changed();
+        conn.Db.PlayerSkill.OnInsert += (_, _) => Changed();
+        conn.Db.PlayerSkill.OnUpdate += (_, _, _) => Changed();
+        conn.Db.ItemDef.OnInsert += (_, _) => Changed();
         conn.OnUnhandledReducerError += HandleReducerError;
 
         conn.SubscriptionBuilder()
@@ -269,11 +278,119 @@ public class GameManager : MonoBehaviour
         Conn.Reducers.StartBattle();
     }
 
-    public static void Attack(ulong targetEntityId) => Conn?.Reducers.Attack(targetEntityId);
+    public static void Attack(ulong targetEntityId, uint skillDefId) =>
+        Conn?.Reducers.Attack(targetEntityId, skillDefId);
 
-    public static void UseItem(ItemKind item) => Conn?.Reducers.UseItem(item);
+    public static void UseItem(uint itemInstanceId) => Conn?.Reducers.UseItem(itemInstanceId);
 
     public static void Focus() => Conn?.Reducers.Focus();
 
+    public static void EquipItem(uint itemInstanceId) => Conn?.Reducers.EquipItem(itemInstanceId);
+
+    public static void UnequipItem(uint itemInstanceId) => Conn?.Reducers.UnequipItem(itemInstanceId);
+
     public static void ResetStage() => Conn?.Reducers.ResetStage();
+
+    public static ItemDef ItemDefOf(PlayerItem item) =>
+        item == null || Conn == null ? null : Conn.Db.ItemDef.Id.Find(item.ItemDefId);
+
+    public static SkillDef SkillDefOf(uint skillDefId) =>
+        Conn == null ? null : Conn.Db.SkillDef.Id.Find(skillDefId);
+
+    public static bool HasWeapon(Player player) => player != null && player.EquippedWeaponDefId != 0;
+
+    public static List<SkillDef> LocalSkills()
+    {
+        var skills = new List<SkillDef>();
+        var player = LocalPlayer();
+        if (player == null || Conn == null)
+        {
+            return skills;
+        }
+
+        foreach (var owned in Conn.Db.PlayerSkill.Iter())
+        {
+            if (owned.Owner != player.Identity || !owned.Unlocked)
+            {
+                continue;
+            }
+
+            var def = Conn.Db.SkillDef.Id.Find(owned.SkillDefId);
+            if (def != null)
+            {
+                skills.Add(def);
+            }
+        }
+
+        return skills.OrderBy(s => s.Id).ToList();
+    }
+
+    public static List<PlayerItem> LocalPotions()
+    {
+        var potions = new List<PlayerItem>();
+        var player = LocalPlayer();
+        if (player == null || Conn == null)
+        {
+            return potions;
+        }
+
+        foreach (var item in Conn.Db.PlayerItem.Iter())
+        {
+            if (item.Owner != player.Identity)
+            {
+                continue;
+            }
+
+            var def = ItemDefOf(item);
+            if (def != null && def.Kind == ItemKind.Consumable)
+            {
+                potions.Add(item);
+            }
+        }
+
+        return potions.OrderBy(i => i.Id).ToList();
+    }
+
+    public static PlayerItem FindEquipped(Player local, EquipSlot slot)
+    {
+        if (local == null || Conn == null)
+        {
+            return null;
+        }
+
+        foreach (var item in Conn.Db.PlayerItem.Iter())
+        {
+            if (item.Owner == local.Identity && item.EquippedSlot == slot)
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    public static List<PlayerItem> BagItems(Player local)
+    {
+        var bag = new List<PlayerItem>();
+        if (local == null || Conn == null)
+        {
+            return bag;
+        }
+
+        foreach (var item in Conn.Db.PlayerItem.Iter())
+        {
+            if (item.Owner != local.Identity || item.EquippedSlot != EquipSlot.Bag)
+            {
+                continue;
+            }
+
+            var def = ItemDefOf(item);
+            if (def != null && def.Kind != ItemKind.Consumable)
+            {
+                bag.Add(item);
+            }
+        }
+
+        return bag.OrderBy(i => i.Id).ToList();
+    }
 }

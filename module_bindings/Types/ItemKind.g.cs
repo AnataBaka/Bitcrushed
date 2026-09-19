@@ -10,6 +10,8 @@ namespace SpacetimeDB.Types
     [SpacetimeDB.Type]
     public enum ItemKind
     {
-        HealthPotion,
+        Weapon,
+        Armor,
+        Consumable,
     }
 }
