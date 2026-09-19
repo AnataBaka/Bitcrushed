@@ -9,10 +9,11 @@ public class TurnOrderListView : MonoBehaviour
 {
     public const float ShiftSeconds = 0.35f;
     const float FadeSeconds = 0.22f;
-    const float Width = 168f;
+    const float Width = 110f;
     const float RowHeight = 22f;
     const float TopPad = 8f;
     const int MaxSlots = 7;
+    const int NameClip = 11;
 
     static readonly Color Backing = new Color(0.06f, 0.07f, 0.09f, 0.55f);
     static readonly Color PlayerColor = new Color(0.82f, 0.90f, 0.98f, 1f);
@@ -41,20 +42,23 @@ public class TurnOrderListView : MonoBehaviour
 
     public static TurnOrderListView Create(Transform field)
     {
-        var panel = UiFactory.Panel(field, "TurnOrderList", Backing);
+        var root = UiFactory.NewRect(field, "TurnOrderList");
+        var panel = root.gameObject.AddComponent<Image>();
+        panel.sprite = PlaceholderArt.FlatWhite();
+        panel.color = Backing;
+        panel.type = Image.Type.Simple;
         panel.raycastTarget = false;
-        var root = panel.rectTransform;
         root.anchorMin = new Vector2(0f, 1f);
         root.anchorMax = new Vector2(0f, 1f);
         root.pivot = new Vector2(0f, 1f);
         root.sizeDelta = new Vector2(Width, TopPad + (MaxSlots * RowHeight) + 8f);
         root.anchoredPosition = new Vector2(8f, -64f);
 
-        var group = panel.gameObject.AddComponent<CanvasGroup>();
+        var group = root.gameObject.AddComponent<CanvasGroup>();
         group.blocksRaycasts = false;
         group.interactable = false;
 
-        var view = panel.gameObject.AddComponent<TurnOrderListView>();
+        var view = root.gameObject.AddComponent<TurnOrderListView>();
         view.gameObject.SetActive(false);
         return view;
     }
@@ -303,7 +307,7 @@ public class TurnOrderListView : MonoBehaviour
             return "?";
         }
 
-        return name.Length <= 16 ? name : name.Substring(0, 15) + "…";
+        return name.Length <= NameClip ? name : name.Substring(0, NameClip - 1) + "…";
     }
 
     static float YForSlot(int slot) => -TopPad - (slot * RowHeight);
