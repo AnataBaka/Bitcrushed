@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum CombatActionType
+public enum StubCombatActionType
 {
     Attack,
     Spell,
