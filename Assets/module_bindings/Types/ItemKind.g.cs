@@ -8,9 +8,8 @@ using System;
 namespace SpacetimeDB.Types
 {
     [SpacetimeDB.Type]
-    public enum GamePhase
+    public enum ItemKind
     {
-        Waiting,
-        Full,
+        HealthPotion,
     }
 }

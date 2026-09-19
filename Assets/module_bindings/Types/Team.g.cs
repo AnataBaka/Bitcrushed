@@ -8,11 +8,9 @@ using System;
 namespace SpacetimeDB.Types
 {
     [SpacetimeDB.Type]
-    public enum PlayerClass
+    public enum Team
     {
-        Warrior,
-        Mage,
-        Rogue,
-        Archer,
+        Players,
+        Enemies,
     }
 }

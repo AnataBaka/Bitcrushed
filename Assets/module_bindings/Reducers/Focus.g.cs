@@ -12,17 +12,17 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void ChangeClassHandler(ReducerEventContext ctx, SpacetimeDB.Types.PlayerClass classChoice);
-        public event ChangeClassHandler? OnChangeClass;
+        public delegate void FocusHandler(ReducerEventContext ctx);
+        public event FocusHandler? OnFocus;
 
-        public void ChangeClass(SpacetimeDB.Types.PlayerClass classChoice)
+        public void Focus()
         {
-            conn.InternalCallReducer(new Reducer.ChangeClass(classChoice));
+            conn.InternalCallReducer(new Reducer.Focus());
         }
 
-        public bool InvokeChangeClass(ReducerEventContext ctx, Reducer.ChangeClass args)
+        public bool InvokeFocus(ReducerEventContext ctx, Reducer.Focus args)
         {
-            if (OnChangeClass == null)
+            if (OnFocus == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -34,9 +34,8 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
-            OnChangeClass(
-                ctx,
-                args.ClassChoice
+            OnFocus(
+                ctx
             );
             return true;
         }
@@ -46,21 +45,9 @@ namespace SpacetimeDB.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class ChangeClass : Reducer, IReducerArgs
+        public sealed partial class Focus : Reducer, IReducerArgs
         {
-            [DataMember(Name = "class_choice")]
-            public PlayerClass ClassChoice;
-
-            public ChangeClass(PlayerClass ClassChoice)
-            {
-                this.ClassChoice = ClassChoice;
-            }
-
-            public ChangeClass()
-            {
-            }
-
-            string IReducerArgs.ReducerName => "change_class";
+            string IReducerArgs.ReducerName => "focus";
         }
     }
 }

@@ -12,17 +12,17 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void JoinGameHandler(ReducerEventContext ctx);
-        public event JoinGameHandler? OnJoinGame;
+        public delegate void ResetStageHandler(ReducerEventContext ctx);
+        public event ResetStageHandler? OnResetStage;
 
-        public void JoinGame()
+        public void ResetStage()
         {
-            conn.InternalCallReducer(new Reducer.JoinGame());
+            conn.InternalCallReducer(new Reducer.ResetStage());
         }
 
-        public bool InvokeJoinGame(ReducerEventContext ctx, Reducer.JoinGame args)
+        public bool InvokeResetStage(ReducerEventContext ctx, Reducer.ResetStage args)
         {
-            if (OnJoinGame == null)
+            if (OnResetStage == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -34,7 +34,7 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
-            OnJoinGame(
+            OnResetStage(
                 ctx
             );
             return true;
@@ -45,9 +45,9 @@ namespace SpacetimeDB.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class JoinGame : Reducer, IReducerArgs
+        public sealed partial class ResetStage : Reducer, IReducerArgs
         {
-            string IReducerArgs.ReducerName => "join_game";
+            string IReducerArgs.ReducerName => "reset_stage";
         }
     }
 }

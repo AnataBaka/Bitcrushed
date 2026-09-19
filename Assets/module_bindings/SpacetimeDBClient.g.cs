@@ -27,8 +27,11 @@ namespace SpacetimeDB.Types
     {
         public RemoteTables(DbConnection conn)
         {
+            AddTable(BattleLog = new(conn));
+            AddTable(Entity = new(conn));
             AddTable(GameSession = new(conn));
             AddTable(Player = new(conn));
+            AddTable(TurnOrder = new(conn));
         }
     }
 
@@ -525,16 +528,22 @@ namespace SpacetimeDB.Types
 
         internal static string[] AllTablesSqlQueries() => new string[]
         {
+            new QueryBuilder().From.BattleLog().ToSql(),
+            new QueryBuilder().From.Entity().ToSql(),
             new QueryBuilder().From.GameSession().ToSql(),
             new QueryBuilder().From.Player().ToSql(),
+            new QueryBuilder().From.TurnOrder().ToSql(),
         }
         ;
     }
 
     public sealed class From
     {
+        public global::SpacetimeDB.Table<BattleLog, BattleLogCols, BattleLogIxCols> BattleLog() => new("battle_log", new BattleLogCols("battle_log"), new BattleLogIxCols("battle_log"));
+        public global::SpacetimeDB.Table<Entity, EntityCols, EntityIxCols> Entity() => new("entity", new EntityCols("entity"), new EntityIxCols("entity"));
         public global::SpacetimeDB.Table<GameSession, GameSessionCols, GameSessionIxCols> GameSession() => new("game_session", new GameSessionCols("game_session"), new GameSessionIxCols("game_session"));
         public global::SpacetimeDB.Table<Player, PlayerCols, PlayerIxCols> Player() => new("player", new PlayerCols("player"), new PlayerIxCols("player"));
+        public global::SpacetimeDB.Table<TurnOrder, TurnOrderCols, TurnOrderIxCols> TurnOrder() => new("turn_order", new TurnOrderCols("turn_order"), new TurnOrderIxCols("turn_order"));
     }
 
     public sealed class TypedSubscriptionBuilder
@@ -616,9 +625,13 @@ namespace SpacetimeDB.Types
             var eventContext = (ReducerEventContext)context;
             return reducer switch
             {
-                Reducer.ChangeClass args => Reducers.InvokeChangeClass(eventContext, args),
+                Reducer.Attack args => Reducers.InvokeAttack(eventContext, args),
+                Reducer.Focus args => Reducers.InvokeFocus(eventContext, args),
                 Reducer.JoinGame args => Reducers.InvokeJoinGame(eventContext, args),
                 Reducer.LeaveGame args => Reducers.InvokeLeaveGame(eventContext, args),
+                Reducer.ResetStage args => Reducers.InvokeResetStage(eventContext, args),
+                Reducer.StartBattle args => Reducers.InvokeStartBattle(eventContext, args),
+                Reducer.UseItem args => Reducers.InvokeUseItem(eventContext, args),
                 _ => throw new ArgumentOutOfRangeException("Reducer", $"Unknown reducer {reducer}")
             };
         }

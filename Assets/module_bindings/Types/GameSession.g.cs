@@ -20,19 +20,31 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "max_players")]
         public uint MaxPlayers;
         [DataMember(Name = "phase")]
-        public GamePhase Phase;
+        public BattlePhase Phase;
+        [DataMember(Name = "round")]
+        public uint Round;
+        [DataMember(Name = "turn_index")]
+        public uint TurnIndex;
+        [DataMember(Name = "active_entity_id")]
+        public ulong ActiveEntityId;
 
         public GameSession(
             uint Id,
             uint PlayerCount,
             uint MaxPlayers,
-            GamePhase Phase
+            BattlePhase Phase,
+            uint Round,
+            uint TurnIndex,
+            ulong ActiveEntityId
         )
         {
             this.Id = Id;
             this.PlayerCount = PlayerCount;
             this.MaxPlayers = MaxPlayers;
             this.Phase = Phase;
+            this.Round = Round;
+            this.TurnIndex = TurnIndex;
+            this.ActiveEntityId = ActiveEntityId;
         }
 
         public GameSession()

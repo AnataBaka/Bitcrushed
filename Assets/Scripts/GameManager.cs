@@ -1,37 +1,42 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using UnityEngine;
 
+/// Owns the SpacetimeDB connection and exposes read helpers plus reducer calls.
+/// Contains no game rules: every decision is made by the module.
 public class GameManager : MonoBehaviour
 {
-    public const string ServerUrl = "http://127.0.0.1:3000";
-    public const string DatabaseName = "hophacks-party";
-    public const uint MaxPlayers = 4;
+    public const uint SessionId = 1;
+
+    [SerializeField]
+    string serverUrl = "http://127.0.0.1:3000";
+
+    [SerializeField]
+    string databaseName = "hophacks-party";
+
     const string TokenPrefsKey = "hophacks.spacetimedb.token";
 
     public static GameManager Instance { get; private set; }
     public static DbConnection Conn { get; private set; }
     public static Identity LocalIdentity { get; private set; }
 
-    public static event Action PartyChanged;
+    /// Raised whenever any subscribed table changes, so views can redraw.
+    public static event Action StateChanged;
 
-    public string Status { get; private set; } = "Connecting...";
+    public string Status { get; private set; } = "Connecting to SpacetimeDB...";
     public bool SubscriptionReady { get; private set; }
+    public string ServerUrl => serverUrl;
+    public string DatabaseName => databaseName;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    static void Bootstrap()
+    SpacetimeDBNetworkManager _networkManager;
+
+    public void Configure(string url, string database)
     {
-        if (FindFirstObjectByType<GameManager>() != null)
-        {
-            return;
-        }
-
-        var go = new GameObject("GameManager");
-        DontDestroyOnLoad(go);
-        go.AddComponent<GameManager>();
-        go.AddComponent<PartyDebugUI>();
-        TryAddNetworkManager(go);
+        serverUrl = url;
+        databaseName = database;
     }
 
     void Awake()
@@ -44,17 +49,21 @@ public class GameManager : MonoBehaviour
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
-        TryAddNetworkManager(gameObject);
+
+        _networkManager = GetComponent<SpacetimeDBNetworkManager>();
+        if (_networkManager == null)
+        {
+            _networkManager = gameObject.AddComponent<SpacetimeDBNetworkManager>();
+        }
     }
 
-    void Start()
-    {
-        Connect();
-    }
+    void Start() => Connect();
 
     void Update()
     {
-        if (Conn != null && FindFirstObjectByType<SpacetimeDBNetworkManager>() == null)
+        // The network manager normally advances the connection. This is only a
+        // safety net for scenes that somehow lack it.
+        if (Conn != null && _networkManager == null)
         {
             Conn.FrameTick();
         }
@@ -70,12 +79,13 @@ public class GameManager : MonoBehaviour
 
     void Connect()
     {
-        var builder = DbConnection.Builder()
+        var builder = DbConnection
+            .Builder()
+            .WithUri(serverUrl)
+            .WithDatabaseName(databaseName)
             .OnConnect(HandleConnect)
             .OnConnectError(HandleConnectError)
-            .OnDisconnect(HandleDisconnect)
-            .WithUri(ServerUrl)
-            .WithDatabaseName(DatabaseName);
+            .OnDisconnect(HandleDisconnect);
 
         var savedToken = PlayerPrefs.GetString(TokenPrefsKey, string.Empty);
         if (!string.IsNullOrEmpty(savedToken))
@@ -84,7 +94,7 @@ public class GameManager : MonoBehaviour
         }
 
         Conn = builder.Build();
-        Status = "Connecting to local SpacetimeDB...";
+        Status = $"Connecting to {serverUrl} ...";
     }
 
     void HandleConnect(DbConnection conn, Identity identity, string token)
@@ -92,116 +102,156 @@ public class GameManager : MonoBehaviour
         LocalIdentity = identity;
         PlayerPrefs.SetString(TokenPrefsKey, token);
         PlayerPrefs.Save();
-        Status = $"Connected as {ShortIdentity(identity)}";
+        Status = "Connected. Subscribing...";
 
-        conn.Db.Player.OnInsert += (_, _) => PartyChanged?.Invoke();
-        conn.Db.Player.OnUpdate += (_, _, _) => PartyChanged?.Invoke();
-        conn.Db.Player.OnDelete += (_, _) => PartyChanged?.Invoke();
-        conn.Db.GameSession.OnInsert += (_, _) => PartyChanged?.Invoke();
-        conn.Db.GameSession.OnUpdate += (_, _, _) => PartyChanged?.Invoke();
+        // Register row callbacks before subscribing so the initial batch is seen.
+        conn.Db.Entity.OnInsert += (_, _) => Changed();
+        conn.Db.Entity.OnUpdate += (_, _, _) => Changed();
+        conn.Db.Entity.OnDelete += (_, _) => Changed();
+        conn.Db.GameSession.OnInsert += (_, _) => Changed();
+        conn.Db.GameSession.OnUpdate += (_, _, _) => Changed();
+        conn.Db.Player.OnInsert += (_, _) => Changed();
+        conn.Db.Player.OnUpdate += (_, _, _) => Changed();
+        conn.Db.Player.OnDelete += (_, _) => Changed();
+        conn.Db.BattleLog.OnInsert += (_, _) => Changed();
         conn.OnUnhandledReducerError += HandleReducerError;
 
         conn.SubscriptionBuilder()
             .OnApplied(HandleSubscriptionApplied)
-            .OnError((_, ex) =>
-            {
-                Status = $"Subscription failed: {ex.Message}";
-                Debug.LogError(ex);
-            })
+            .OnError(
+                (_, ex) =>
+                {
+                    Status = $"Subscription failed: {ex.Message}";
+                    Debug.LogError(ex);
+                    Changed();
+                }
+            )
             .SubscribeToAllTables();
     }
 
     void HandleSubscriptionApplied(SubscriptionEventContext _)
     {
         SubscriptionReady = true;
-        Status = "Subscribed. Pick a class to join.";
-        PartyChanged?.Invoke();
+        Status = "Connected.";
+        Changed();
     }
 
     void HandleConnectError(Exception ex)
     {
         Status = $"Connection error: {ex.Message}";
         Debug.LogError(ex);
+        Changed();
     }
 
     void HandleDisconnect(DbConnection _, Exception ex)
     {
         SubscriptionReady = false;
         Status = ex == null ? "Disconnected." : $"Disconnected: {ex.Message}";
-        PartyChanged?.Invoke();
+        Changed();
     }
 
+    /// Server-rejected actions surface here ("It is not your turn." etc).
     void HandleReducerError(ReducerEventContext _, Exception ex)
     {
         Status = ex.Message;
-        Debug.LogError(ex);
-        PartyChanged?.Invoke();
+        Debug.LogWarning($"Reducer rejected: {ex.Message}");
+        Changed();
     }
+
+    static void Changed() => StateChanged?.Invoke();
+
+    // ------------------------------------------------------------- read helpers
 
     public static bool IsConnected() => Conn != null && Conn.IsActive;
 
-    public GameSession GetSession()
+    public static GameSession Session() =>
+        Conn == null ? null : Conn.Db.GameSession.Id.Find(SessionId);
+
+    public static Player LocalPlayer() =>
+        Conn == null ? null : Conn.Db.Player.Identity.Find(LocalIdentity);
+
+    public static Entity LocalEntity()
     {
-        return Conn?.Db.GameSession.Id.Find(1);
+        var player = LocalPlayer();
+        return player == null ? null : Conn.Db.Entity.EntityId.Find(player.EntityId);
     }
 
-    public Player GetLocalPlayer()
+    public static Entity ActiveEntity()
     {
-        return Conn?.Db.Player.Identity.Find(LocalIdentity);
+        var session = Session();
+        if (session == null || session.ActiveEntityId == 0)
+        {
+            return null;
+        }
+
+        return Conn.Db.Entity.EntityId.Find(session.ActiveEntityId);
     }
 
-    public Player GetPlayerInSlot(uint slot)
+    public static bool IsLocalTurn()
     {
-        return Conn?.Db.Player.Slot.Find(slot);
+        var session = Session();
+        var mine = LocalEntity();
+        return session != null
+            && mine != null
+            && mine.Alive
+            && session.Phase == BattlePhase.InBattle
+            && session.ActiveEntityId == mine.EntityId;
     }
 
-    public void Join(PlayerClass classChoice)
+    public static List<Entity> TeamMembers(Team faction) =>
+        Conn == null
+            ? new List<Entity>()
+            : Conn.Db.Entity.Iter()
+                .Where(e => e.Faction == faction)
+                .OrderBy(e => e.Slot)
+                .ToList();
+
+    public static List<string> LogLines(int max)
+    {
+        if (Conn == null)
+        {
+            return new List<string>();
+        }
+
+        return Conn
+            .Db.BattleLog.Iter()
+            .OrderBy(l => l.Id)
+            .Select(l => l.Message)
+            .Reverse()
+            .Take(max)
+            .Reverse()
+            .ToList();
+    }
+
+    // ---------------------------------------------------------- reducer calls
+
+    public static void JoinGame()
     {
         if (!IsConnected())
         {
-            Status = "Not connected.";
+            Debug.LogWarning("JoinGame ignored: not connected yet.");
             return;
         }
 
-        Conn.Reducers.JoinGame(classChoice);
-        Status = $"Joining as {classChoice}...";
+        Conn.Reducers.JoinGame();
     }
 
-    public void Leave()
+    public static void StartBattle()
     {
         if (!IsConnected())
         {
-            Status = "Not connected.";
+            Debug.LogWarning("StartBattle ignored: not connected yet.");
             return;
         }
 
-        Conn.Reducers.LeaveGame();
-        Status = "Leaving the party...";
+        Conn.Reducers.StartBattle();
     }
 
-    public void ChangeClass(PlayerClass classChoice)
-    {
-        if (!IsConnected())
-        {
-            Status = "Not connected.";
-            return;
-        }
+    public static void Attack(ulong targetEntityId) => Conn?.Reducers.Attack(targetEntityId);
 
-        Conn.Reducers.ChangeClass(classChoice);
-        Status = $"Changing class to {classChoice}...";
-    }
+    public static void UseItem(ItemKind item) => Conn?.Reducers.UseItem(item);
 
-    public static string ShortIdentity(Identity identity)
-    {
-        var hex = identity.ToString();
-        return hex.Length <= 8 ? hex : hex[..8];
-    }
+    public static void Focus() => Conn?.Reducers.Focus();
 
-    static void TryAddNetworkManager(GameObject go)
-    {
-        if (go.GetComponent<SpacetimeDBNetworkManager>() == null)
-        {
-            go.AddComponent<SpacetimeDBNetworkManager>();
-        }
-    }
+    public static void ResetStage() => Conn?.Reducers.ResetStage();
 }

@@ -42,14 +42,20 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<GameSession, uint> Id { get; }
         public global::SpacetimeDB.Col<GameSession, uint> PlayerCount { get; }
         public global::SpacetimeDB.Col<GameSession, uint> MaxPlayers { get; }
-        public global::SpacetimeDB.Col<GameSession, GamePhase> Phase { get; }
+        public global::SpacetimeDB.Col<GameSession, BattlePhase> Phase { get; }
+        public global::SpacetimeDB.Col<GameSession, uint> Round { get; }
+        public global::SpacetimeDB.Col<GameSession, uint> TurnIndex { get; }
+        public global::SpacetimeDB.Col<GameSession, ulong> ActiveEntityId { get; }
 
         public GameSessionCols(string tableName)
         {
             Id = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "id");
             PlayerCount = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "player_count");
             MaxPlayers = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "max_players");
-            Phase = new global::SpacetimeDB.Col<GameSession, GamePhase>(tableName, "phase");
+            Phase = new global::SpacetimeDB.Col<GameSession, BattlePhase>(tableName, "phase");
+            Round = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "round");
+            TurnIndex = new global::SpacetimeDB.Col<GameSession, uint>(tableName, "turn_index");
+            ActiveEntityId = new global::SpacetimeDB.Col<GameSession, ulong>(tableName, "active_entity_id");
         }
     }
 

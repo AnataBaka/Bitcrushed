@@ -21,50 +21,22 @@ namespace SpacetimeDB.Types
         public bool Online;
         [DataMember(Name = "class")]
         public PlayerClass Class;
-        [DataMember(Name = "max_health_points")]
-        public uint MaxHealthPoints;
-        [DataMember(Name = "curr_health_points")]
-        public uint CurrHealthPoints;
-        [DataMember(Name = "max_mana")]
-        public uint MaxMana;
-        [DataMember(Name = "curr_mana")]
-        public uint CurrMana;
-        [DataMember(Name = "speed")]
-        public uint Speed;
-        [DataMember(Name = "strength")]
-        public uint Strength;
-        [DataMember(Name = "dexterity")]
-        public uint Dexterity;
-        [DataMember(Name = "intelligence")]
-        public uint Intelligence;
+        [DataMember(Name = "entity_id")]
+        public ulong EntityId;
 
         public Player(
             SpacetimeDB.Identity Identity,
             uint Slot,
             bool Online,
             PlayerClass Class,
-            uint MaxHealthPoints,
-            uint CurrHealthPoints,
-            uint MaxMana,
-            uint CurrMana,
-            uint Speed,
-            uint Strength,
-            uint Dexterity,
-            uint Intelligence
+            ulong EntityId
         )
         {
             this.Identity = Identity;
             this.Slot = Slot;
             this.Online = Online;
             this.Class = Class;
-            this.MaxHealthPoints = MaxHealthPoints;
-            this.CurrHealthPoints = CurrHealthPoints;
-            this.MaxMana = MaxMana;
-            this.CurrMana = CurrMana;
-            this.Speed = Speed;
-            this.Strength = Strength;
-            this.Dexterity = Dexterity;
-            this.Intelligence = Intelligence;
+            this.EntityId = EntityId;
         }
 
         public Player()

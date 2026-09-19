@@ -12,17 +12,17 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void JoinGameHandler(ReducerEventContext ctx);
-        public event JoinGameHandler? OnJoinGame;
+        public delegate void AttackHandler(ReducerEventContext ctx, ulong targetEntityId);
+        public event AttackHandler? OnAttack;
 
-        public void JoinGame()
+        public void Attack(ulong targetEntityId)
         {
-            conn.InternalCallReducer(new Reducer.JoinGame());
+            conn.InternalCallReducer(new Reducer.Attack(targetEntityId));
         }
 
-        public bool InvokeJoinGame(ReducerEventContext ctx, Reducer.JoinGame args)
+        public bool InvokeAttack(ReducerEventContext ctx, Reducer.Attack args)
         {
-            if (OnJoinGame == null)
+            if (OnAttack == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -34,8 +34,9 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
-            OnJoinGame(
-                ctx
+            OnAttack(
+                ctx,
+                args.TargetEntityId
             );
             return true;
         }
@@ -45,9 +46,21 @@ namespace SpacetimeDB.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class JoinGame : Reducer, IReducerArgs
+        public sealed partial class Attack : Reducer, IReducerArgs
         {
-            string IReducerArgs.ReducerName => "join_game";
+            [DataMember(Name = "target_entity_id")]
+            public ulong TargetEntityId;
+
+            public Attack(ulong TargetEntityId)
+            {
+                this.TargetEntityId = TargetEntityId;
+            }
+
+            public Attack()
+            {
+            }
+
+            string IReducerArgs.ReducerName => "attack";
         }
     }
 }

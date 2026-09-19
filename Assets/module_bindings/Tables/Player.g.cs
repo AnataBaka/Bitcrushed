@@ -17,6 +17,15 @@ namespace SpacetimeDB.Types
         {
             public override string RemoteTableName => "player";
 
+            public sealed class EntityIdUniqueIndex : UniqueIndexBase<ulong>
+            {
+                protected override ulong GetKey(Player row) => row.EntityId;
+
+                public EntityIdUniqueIndex(PlayerHandle table) : base(table) { }
+            }
+
+            public readonly EntityIdUniqueIndex EntityId;
+
             public sealed class IdentityUniqueIndex : UniqueIndexBase<SpacetimeDB.Identity>
             {
                 protected override SpacetimeDB.Identity GetKey(Player row) => row.Identity;
@@ -37,6 +46,7 @@ namespace SpacetimeDB.Types
 
             internal PlayerHandle(DbConnection conn) : base(conn)
             {
+                EntityId = new(this);
                 Identity = new(this);
                 Slot = new(this);
             }
@@ -53,14 +63,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Player, uint> Slot { get; }
         public global::SpacetimeDB.Col<Player, bool> Online { get; }
         public global::SpacetimeDB.Col<Player, PlayerClass> Class { get; }
-        public global::SpacetimeDB.Col<Player, uint> MaxHealthPoints { get; }
-        public global::SpacetimeDB.Col<Player, uint> CurrHealthPoints { get; }
-        public global::SpacetimeDB.Col<Player, uint> MaxMana { get; }
-        public global::SpacetimeDB.Col<Player, uint> CurrMana { get; }
-        public global::SpacetimeDB.Col<Player, uint> Speed { get; }
-        public global::SpacetimeDB.Col<Player, uint> Strength { get; }
-        public global::SpacetimeDB.Col<Player, uint> Dexterity { get; }
-        public global::SpacetimeDB.Col<Player, uint> Intelligence { get; }
+        public global::SpacetimeDB.Col<Player, ulong> EntityId { get; }
 
         public PlayerCols(string tableName)
         {
@@ -68,14 +71,7 @@ namespace SpacetimeDB.Types
             Slot = new global::SpacetimeDB.Col<Player, uint>(tableName, "slot");
             Online = new global::SpacetimeDB.Col<Player, bool>(tableName, "online");
             Class = new global::SpacetimeDB.Col<Player, PlayerClass>(tableName, "class");
-            MaxHealthPoints = new global::SpacetimeDB.Col<Player, uint>(tableName, "max_health_points");
-            CurrHealthPoints = new global::SpacetimeDB.Col<Player, uint>(tableName, "curr_health_points");
-            MaxMana = new global::SpacetimeDB.Col<Player, uint>(tableName, "max_mana");
-            CurrMana = new global::SpacetimeDB.Col<Player, uint>(tableName, "curr_mana");
-            Speed = new global::SpacetimeDB.Col<Player, uint>(tableName, "speed");
-            Strength = new global::SpacetimeDB.Col<Player, uint>(tableName, "strength");
-            Dexterity = new global::SpacetimeDB.Col<Player, uint>(tableName, "dexterity");
-            Intelligence = new global::SpacetimeDB.Col<Player, uint>(tableName, "intelligence");
+            EntityId = new global::SpacetimeDB.Col<Player, ulong>(tableName, "entity_id");
         }
     }
 
@@ -83,11 +79,13 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.IxCol<Player, SpacetimeDB.Identity> Identity { get; }
         public global::SpacetimeDB.IxCol<Player, uint> Slot { get; }
+        public global::SpacetimeDB.IxCol<Player, ulong> EntityId { get; }
 
         public PlayerIxCols(string tableName)
         {
             Identity = new global::SpacetimeDB.IxCol<Player, SpacetimeDB.Identity>(tableName, "identity");
             Slot = new global::SpacetimeDB.IxCol<Player, uint>(tableName, "slot");
+            EntityId = new global::SpacetimeDB.IxCol<Player, ulong>(tableName, "entity_id");
         }
     }
 }
