@@ -71,7 +71,6 @@ public static partial class Module
         var rolled = RollStarterStats(ctx.Rng, classChoice);
         var weapon = RequireItemDefByName(ctx, StarterWeaponName(classChoice));
         var healthPotion = RequireItemDefByName(ctx, "Health Potion");
-        var manaPotion = RequireItemDefByName(ctx, "Mana Potion");
 
         var maxHealth = ClassMaxHealth(classChoice);
         var maxMana = SaturatingAdd(ClassBaseMana(classChoice), rolled.Intelligence);
@@ -113,7 +112,6 @@ public static partial class Module
 
         GiveItem(ctx, player.Identity, weapon.Id, 1);
         GiveItem(ctx, player.Identity, healthPotion.Id, 1);
-        GiveItem(ctx, player.Identity, manaPotion.Id, 1);
         EquipFromCatalog(ctx, player.Identity, weapon);
         GrantClassSkills(ctx, player.Identity, classChoice, 0);
 
@@ -177,22 +175,11 @@ public static partial class Module
         RequirePlayer(ctx);
         foreach (var player in ctx.Db.Player.Iter().ToList())
         {
-            ctx.Db.Player.Identity.Update(player with
-            {
-                CurrHealth = player.MaxHealth,
-                CurrMana = player.MaxMana,
-                Alive = true,
-                IsDefending = false,
-                StrengthBuff = 0,
-                NextTurnStrengthBonus = 0,
-                NextTurnSpeedOverride = 0,
-                GoFirstNextRound = false,
-                Defense = player.BaseDefense,
-            });
+            RerollPlayer(ctx, player);
         }
 
         BeginFloor(ctx, 1);
-        Log.Info("Test encounter reset to full HP on floor 1.");
+        Log.Info("Test encounter reset with a random class and full HP.");
     }
 
     [SpacetimeDB.Reducer]
@@ -543,7 +530,7 @@ public static partial class Module
 
     private static void ResolvePlayerDefend(ReducerContext ctx, Player player)
     {
-        var mana = player.CurrMana + DefendManaRecover;
+        var mana = player.CurrMana + FocusManaRecover;
         if (mana > player.MaxMana)
         {
             mana = player.MaxMana;
@@ -551,8 +538,8 @@ public static partial class Module
 
         ctx.Db.Player.Identity.Update(player with
         {
-            IsDefending = true,
-            Defense = SaturatingAdd(player.BaseDefense, DefendDefenseBonus),
+            IsDefending = false,
+            Defense = player.BaseDefense,
             CurrMana = mana,
         });
         PushCombatEvent(
@@ -562,12 +549,12 @@ public static partial class Module
             CombatantKind.Player,
             player.Slot,
             CombatActionType.Defend,
-            "Defend",
+            "Focus",
             0,
-            DefendManaRecover,
+            FocusManaRecover,
             false,
             false,
-            $"{player.Name} defends (+{DefendDefenseBonus} DEF, +{DefendManaRecover} MP).");
+            $"{player.Name} focuses (+{FocusManaRecover} MP).");
     }
 
     private static void ResolvePlayerItem(ReducerContext ctx, Player player, uint itemInstanceId)
@@ -580,6 +567,11 @@ public static partial class Module
         if (ctx.Db.ItemDef.Id.Find(instance.ItemDefId) is not ItemDef item || item.Kind != ItemKind.Consumable)
         {
             throw new Exception("That item cannot be used.");
+        }
+
+        if (item.Name != "Health Potion")
+        {
+            throw new Exception("Only health potions can be used right now.");
         }
 
         var heal = item.HealAmount;
@@ -1379,6 +1371,54 @@ public static partial class Module
         }
 
         return false;
+    }
+
+    private static void RerollPlayer(ReducerContext ctx, Player player)
+    {
+        var classChoice = (PlayerClass)ctx.Rng.Next(0, 4);
+        DeletePlayerOwnedRows(ctx, player.Identity);
+        var rolled = RollStarterStats(ctx.Rng, classChoice);
+        var maxHealth = ClassMaxHealth(classChoice);
+        var maxMana = SaturatingAdd(ClassBaseMana(classChoice), rolled.Intelligence);
+        ctx.Db.Player.Identity.Update(player with
+        {
+            Class = classChoice,
+            Name = RandomPlayerName(ctx.Rng, classChoice),
+            SpriteId = RollInclusive(ctx.Rng, 0, SpriteVariantCount - 1),
+            Level = 1,
+            Xp = 0,
+            UnspentStatPoints = 0,
+            MaxHealth = maxHealth,
+            CurrHealth = maxHealth,
+            MaxMana = maxMana,
+            CurrMana = maxMana,
+            Speed = rolled.Speed,
+            Strength = rolled.Strength,
+            Dexterity = rolled.Dexterity,
+            Intelligence = rolled.Intelligence,
+            BaseSpeed = rolled.Speed,
+            BaseStrength = rolled.Strength,
+            BaseDexterity = rolled.Dexterity,
+            BaseIntelligence = rolled.Intelligence,
+            Atk = 0,
+            BaseDefense = 0,
+            Defense = 0,
+            StrengthBuff = 0,
+            NextTurnStrengthBonus = 0,
+            NextTurnSpeedOverride = 0,
+            GoFirstNextRound = false,
+            IsDefending = false,
+            Alive = true,
+            EquippedWeaponDefId = 0,
+            EquippedArmorDefId = 0,
+        });
+
+        var weapon = RequireItemDefByName(ctx, StarterWeaponName(classChoice));
+        var healthPotion = RequireItemDefByName(ctx, "Health Potion");
+        GiveItem(ctx, player.Identity, weapon.Id, 1);
+        GiveItem(ctx, player.Identity, healthPotion.Id, 1);
+        EquipFromCatalog(ctx, player.Identity, weapon);
+        GrantClassSkills(ctx, player.Identity, classChoice, 0);
     }
 
     private static void GiveItem(ReducerContext ctx, Identity owner, uint itemDefId, uint quantity)
