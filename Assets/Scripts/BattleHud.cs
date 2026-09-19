@@ -314,10 +314,12 @@ public class BattleHud : MonoBehaviour
             && target != null
         )
         {
-            var lunge = actor.PlayLunge(target.Home);
+            actor.PlayLunge(target.Home);
             yield return new WaitForSeconds(0.14f);
             target.PlayHit();
-            yield return lunge;
+            // Waiting on a fixed duration rather than the lunge coroutine keeps
+            // the queue moving even if the card is destroyed mid-strike.
+            yield return new WaitForSeconds(EntityView.LungeSeconds - 0.14f);
         }
 
         _animating = false;

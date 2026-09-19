@@ -143,10 +143,11 @@ public class EntityView : MonoBehaviour
         }
     }
 
-    /// Steps most of the way toward the target and back. Returns the coroutine so
-    /// the caller can wait for the strike to land before animating the next one.
-    public Coroutine PlayLunge(Vector2 targetPosition) =>
-        StartCoroutine(LungeRoutine(targetPosition));
+    /// How long a full lunge takes, so callers can pace a volley of strikes.
+    public const float LungeSeconds = 0.32f;
+
+    /// Steps most of the way toward the target and back.
+    public void PlayLunge(Vector2 targetPosition) => StartCoroutine(LungeRoutine(targetPosition));
 
     IEnumerator LungeRoutine(Vector2 targetPosition)
     {
