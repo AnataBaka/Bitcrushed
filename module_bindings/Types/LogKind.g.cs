@@ -8,10 +8,14 @@ using System;
 namespace SpacetimeDB.Types
 {
     [SpacetimeDB.Type]
-    public enum ItemKind
+    public enum LogKind
     {
-        Weapon,
-        Armor,
-        Consumable,
+        Info,
+        TurnStart,
+        Attack,
+        Heal,
+        Focus,
+        Equip,
+        Defeat,
     }
 }

@@ -48,14 +48,21 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Entity, int> Hp { get; }
         public global::SpacetimeDB.Col<Entity, int> MaxMana { get; }
         public global::SpacetimeDB.Col<Entity, int> Mana { get; }
+        public global::SpacetimeDB.Col<Entity, int> BaseStrength { get; }
+        public global::SpacetimeDB.Col<Entity, int> BaseDexterity { get; }
+        public global::SpacetimeDB.Col<Entity, int> BaseIntelligence { get; }
+        public global::SpacetimeDB.Col<Entity, int> BaseSpeed { get; }
         public global::SpacetimeDB.Col<Entity, int> Strength { get; }
-        public global::SpacetimeDB.Col<Entity, int> Damage { get; }
+        public global::SpacetimeDB.Col<Entity, int> Dexterity { get; }
+        public global::SpacetimeDB.Col<Entity, int> Intelligence { get; }
         public global::SpacetimeDB.Col<Entity, int> Speed { get; }
+        public global::SpacetimeDB.Col<Entity, int> Atk { get; }
+        public global::SpacetimeDB.Col<Entity, int> Defense { get; }
+        public global::SpacetimeDB.Col<Entity, int> StrengthBuff { get; }
+        public global::SpacetimeDB.Col<Entity, int> NextTurnStrengthBonus { get; }
+        public global::SpacetimeDB.Col<Entity, bool> GoFirstNextRound { get; }
         public global::SpacetimeDB.Col<Entity, bool> Alive { get; }
-        public global::SpacetimeDB.Col<Entity, int> Potions { get; }
-        public global::SpacetimeDB.Col<Entity, string> SkillName { get; }
-        public global::SpacetimeDB.Col<Entity, int> SkillAtk { get; }
-        public global::SpacetimeDB.Col<Entity, int> SkillManaCost { get; }
+        public global::SpacetimeDB.Col<Entity, string> BasicAttackName { get; }
 
         public EntityCols(string tableName)
         {
@@ -68,14 +75,21 @@ namespace SpacetimeDB.Types
             Hp = new global::SpacetimeDB.Col<Entity, int>(tableName, "hp");
             MaxMana = new global::SpacetimeDB.Col<Entity, int>(tableName, "max_mana");
             Mana = new global::SpacetimeDB.Col<Entity, int>(tableName, "mana");
+            BaseStrength = new global::SpacetimeDB.Col<Entity, int>(tableName, "base_strength");
+            BaseDexterity = new global::SpacetimeDB.Col<Entity, int>(tableName, "base_dexterity");
+            BaseIntelligence = new global::SpacetimeDB.Col<Entity, int>(tableName, "base_intelligence");
+            BaseSpeed = new global::SpacetimeDB.Col<Entity, int>(tableName, "base_speed");
             Strength = new global::SpacetimeDB.Col<Entity, int>(tableName, "strength");
-            Damage = new global::SpacetimeDB.Col<Entity, int>(tableName, "damage");
+            Dexterity = new global::SpacetimeDB.Col<Entity, int>(tableName, "dexterity");
+            Intelligence = new global::SpacetimeDB.Col<Entity, int>(tableName, "intelligence");
             Speed = new global::SpacetimeDB.Col<Entity, int>(tableName, "speed");
+            Atk = new global::SpacetimeDB.Col<Entity, int>(tableName, "atk");
+            Defense = new global::SpacetimeDB.Col<Entity, int>(tableName, "defense");
+            StrengthBuff = new global::SpacetimeDB.Col<Entity, int>(tableName, "strength_buff");
+            NextTurnStrengthBonus = new global::SpacetimeDB.Col<Entity, int>(tableName, "next_turn_strength_bonus");
+            GoFirstNextRound = new global::SpacetimeDB.Col<Entity, bool>(tableName, "go_first_next_round");
             Alive = new global::SpacetimeDB.Col<Entity, bool>(tableName, "alive");
-            Potions = new global::SpacetimeDB.Col<Entity, int>(tableName, "potions");
-            SkillName = new global::SpacetimeDB.Col<Entity, string>(tableName, "skill_name");
-            SkillAtk = new global::SpacetimeDB.Col<Entity, int>(tableName, "skill_atk");
-            SkillManaCost = new global::SpacetimeDB.Col<Entity, int>(tableName, "skill_mana_cost");
+            BasicAttackName = new global::SpacetimeDB.Col<Entity, string>(tableName, "basic_attack_name");
         }
     }
 

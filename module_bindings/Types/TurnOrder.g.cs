@@ -17,14 +17,26 @@ namespace SpacetimeDB.Types
         public uint Idx;
         [DataMember(Name = "entity_id")]
         public ulong EntityId;
+        [DataMember(Name = "speed")]
+        public int Speed;
+        [DataMember(Name = "has_acted")]
+        public bool HasActed;
+        [DataMember(Name = "is_rush")]
+        public bool IsRush;
 
         public TurnOrder(
             uint Idx,
-            ulong EntityId
+            ulong EntityId,
+            int Speed,
+            bool HasActed,
+            bool IsRush
         )
         {
             this.Idx = Idx;
             this.EntityId = EntityId;
+            this.Speed = Speed;
+            this.HasActed = HasActed;
+            this.IsRush = IsRush;
         }
 
         public TurnOrder()

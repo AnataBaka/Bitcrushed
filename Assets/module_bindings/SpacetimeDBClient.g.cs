@@ -29,8 +29,12 @@ namespace SpacetimeDB.Types
         {
             AddTable(BattleLog = new(conn));
             AddTable(Entity = new(conn));
+            AddTable(EntitySkill = new(conn));
             AddTable(GameSession = new(conn));
+            AddTable(ItemDef = new(conn));
             AddTable(Player = new(conn));
+            AddTable(PlayerItem = new(conn));
+            AddTable(SkillDef = new(conn));
             AddTable(TurnOrder = new(conn));
         }
     }
@@ -530,8 +534,12 @@ namespace SpacetimeDB.Types
         {
             new QueryBuilder().From.BattleLog().ToSql(),
             new QueryBuilder().From.Entity().ToSql(),
+            new QueryBuilder().From.EntitySkill().ToSql(),
             new QueryBuilder().From.GameSession().ToSql(),
+            new QueryBuilder().From.ItemDef().ToSql(),
             new QueryBuilder().From.Player().ToSql(),
+            new QueryBuilder().From.PlayerItem().ToSql(),
+            new QueryBuilder().From.SkillDef().ToSql(),
             new QueryBuilder().From.TurnOrder().ToSql(),
         }
         ;
@@ -541,8 +549,12 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.Table<BattleLog, BattleLogCols, BattleLogIxCols> BattleLog() => new("battle_log", new BattleLogCols("battle_log"), new BattleLogIxCols("battle_log"));
         public global::SpacetimeDB.Table<Entity, EntityCols, EntityIxCols> Entity() => new("entity", new EntityCols("entity"), new EntityIxCols("entity"));
+        public global::SpacetimeDB.Table<EntitySkill, EntitySkillCols, EntitySkillIxCols> EntitySkill() => new("entity_skill", new EntitySkillCols("entity_skill"), new EntitySkillIxCols("entity_skill"));
         public global::SpacetimeDB.Table<GameSession, GameSessionCols, GameSessionIxCols> GameSession() => new("game_session", new GameSessionCols("game_session"), new GameSessionIxCols("game_session"));
+        public global::SpacetimeDB.Table<ItemDef, ItemDefCols, ItemDefIxCols> ItemDef() => new("item_def", new ItemDefCols("item_def"), new ItemDefIxCols("item_def"));
         public global::SpacetimeDB.Table<Player, PlayerCols, PlayerIxCols> Player() => new("player", new PlayerCols("player"), new PlayerIxCols("player"));
+        public global::SpacetimeDB.Table<PlayerItem, PlayerItemCols, PlayerItemIxCols> PlayerItem() => new("player_item", new PlayerItemCols("player_item"), new PlayerItemIxCols("player_item"));
+        public global::SpacetimeDB.Table<SkillDef, SkillDefCols, SkillDefIxCols> SkillDef() => new("skill_def", new SkillDefCols("skill_def"), new SkillDefIxCols("skill_def"));
         public global::SpacetimeDB.Table<TurnOrder, TurnOrderCols, TurnOrderIxCols> TurnOrder() => new("turn_order", new TurnOrderCols("turn_order"), new TurnOrderIxCols("turn_order"));
     }
 
@@ -626,11 +638,14 @@ namespace SpacetimeDB.Types
             return reducer switch
             {
                 Reducer.Attack args => Reducers.InvokeAttack(eventContext, args),
+                Reducer.CastSkill args => Reducers.InvokeCastSkill(eventContext, args),
+                Reducer.EquipItem args => Reducers.InvokeEquipItem(eventContext, args),
                 Reducer.Focus args => Reducers.InvokeFocus(eventContext, args),
                 Reducer.JoinGame args => Reducers.InvokeJoinGame(eventContext, args),
                 Reducer.LeaveGame args => Reducers.InvokeLeaveGame(eventContext, args),
                 Reducer.ResetStage args => Reducers.InvokeResetStage(eventContext, args),
                 Reducer.StartBattle args => Reducers.InvokeStartBattle(eventContext, args),
+                Reducer.UnequipItem args => Reducers.InvokeUnequipItem(eventContext, args),
                 Reducer.UseItem args => Reducers.InvokeUseItem(eventContext, args),
                 _ => throw new ArgumentOutOfRangeException("Reducer", $"Unknown reducer {reducer}")
             };

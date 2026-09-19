@@ -12,17 +12,17 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UseItemHandler(ReducerEventContext ctx, ulong playerItemId);
-        public event UseItemHandler? OnUseItem;
+        public delegate void EquipItemHandler(ReducerEventContext ctx, ulong playerItemId);
+        public event EquipItemHandler? OnEquipItem;
 
-        public void UseItem(ulong playerItemId)
+        public void EquipItem(ulong playerItemId)
         {
-            conn.InternalCallReducer(new Reducer.UseItem(playerItemId));
+            conn.InternalCallReducer(new Reducer.EquipItem(playerItemId));
         }
 
-        public bool InvokeUseItem(ReducerEventContext ctx, Reducer.UseItem args)
+        public bool InvokeEquipItem(ReducerEventContext ctx, Reducer.EquipItem args)
         {
-            if (OnUseItem == null)
+            if (OnEquipItem == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -34,7 +34,7 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
-            OnUseItem(
+            OnEquipItem(
                 ctx,
                 args.PlayerItemId
             );
@@ -46,21 +46,21 @@ namespace SpacetimeDB.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class UseItem : Reducer, IReducerArgs
+        public sealed partial class EquipItem : Reducer, IReducerArgs
         {
             [DataMember(Name = "player_item_id")]
             public ulong PlayerItemId;
 
-            public UseItem(ulong PlayerItemId)
+            public EquipItem(ulong PlayerItemId)
             {
                 this.PlayerItemId = PlayerItemId;
             }
 
-            public UseItem()
+            public EquipItem()
             {
             }
 
-            string IReducerArgs.ReducerName => "use_item";
+            string IReducerArgs.ReducerName => "equip_item";
         }
     }
 }

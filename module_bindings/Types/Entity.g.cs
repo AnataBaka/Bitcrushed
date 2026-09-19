@@ -31,22 +31,36 @@ namespace SpacetimeDB.Types
         public int MaxMana;
         [DataMember(Name = "mana")]
         public int Mana;
+        [DataMember(Name = "base_strength")]
+        public int BaseStrength;
+        [DataMember(Name = "base_dexterity")]
+        public int BaseDexterity;
+        [DataMember(Name = "base_intelligence")]
+        public int BaseIntelligence;
+        [DataMember(Name = "base_speed")]
+        public int BaseSpeed;
         [DataMember(Name = "strength")]
         public int Strength;
-        [DataMember(Name = "damage")]
-        public int Damage;
+        [DataMember(Name = "dexterity")]
+        public int Dexterity;
+        [DataMember(Name = "intelligence")]
+        public int Intelligence;
         [DataMember(Name = "speed")]
         public int Speed;
+        [DataMember(Name = "atk")]
+        public int Atk;
+        [DataMember(Name = "defense")]
+        public int Defense;
+        [DataMember(Name = "strength_buff")]
+        public int StrengthBuff;
+        [DataMember(Name = "next_turn_strength_bonus")]
+        public int NextTurnStrengthBonus;
+        [DataMember(Name = "go_first_next_round")]
+        public bool GoFirstNextRound;
         [DataMember(Name = "alive")]
         public bool Alive;
-        [DataMember(Name = "potions")]
-        public int Potions;
-        [DataMember(Name = "skill_name")]
-        public string SkillName;
-        [DataMember(Name = "skill_atk")]
-        public int SkillAtk;
-        [DataMember(Name = "skill_mana_cost")]
-        public int SkillManaCost;
+        [DataMember(Name = "basic_attack_name")]
+        public string BasicAttackName;
 
         public Entity(
             ulong EntityId,
@@ -58,14 +72,21 @@ namespace SpacetimeDB.Types
             int Hp,
             int MaxMana,
             int Mana,
+            int BaseStrength,
+            int BaseDexterity,
+            int BaseIntelligence,
+            int BaseSpeed,
             int Strength,
-            int Damage,
+            int Dexterity,
+            int Intelligence,
             int Speed,
+            int Atk,
+            int Defense,
+            int StrengthBuff,
+            int NextTurnStrengthBonus,
+            bool GoFirstNextRound,
             bool Alive,
-            int Potions,
-            string SkillName,
-            int SkillAtk,
-            int SkillManaCost
+            string BasicAttackName
         )
         {
             this.EntityId = EntityId;
@@ -77,21 +98,28 @@ namespace SpacetimeDB.Types
             this.Hp = Hp;
             this.MaxMana = MaxMana;
             this.Mana = Mana;
+            this.BaseStrength = BaseStrength;
+            this.BaseDexterity = BaseDexterity;
+            this.BaseIntelligence = BaseIntelligence;
+            this.BaseSpeed = BaseSpeed;
             this.Strength = Strength;
-            this.Damage = Damage;
+            this.Dexterity = Dexterity;
+            this.Intelligence = Intelligence;
             this.Speed = Speed;
+            this.Atk = Atk;
+            this.Defense = Defense;
+            this.StrengthBuff = StrengthBuff;
+            this.NextTurnStrengthBonus = NextTurnStrengthBonus;
+            this.GoFirstNextRound = GoFirstNextRound;
             this.Alive = Alive;
-            this.Potions = Potions;
-            this.SkillName = SkillName;
-            this.SkillAtk = SkillAtk;
-            this.SkillManaCost = SkillManaCost;
+            this.BasicAttackName = BasicAttackName;
         }
 
         public Entity()
         {
             this.Name = "";
             this.ClassName = "";
-            this.SkillName = "";
+            this.BasicAttackName = "";
         }
     }
 }

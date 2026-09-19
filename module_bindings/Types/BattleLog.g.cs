@@ -19,6 +19,16 @@ namespace SpacetimeDB.Types
         public uint Round;
         [DataMember(Name = "message")]
         public string Message;
+        [DataMember(Name = "kind")]
+        public LogKind Kind;
+        [DataMember(Name = "actor_entity_id")]
+        public ulong ActorEntityId;
+        [DataMember(Name = "target_entity_id")]
+        public ulong TargetEntityId;
+        [DataMember(Name = "damage")]
+        public int Damage;
+        [DataMember(Name = "healing")]
+        public int Healing;
         [DataMember(Name = "created_at")]
         public SpacetimeDB.Timestamp CreatedAt;
 
@@ -26,12 +36,22 @@ namespace SpacetimeDB.Types
             ulong Id,
             uint Round,
             string Message,
+            LogKind Kind,
+            ulong ActorEntityId,
+            ulong TargetEntityId,
+            int Damage,
+            int Healing,
             SpacetimeDB.Timestamp CreatedAt
         )
         {
             this.Id = Id;
             this.Round = Round;
             this.Message = Message;
+            this.Kind = Kind;
+            this.ActorEntityId = ActorEntityId;
+            this.TargetEntityId = TargetEntityId;
+            this.Damage = Damage;
+            this.Healing = Healing;
             this.CreatedAt = CreatedAt;
         }
 

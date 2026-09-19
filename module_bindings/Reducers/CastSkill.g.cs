@@ -12,17 +12,17 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UseItemHandler(ReducerEventContext ctx, ulong playerItemId);
-        public event UseItemHandler? OnUseItem;
+        public delegate void CastSkillHandler(ReducerEventContext ctx, uint skillDefId, ulong targetEntityId);
+        public event CastSkillHandler? OnCastSkill;
 
-        public void UseItem(ulong playerItemId)
+        public void CastSkill(uint skillDefId, ulong targetEntityId)
         {
-            conn.InternalCallReducer(new Reducer.UseItem(playerItemId));
+            conn.InternalCallReducer(new Reducer.CastSkill(skillDefId, targetEntityId));
         }
 
-        public bool InvokeUseItem(ReducerEventContext ctx, Reducer.UseItem args)
+        public bool InvokeCastSkill(ReducerEventContext ctx, Reducer.CastSkill args)
         {
-            if (OnUseItem == null)
+            if (OnCastSkill == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -34,9 +34,10 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
-            OnUseItem(
+            OnCastSkill(
                 ctx,
-                args.PlayerItemId
+                args.SkillDefId,
+                args.TargetEntityId
             );
             return true;
         }
@@ -46,21 +47,27 @@ namespace SpacetimeDB.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class UseItem : Reducer, IReducerArgs
+        public sealed partial class CastSkill : Reducer, IReducerArgs
         {
-            [DataMember(Name = "player_item_id")]
-            public ulong PlayerItemId;
+            [DataMember(Name = "skill_def_id")]
+            public uint SkillDefId;
+            [DataMember(Name = "target_entity_id")]
+            public ulong TargetEntityId;
 
-            public UseItem(ulong PlayerItemId)
+            public CastSkill(
+                uint SkillDefId,
+                ulong TargetEntityId
+            )
             {
-                this.PlayerItemId = PlayerItemId;
+                this.SkillDefId = SkillDefId;
+                this.TargetEntityId = TargetEntityId;
             }
 
-            public UseItem()
+            public CastSkill()
             {
             }
 
-            string IReducerArgs.ReducerName => "use_item";
+            string IReducerArgs.ReducerName => "cast_skill";
         }
     }
 }
