@@ -46,9 +46,7 @@ public class StatPopupView : MonoBehaviour
     Text _levelText;
     Text _xpText;
     Text _weaponText;
-    Text _helmetText;
-    Text _chestText;
-    Text _leggingsText;
+    Text _amuletText;
     GameObject _playerExtras;
 
     ulong _entityId;
@@ -138,7 +136,7 @@ public class StatPopupView : MonoBehaviour
         view._dexterityText = MakeStatRow(body, "Dexterity", StatType.Dexterity, out view._dexterityPlus);
 
         var extras = UiFactory.NewRect(body, "PlayerExtras");
-        extras.gameObject.AddComponent<LayoutElement>().preferredHeight = RowHeight * 7f;
+        extras.gameObject.AddComponent<LayoutElement>().preferredHeight = RowHeight * 5f;
         var extrasLayout = extras.gameObject.AddComponent<VerticalLayoutGroup>();
         extrasLayout.spacing = 3f;
         extrasLayout.childAlignment = TextAnchor.UpperLeft;
@@ -151,9 +149,7 @@ public class StatPopupView : MonoBehaviour
         view._levelText = MakeValueRow(extras, "Level");
         view._xpText = MakeValueRow(extras, "EXP");
         view._weaponText = MakeValueRow(extras, "Weapon");
-        view._helmetText = MakeValueRow(extras, "Helmet");
-        view._chestText = MakeValueRow(extras, "Chest");
-        view._leggingsText = MakeValueRow(extras, "Legs");
+        view._amuletText = MakeValueRow(extras, "Amulet");
 
         view._playerExtras.SetActive(false);
         view.gameObject.SetActive(false);
@@ -384,10 +380,8 @@ public class StatPopupView : MonoBehaviour
         _levelText.text = occupant.CharacterLevel.ToString();
         _xpText.text = $"{occupant.Xp}/{need}";
         _weaponText.text = GameManager.EquippedName(occupant.Identity, EquipSlot.Weapon);
-        _helmetText.text = GameManager.EquippedName(occupant.Identity, EquipSlot.Helmet);
-        _chestText.text = GameManager.EquippedName(occupant.Identity, EquipSlot.Chestplate);
-        _leggingsText.text = GameManager.EquippedName(occupant.Identity, EquipSlot.Leggings);
-        _root.sizeDelta = new Vector2(Width, 414f);
+        _amuletText.text = GameManager.EquippedName(occupant.Identity, EquipSlot.Amulet);
+        _root.sizeDelta = new Vector2(Width, 364f);
         Place(_screenPoint);
     }
 
