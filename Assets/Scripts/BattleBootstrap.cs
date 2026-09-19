@@ -8,7 +8,7 @@ using UnityEngine.UI;
 public class BattleBootstrap : MonoBehaviour
 {
     [SerializeField]
-    string serverUrl = "https://maincloud.spacetimedb.com";
+    string serverUrl = "http://127.0.0.1:3000";
 
     [SerializeField]
     string databaseName = "hophacks-party-vp2";
