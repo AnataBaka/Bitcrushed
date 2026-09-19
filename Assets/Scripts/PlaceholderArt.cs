@@ -51,6 +51,45 @@ public static class PlaceholderArt
 
     public static Sprite Solid(Color color) => Shape(ShapeKind.Rect, color, 8, 8);
 
+    /// Full-screen backdrop tint. Generated so the project still needs no art files.
+    public static Sprite VerticalGradient(Color top, Color bottom, int height = 256)
+    {
+        var key = $"grad:{ColorUtility.ToHtmlStringRGBA(top)}:{ColorUtility.ToHtmlStringRGBA(bottom)}:{height}";
+        if (Cache.TryGetValue(key, out var cached))
+        {
+            return cached;
+        }
+
+        var texture = new Texture2D(4, height, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp,
+        };
+
+        var pixels = new Color32[4 * height];
+        for (var y = 0; y < height; y++)
+        {
+            var t = height <= 1 ? 0f : (float)y / (height - 1);
+            var color = (Color32)Color.Lerp(bottom, top, t);
+            pixels[y * 4] = color;
+            pixels[y * 4 + 1] = color;
+            pixels[y * 4 + 2] = color;
+            pixels[y * 4 + 3] = color;
+        }
+
+        texture.SetPixels32(pixels);
+        texture.Apply();
+
+        var sprite = Sprite.Create(
+            texture,
+            new Rect(0, 0, 4, height),
+            new Vector2(0.5f, 0.5f),
+            100f
+        );
+        Cache[key] = sprite;
+        return sprite;
+    }
+
     public static Sprite Shape(ShapeKind kind, Color color, int width = 128, int height = 128)
     {
         var key = $"{kind}:{ColorUtility.ToHtmlStringRGBA(color)}:{width}x{height}";
