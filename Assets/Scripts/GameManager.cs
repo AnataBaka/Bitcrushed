@@ -12,10 +12,10 @@ public class GameManager : MonoBehaviour
     public const uint SessionId = 1;
 
     [SerializeField]
-    string serverUrl = "https://maincloud.spacetimedb.com";
+    string serverUrl = "http://127.0.0.1:3000";
 
     [SerializeField]
-    string databaseName = "hophacks-party-vp";
+    string databaseName = "hophacks-party";
 
     // Tokens are namespaced per server+database so switching between the local
     // server and Maincloud never reuses a token signed by the wrong key (which
