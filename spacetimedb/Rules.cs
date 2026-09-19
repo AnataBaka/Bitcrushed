@@ -16,6 +16,18 @@ public static partial class Module
     public const uint DebugStartStage = 1;
     public const int StageScalePercent = 8;
 
+    public const int BossHpMultiplier = 5;
+    public const int BossDamageMultiplierBps = 13000;
+    public const uint BossExpMultiplier = 5;
+    /// Flame Sweep on every Nth boss turn (turns 3, 6, 9, ...).
+    public const int FlameSweepInterval = 3;
+    public const int FlameSweepBurnStack = 3;
+    public const int FlameSweepBurnCount = 2;
+    public const string BossName = "Magma Colossus";
+    public const string BossKind = "MagmaColossus";
+    public const string BossBasicAttackName = "Magma Smash";
+    public const string FlameSweepName = "Flame Sweep";
+
     public const int BagCapacity = 12;
     public const int InventoryCapacity = 9;
     public const uint InventoryNone = 255;

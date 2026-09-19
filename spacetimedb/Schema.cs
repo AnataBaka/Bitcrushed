@@ -107,6 +107,7 @@ public static partial class Module
         Focus,
         Equip,
         Defeat,
+        Aoe,
     }
 
     // ------------------------------------------------------------------ tables
@@ -136,6 +137,8 @@ public static partial class Module
         public WorldBiome CurrentBiome;
         /// Biome of the next battle. Clients read this for the stage-cleared "Next:" line.
         public WorldBiome NextBiome;
+        [Default(false)]
+        public bool IsBossStage;
     }
 
     /// One row per biome: display name, log phrasing, and backdrop colors.

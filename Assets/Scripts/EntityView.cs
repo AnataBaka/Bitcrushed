@@ -23,6 +23,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     Text _readyBanner;
     Text _statusText;
     Text _burnTag;
+    Text _bossTag;
     Button _button;
     RectTransform _manaRow;
 
@@ -170,6 +171,22 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         view._burnTag.rectTransform.anchoredPosition = new Vector2(0f, -16f);
         view._burnTag.gameObject.SetActive(false);
 
+        view._bossTag = UiFactory.Label(
+            card.transform,
+            "BossTag",
+            "BOSS",
+            16,
+            TextAnchor.MiddleCenter,
+            new Color(1f, 0.55f, 0.18f, 1f)
+        );
+        view._bossTag.fontStyle = FontStyle.Bold;
+        view._bossTag.rectTransform.anchorMin = new Vector2(0.5f, 1f);
+        view._bossTag.rectTransform.anchorMax = new Vector2(0.5f, 1f);
+        view._bossTag.rectTransform.pivot = new Vector2(0.5f, 0f);
+        view._bossTag.rectTransform.sizeDelta = new Vector2(80f, 20f);
+        view._bossTag.rectTransform.anchoredPosition = new Vector2(0f, 2f);
+        view._bossTag.gameObject.SetActive(false);
+
         return view;
     }
 
@@ -266,7 +283,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         var color = isEnemy
             ? PlaceholderArt.EnemyVisual(entity.ClassName).Color
             : PlaceholderArt.ClassColor(entity.ClassName);
-        if (isEnemy)
+        if (isEnemy && !entity.IsBoss)
         {
             color *= new Color(
                 Mathf.Clamp01(entity.TintR / 255f),
@@ -327,6 +344,11 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             {
                 _burnTag.text = entity.BurnStack > 1 ? $"BURN x{entity.BurnStack}" : "BURN";
             }
+        }
+
+        if (_bossTag != null)
+        {
+            _bossTag.gameObject.SetActive(entity.IsBoss);
         }
     }
 

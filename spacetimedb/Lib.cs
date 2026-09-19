@@ -26,6 +26,7 @@ public static partial class Module
                 UpcomingRestStop = false,
                 CurrentBiome = WorldBiome.Plains,
                 NextBiome = WorldBiome.Plains,
+                IsBossStage = false,
             }
         );
 
@@ -373,6 +374,7 @@ public static partial class Module
                 AttackRedirectEntityId = 0,
                 CurrentBiome = WorldBiome.Plains,
                 NextBiome = WorldBiome.Plains,
+                IsBossStage = false,
             }
         );
         AddLog(ctx, "Stage reset. Waiting for players.");
@@ -758,6 +760,12 @@ public static partial class Module
             return;
         }
 
+        if (enemy.IsBoss)
+        {
+            TakeBossTurn(ctx, enemy, targets);
+            return;
+        }
+
         var skill = PickEnemySkill(ctx, enemy);
         if (skill is SkillDef chosen)
         {
@@ -802,6 +810,70 @@ public static partial class Module
 
         affordable.Sort((a, b) => a.Id.CompareTo(b.Id));
         return affordable[ctx.Rng.Next(0, affordable.Count)];
+    }
+
+    /// Cooldown skills only. The boss never Focuses, even with leftover mana.
+    static void TakeBossTurn(ReducerContext ctx, Entity enemy, List<Entity> livingPlayers)
+    {
+        var cooldown = Math.Max(0, enemy.SkillCooldown);
+        if (cooldown > 0)
+        {
+            cooldown--;
+        }
+
+        var sweep = cooldown == 0;
+        if (sweep)
+        {
+            cooldown = FlameSweepInterval;
+        }
+
+        ctx.Db.Entity.EntityId.Update(
+            (ctx.Db.Entity.EntityId.Find(enemy.EntityId) ?? enemy) with { SkillCooldown = cooldown }
+        );
+        enemy = ctx.Db.Entity.EntityId.Find(enemy.EntityId) ?? enemy;
+
+        if (sweep)
+        {
+            AddLog(
+                ctx,
+                $"{enemy.Name} uses {FlameSweepName}!",
+                LogKind.Aoe,
+                enemy.EntityId,
+                0
+            );
+            foreach (var target in livingPlayers)
+            {
+                if (ctx.Db.Entity.EntityId.Find(target.EntityId) is not Entity fresh || !fresh.Alive)
+                {
+                    continue;
+                }
+
+                var current = ctx.Db.Entity.EntityId.Find(enemy.EntityId) ?? enemy;
+                var hit = ResolveHit(ctx, current, fresh, FlameSweepName, 0, isSkill: true);
+                if (
+                    hit.Connected
+                    && ctx.Db.Entity.EntityId.Find(fresh.EntityId) is Entity burned
+                    && burned.Alive
+                )
+                {
+                    ApplyBurn(ctx, burned.EntityId, FlameSweepBurnStack, FlameSweepBurnCount);
+                }
+            }
+        }
+        else
+        {
+            var picked = RedirectedOrChosenTargets(ctx, enemy, livingPlayers, 1);
+            foreach (var target in picked)
+            {
+                if (ctx.Db.Entity.EntityId.Find(target.EntityId) is Entity fresh && fresh.Alive)
+                {
+                    var current = ctx.Db.Entity.EntityId.Find(enemy.EntityId) ?? enemy;
+                    ResolveHit(ctx, current, fresh, enemy.BasicAttackName, 0, isSkill: false);
+                }
+            }
+        }
+
+        AdvanceTurn(ctx);
     }
 
     static List<Entity> RedirectedOrChosenTargets(
@@ -911,9 +983,17 @@ public static partial class Module
         ClearReadyFlags(ctx);
         ClearEnemySide(ctx);
         PreparePlayersForStage(ctx);
-        SpawnEnemies(ctx);
-
         var session = RequireSession(ctx);
+        if (session.IsBossStage)
+        {
+            SpawnBoss(ctx);
+        }
+        else
+        {
+            SpawnEnemies(ctx);
+        }
+
+        session = RequireSession(ctx);
         ctx.Db.GameSession.Id.Update(
             session with
             {
@@ -925,8 +1005,16 @@ public static partial class Module
             }
         );
 
-        var spawned = LivingMembers(ctx, Team.Enemies).Count;
-        AddLog(ctx, $"{spawned} enemies appeared!");
+        session = RequireSession(ctx);
+        if (session.IsBossStage)
+        {
+            AddLog(ctx, $"{BossName} appears!");
+        }
+        else
+        {
+            var spawned = LivingMembers(ctx, Team.Enemies).Count;
+            AddLog(ctx, $"{spawned} enemies appeared!");
+        }
         BuildTurnOrder(ctx);
 
         if (EndBattleIfOver(ctx))
@@ -980,6 +1068,7 @@ public static partial class Module
                 StageNumber = stage,
                 CurrentBiome = biome,
                 NextBiome = BiomeOf(stage + 1),
+                IsBossStage = IsBossStageNumber(stage),
             }
         );
     }
@@ -1304,6 +1393,63 @@ public static partial class Module
 
             GrantSkillsByName(ctx, enemy.EntityId, new[] { arch.SkillName });
         }
+    }
+
+    static void SpawnBoss(ReducerContext ctx)
+    {
+        var floor = CombatFloor(ctx);
+        var players = PartyEncounterSize(ctx);
+        var playerLevel = PartyCombatLevel(ctx);
+        var maxHp = ClampStat(
+            (double)EnemyHpForEncounter(floor, playerLevel, players, (int)MaxEnemySlots)
+                * BossHpMultiplier,
+            1
+        );
+        var atk = ClampStat(
+            ScaleByBps(EnemyAtkForEncounter(floor, playerLevel), BossDamageMultiplierBps),
+            1
+        );
+        var strength = ClampStat(
+            ScaleByBps(EnemyStrengthForEncounter(floor, playerLevel), BossDamageMultiplierBps),
+            1
+        );
+
+        ctx.Db.Entity.Insert(
+            new Entity
+            {
+                EntityId = 0,
+                Faction = Team.Enemies,
+                Slot = 0,
+                Name = BossName,
+                ClassName = BossKind,
+                MaxHp = maxHp,
+                Hp = maxHp,
+                MaxMana = 1,
+                Mana = 1,
+                BaseStrength = strength,
+                BaseDexterity = 2,
+                BaseIntelligence = 1,
+                BaseSpeed = 4,
+                Strength = strength,
+                Dexterity = 2,
+                Intelligence = 1,
+                Speed = 4,
+                Atk = atk,
+                Defense = 0,
+                StrengthBuff = 0,
+                NextTurnStrengthBonus = 0,
+                GoFirstNextRound = false,
+                Alive = true,
+                BasicAttackName = BossBasicAttackName,
+                MagicBulletStage = 1,
+                VariantPrefix = "",
+                TintR = 255,
+                TintG = 255,
+                TintB = 255,
+                IsBoss = true,
+                SkillCooldown = FlameSweepInterval,
+            }
+        );
     }
 
     static string VariantDisplayName(string prefix, string baseName)
@@ -1905,7 +2051,8 @@ public static partial class Module
         if (target.Faction == Team.Enemies)
         {
             var session = RequireSession(ctx);
-            GrantKillXp(ctx, session.StageNumber < 1 ? 1u : session.StageNumber);
+            var stage = session.StageNumber < 1 ? 1u : session.StageNumber;
+            GrantKillXp(ctx, stage, target.IsBoss);
         }
 
         RefreshTurnDisplay(ctx);
@@ -2020,9 +2167,13 @@ public static partial class Module
     }
 
     /// Every living party member receives kill EXP. Dead players sit this one out.
-    static void GrantKillXp(ReducerContext ctx, uint stage)
+    static void GrantKillXp(ReducerContext ctx, uint stage, bool bossKill)
     {
         var xp = KillXp(stage);
+        if (bossKill)
+        {
+            xp = SaturatingMul(xp, BossExpMultiplier);
+        }
         foreach (var player in ctx.Db.Player.Iter().ToList())
         {
             if (ctx.Db.Entity.EntityId.Find(player.EntityId) is not Entity entity || !entity.Alive)

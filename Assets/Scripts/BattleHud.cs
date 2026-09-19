@@ -28,6 +28,8 @@ public class BattleHud : MonoBehaviour
 
     static readonly Vector2 PlayerCardSize = new Vector2(250f, 190f);
     static readonly Vector2 EnemyCardSize = new Vector2(220f, 155f);
+    static readonly Vector2 BossCardSize = new Vector2(320f, 250f);
+    static readonly Vector2 BossSlot = new Vector2(1540f, 210f);
 
     RectTransform _field;
     BattleLogView _log;
@@ -52,6 +54,7 @@ public class BattleHud : MonoBehaviour
     /// Hits waiting to be animated, oldest first.
     readonly Queue<BattleLog> _pendingHits = new Queue<BattleLog>();
     bool _animating;
+    ulong _aoeLungeActor;
 
     bool _targeting;
 
@@ -220,6 +223,10 @@ public class BattleHud : MonoBehaviour
             if (session != null && session.StageNumber > 0 && session.Phase != BattlePhase.Waiting)
             {
                 var stageText = $"Stage {session.StageNumber}";
+                if (session.IsBossStage && session.Phase == BattlePhase.InBattle)
+                {
+                    stageText = $"{stageText} - BOSS";
+                }
                 _stageLabel.text =
                     session.Phase == BattlePhase.RestStop
                         ? $"{stageText}  —  Rest Stop"
@@ -341,7 +348,8 @@ public class BattleHud : MonoBehaviour
 
             if (!hasView)
             {
-                view = EntityView.Create(_field, entity.Name, cardSize, showMana);
+                var size = entity.IsBoss ? BossCardSize : cardSize;
+                view = EntityView.Create(_field, entity.Name, size, showMana);
                 _views[entity.EntityId] = view;
             }
 
@@ -351,7 +359,7 @@ public class BattleHud : MonoBehaviour
             }
 
             var index = (int)Mathf.Min(entity.Slot, slots.Length - 1);
-            view.SetPosition(slots[index]);
+            view.SetPosition(entity.IsBoss ? BossSlot : slots[index]);
 
             var isLocal = me != null && me.EntityId == entity.EntityId;
             var pending = GameManager.Conn?.Db.SkillDef.Id.Find(_pendingSkillId);
@@ -593,12 +601,17 @@ public class BattleHud : MonoBehaviour
             return;
         }
 
-        if (row.Kind != LogKind.Attack)
+        if (row.Kind != LogKind.Attack && row.Kind != LogKind.Aoe)
         {
             return;
         }
 
-        if (row.ActorEntityId == 0 || row.TargetEntityId == 0)
+        if (row.Kind == LogKind.Attack && (row.ActorEntityId == 0 || row.TargetEntityId == 0))
+        {
+            return;
+        }
+
+        if (row.Kind == LogKind.Aoe && row.ActorEntityId == 0)
         {
             return;
         }
@@ -615,6 +628,26 @@ public class BattleHud : MonoBehaviour
     {
         _animating = true;
 
+        if (row.Kind == LogKind.Aoe)
+        {
+            if (_views.TryGetValue(row.ActorEntityId, out var aoeActor) && aoeActor != null)
+            {
+                var midpoint = PartyMidpoint(aoeActor.Home);
+                aoeActor.PlayLunge(midpoint);
+                _aoeLungeActor = row.ActorEntityId;
+                yield return new WaitForSeconds(EntityView.LungeSeconds);
+            }
+
+            _animating = false;
+            if (_pendingHits.Count == 0)
+            {
+                _aoeLungeActor = 0;
+                Refresh();
+            }
+
+            yield break;
+        }
+
         if (
             _views.TryGetValue(row.ActorEntityId, out var actor)
             && _views.TryGetValue(row.TargetEntityId, out var target)
@@ -622,12 +655,23 @@ public class BattleHud : MonoBehaviour
             && target != null
         )
         {
-            actor.PlayLunge(target.Home);
-            yield return new WaitForSeconds(0.14f);
-            target.PlayHit();
-            // Waiting on a fixed duration rather than the lunge coroutine keeps
-            // the queue moving even if the card is destroyed mid-strike.
-            yield return new WaitForSeconds(EntityView.LungeSeconds - 0.14f);
+            var skipLunge = _aoeLungeActor != 0 && row.ActorEntityId == _aoeLungeActor;
+            if (!skipLunge)
+            {
+                _aoeLungeActor = 0;
+                actor.PlayLunge(target.Home);
+                yield return new WaitForSeconds(0.14f);
+            }
+
+            var targetEntity = GameManager.FindEntity(row.TargetEntityId);
+            if (targetEntity != null)
+            {
+                target.PlayHit();
+            }
+
+            yield return new WaitForSeconds(
+                skipLunge ? 0.16f : EntityView.LungeSeconds - 0.14f
+            );
         }
 
         _animating = false;
@@ -635,7 +679,32 @@ public class BattleHud : MonoBehaviour
         // A defeated combatant only leaves once its last hit has played out.
         if (_pendingHits.Count == 0)
         {
+            _aoeLungeActor = 0;
             Refresh();
         }
+    }
+
+    Vector2 PartyMidpoint(Vector2 fallback)
+    {
+        var sum = Vector2.zero;
+        var count = 0;
+        foreach (var pair in _views)
+        {
+            var entity = GameManager.FindEntity(pair.Key);
+            if (
+                entity == null
+                || !entity.Alive
+                || entity.Faction != Team.Players
+                || pair.Value == null
+            )
+            {
+                continue;
+            }
+
+            sum += pair.Value.Home;
+            count++;
+        }
+
+        return count == 0 ? fallback : sum / count;
     }
 }

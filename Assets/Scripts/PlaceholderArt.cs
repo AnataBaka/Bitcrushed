@@ -344,6 +344,8 @@ public static class PlaceholderArt
                 return (ShapeKind.Triangle, new Color(0.62f, 0.62f, 0.66f));
             case "Skeleton":
                 return (ShapeKind.Circle, new Color(0.86f, 0.82f, 0.70f));
+            case "MagmaColossus":
+                return (ShapeKind.Diamond, new Color(0.95f, 0.32f, 0.06f));
             default:
                 return (ShapeKind.Mound, new Color(0.50f, 0.34f, 0.26f));
         }
