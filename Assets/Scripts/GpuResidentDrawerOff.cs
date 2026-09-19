@@ -24,7 +24,7 @@ public static class GpuResidentDrawerOff
     }
 }
 
-static class BurstGpuDrivenLogFilter
+public static class BurstGpuDrivenLogFilter
 {
     static bool _installed;
 
