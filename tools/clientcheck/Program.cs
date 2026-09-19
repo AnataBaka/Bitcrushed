@@ -49,9 +49,21 @@ namespace ClientCheck
             var admin = Clients[0];
 
             Section("reset and join");
+
+            // The stage may already look empty, so waiting on the session row
+            // cannot tell us the reset landed. Reducer calls are only ordered
+            // within one connection, so joining before that would let the reset
+            // wipe out another client's brand new character. The reset's own log
+            // line is the acknowledgement to wait for.
+            // Row callbacks fire table by table as a transaction is applied, so
+            // the log line can arrive a moment before the session row it shipped
+            // with. Both conditions together mean the reset is fully visible.
             admin.Conn.Reducers.ResetStage();
-            WaitUntil(() => Session(admin).Phase == BattlePhase.Waiting && Session(admin).PlayerCount == 0,
-                10, "the stage to reset");
+            WaitUntil(
+                () => admin.LiveLog.Any(r => r.Message.StartsWith("Stage reset"))
+                    && Session(admin).PlayerCount == 0,
+                10,
+                "the stage reset to be acknowledged");
 
             foreach (var client in Clients)
             {
@@ -206,6 +218,11 @@ namespace ClientCheck
                 {
                     action = "focus";
                     acting.Conn.Reducers.Focus();
+                }
+                else if (single != null && actions["skill"] == 0)
+                {
+                    action = "skill";
+                    acting.Conn.Reducers.CastSkill(single.Id, target.EntityId);
                 }
                 else if (potion != null && (me.Hp * 2 <= me.MaxHp || actions["potion"] == 0) && me.Hp < me.MaxHp)
                 {
