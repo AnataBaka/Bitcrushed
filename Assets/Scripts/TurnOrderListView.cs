@@ -25,6 +25,7 @@ public class TurnOrderListView : MonoBehaviour
     uint _round;
     uint _stage;
     bool _wasBattle;
+    bool _pending;
 
     class Row
     {
@@ -34,6 +35,7 @@ public class TurnOrderListView : MonoBehaviour
         public bool Enemy;
         public int Slot;
         public bool Leaving;
+        public bool Crossing;
         public float AnimT = 1f;
         public float FromY;
         public float ToY;
@@ -65,6 +67,27 @@ public class TurnOrderListView : MonoBehaviour
 
     public void Render(GameSession session)
     {
+        _pending = true;
+        if (session == null || session.Phase != BattlePhase.InBattle)
+        {
+            ApplyQueued();
+        }
+    }
+
+    void LateUpdate()
+    {
+        if (_pending)
+        {
+            ApplyQueued();
+        }
+
+        TickRows();
+    }
+
+    void ApplyQueued()
+    {
+        _pending = false;
+        var session = GameManager.Session();
         var inBattle = session != null && session.Phase == BattlePhase.InBattle;
         if (!inBattle)
         {
@@ -139,6 +162,7 @@ public class TurnOrderListView : MonoBehaviour
             row.ToY = YForSlot(slot);
             row.FromY = row.ToY;
             row.AnimT = 1f;
+            row.Crossing = false;
             row.Rt.anchoredPosition = new Vector2(6f, row.ToY);
         }
         else if (row.Leaving)
@@ -154,9 +178,27 @@ public class TurnOrderListView : MonoBehaviour
     void MoveTo(Row row, int slot, bool snap)
     {
         var target = YForSlot(slot);
-        row.Slot = slot;
-        if (snap || Mathf.Abs(target - row.ToY) < 0.5f && row.AnimT >= 1f)
+        var wrapping = !snap && slot > row.Slot && target < row.ToY - (RowHeight * 0.5f);
+        if (snap)
         {
+            row.Crossing = false;
+            row.Slot = slot;
+            row.FromY = target;
+            row.ToY = target;
+            row.AnimT = 1f;
+            row.Rt.anchoredPosition = new Vector2(6f, target);
+            if (row.Group != null)
+            {
+                row.Group.alpha = row.Fade;
+            }
+
+            return;
+        }
+
+        row.Slot = slot;
+        if (Mathf.Abs(target - row.ToY) < 0.5f && row.AnimT >= 1f)
+        {
+            row.Crossing = false;
             row.FromY = target;
             row.ToY = target;
             row.AnimT = 1f;
@@ -169,14 +211,17 @@ public class TurnOrderListView : MonoBehaviour
             return;
         }
 
-        var current = Vector2.Lerp(
-            new Vector2(6f, row.FromY),
-            new Vector2(6f, row.ToY),
-            Ease(row.AnimT)
-        );
-        row.FromY = current.y;
+        var currentY = row.AnimT >= 1f
+            ? row.ToY
+            : Mathf.Lerp(row.FromY, row.ToY, Ease(row.AnimT));
+        row.FromY = currentY;
         row.ToY = target;
         row.AnimT = 0f;
+        if (wrapping)
+        {
+            row.Crossing = true;
+            row.Rt.SetAsLastSibling();
+        }
     }
 
     void BeginFade(ulong entityId)
@@ -213,9 +258,10 @@ public class TurnOrderListView : MonoBehaviour
         _rows.Clear();
         _round = 0;
         _stage = 0;
+        _pending = false;
     }
 
-    void Update()
+    void TickRows()
     {
         _scratch.Clear();
         foreach (var pair in _rows)
@@ -244,6 +290,16 @@ public class TurnOrderListView : MonoBehaviour
                 row.AnimT = Mathf.Min(1f, row.AnimT + (Time.deltaTime / ShiftSeconds));
                 var y = Mathf.Lerp(row.FromY, row.ToY, Ease(row.AnimT));
                 row.Rt.anchoredPosition = new Vector2(6f, y);
+                if (row.Crossing)
+                {
+                    var dip = 1f - (Mathf.Sin(row.AnimT * Mathf.PI) * 0.58f);
+                    row.Group.alpha = row.Fade * dip;
+                    if (row.AnimT >= 1f)
+                    {
+                        row.Crossing = false;
+                        row.Group.alpha = row.Fade;
+                    }
+                }
             }
         }
 
