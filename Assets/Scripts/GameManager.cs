@@ -17,7 +17,7 @@ public class GameManager : MonoBehaviour
     public static event Action PartyChanged;
 
     bool _joining;
-    bool _starting;
+    bool _resetThisPlay;
 
     public string Status { get; private set; } = "Connecting...";
     public bool SubscriptionReady { get; private set; }
@@ -48,6 +48,10 @@ public class GameManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
         TryAddNetworkManager(gameObject);
+        if (GetComponent<CombatView>() == null)
+        {
+            gameObject.AddComponent<CombatView>();
+        }
         PartyChanged += TryBeginTestFight;
     }
 
@@ -152,7 +156,6 @@ public class GameManager : MonoBehaviour
     void HandleReducerError(ReducerEventContext _, Exception ex)
     {
         _joining = false;
-        _starting = false;
         Status = ex.Message;
         Debug.LogError(ex);
         PartyChanged?.Invoke();
@@ -166,16 +169,9 @@ public class GameManager : MonoBehaviour
         }
 
         var local = GetLocalPlayer();
-        var session = GetSession();
         if (local != null)
         {
             _joining = false;
-        }
-
-        if (session != null && session.Phase == GamePhase.Combat)
-        {
-            _starting = false;
-            return;
         }
 
         if (local == null && !_joining)
@@ -185,10 +181,10 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        if (local != null && session != null && session.Phase == GamePhase.Waiting && !_starting)
+        if (local != null && !_resetThisPlay)
         {
-            _starting = true;
-            StartRun();
+            _resetThisPlay = true;
+            ResetEncounter();
         }
     }
 
@@ -243,6 +239,18 @@ public class GameManager : MonoBehaviour
 
         Conn.Reducers.StartRun();
         Status = "Starting tower run...";
+    }
+
+    public void ResetEncounter()
+    {
+        if (!IsConnected())
+        {
+            Status = "Not connected.";
+            return;
+        }
+
+        Conn.Reducers.ResetEncounter();
+        Status = "Resetting test encounter...";
     }
 
     public void AdvanceFloor()
