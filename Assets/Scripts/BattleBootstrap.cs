@@ -11,7 +11,7 @@ public class BattleBootstrap : MonoBehaviour
     string serverUrl = "https://maincloud.spacetimedb.com";
 
     [SerializeField]
-    string databaseName = "hophacks-party-vp2";
+    string databaseName = "hophacks-party-vp";
 
     static bool _built;
 
@@ -117,6 +117,7 @@ public class BattleBootstrap : MonoBehaviour
         var overlay = BuildOverlay(canvas, out var overlayText, out var overlaySubtext, out var resetButton);
         var popup = StatPopupView.Create(canvas);
         var turnList = TurnOrderListView.Create(field);
+        var inventory = InventoryPopupView.Create(canvas, equipment.BagButtonRect);
         var escape = EscapeMenuView.Create(canvas, popup);
 
         var hud = gameObject.AddComponent<BattleHud>();
@@ -132,6 +133,7 @@ public class BattleBootstrap : MonoBehaviour
             connectionLabel,
             stageLabel,
             popup,
+            inventory,
             turnList,
             escape
         );

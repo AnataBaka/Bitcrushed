@@ -40,6 +40,7 @@ public class BattleHud : MonoBehaviour
     Text _connectionLabel;
     Text _stageLabel;
     StatPopupView _popup;
+    InventoryPopupView _inventory;
     TurnOrderListView _turnList;
     EscapeMenuView _escape;
 
@@ -67,6 +68,7 @@ public class BattleHud : MonoBehaviour
         Text connectionLabel,
         Text stageLabel,
         StatPopupView popup,
+        InventoryPopupView inventory,
         TurnOrderListView turnList,
         EscapeMenuView escape
     )
@@ -82,6 +84,7 @@ public class BattleHud : MonoBehaviour
         _connectionLabel = connectionLabel;
         _stageLabel = stageLabel;
         _popup = popup;
+        _inventory = inventory;
         _turnList = turnList;
         _escape = escape;
 
@@ -99,8 +102,7 @@ public class BattleHud : MonoBehaviour
         };
         _menu.OnAttackSelected = HandleAttackSelected;
 
-        _equipment.OnEquip = GameManager.EquipItem;
-        _equipment.OnUnequip = GameManager.UnequipItem;
+        _equipment.OnBagClicked = HandleBagClicked;
 
         Refresh();
     }
@@ -133,12 +135,39 @@ public class BattleHud : MonoBehaviour
 
     void HandleEscapeMenu()
     {
-        if (_escape == null || !EscapePressedThisFrame())
+        if (!EscapePressedThisFrame())
+        {
+            return;
+        }
+
+        if (_inventory != null && _inventory.HandleEscape())
+        {
+            return;
+        }
+
+        if (_escape == null)
         {
             return;
         }
 
         _escape.HandleEscape();
+    }
+
+    void HandleBagClicked(Vector2 screenPoint)
+    {
+        if (_inventory == null)
+        {
+            return;
+        }
+
+        if (_inventory.IsOpen)
+        {
+            _inventory.Close();
+            return;
+        }
+
+        _popup?.Close();
+        _inventory.Open(screenPoint);
     }
 
     void HandleTargetingCancel()
@@ -149,6 +178,11 @@ public class BattleHud : MonoBehaviour
         }
 
         if (!RightPressedThisFrame())
+        {
+            return;
+        }
+
+        if (_inventory != null && _inventory.ContainsInteractivePoint(PointerScreenPoint()))
         {
             return;
         }
@@ -200,19 +234,12 @@ public class BattleHud : MonoBehaviour
         SyncTeam(GameManager.TeamMembers(Team.Enemies), EnemySlots, EnemyCardSize, false, me);
         PruneMissing();
         _popup?.Refresh();
+        _inventory?.Refresh();
         _turnList?.Render(session);
 
         _log.SetLines(GameManager.LogLines(60));
         _menu.Render(session, me, myTurn, _targeting);
-        _equipment.Render(
-            me,
-            session != null
-                && (
-                    session.Phase == BattlePhase.Waiting
-                    || session.Phase == BattlePhase.RestStop
-                )
-                && (me == null || me.Alive)
-        );
+        _equipment.Render();
 
         var transitioning =
             session != null && session.Phase == BattlePhase.StageTransition;
@@ -228,6 +255,7 @@ public class BattleHud : MonoBehaviour
         if (finished || transitioning)
         {
             _popup?.Close();
+            _inventory?.Close();
             _overlay.SetAsLastSibling();
             _escape?.transform.SetAsLastSibling();
             if (transitioning)
@@ -441,12 +469,18 @@ public class BattleHud : MonoBehaviour
             return;
         }
 
+        _inventory?.Close();
         _popup?.Open(entityId, screenPoint);
     }
 
     void HandleInspectDismiss()
     {
         if (_escape != null && _escape.IsOpen)
+        {
+            return;
+        }
+
+        if (_inventory != null && _inventory.IsOpen)
         {
             return;
         }
