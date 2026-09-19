@@ -454,6 +454,7 @@ public static partial class Module
 
     private static void ResolvePlayerAttack(ReducerContext ctx, Player player, uint targetEnemyId)
     {
+        RequireWeapon(player);
         var enemy = RequireLivingEnemy(ctx, targetEnemyId);
         ApplyOutgoingDamage(
             ctx,
@@ -528,6 +529,7 @@ public static partial class Module
             return;
         }
 
+        RequireWeapon(player);
         foreach (var enemy in SelectEnemyTargets(ctx, targetEnemyId, skill.TargetCount))
         {
             ApplyOutgoingDamage(
@@ -589,11 +591,6 @@ public static partial class Module
         if (ctx.Db.ItemDef.Id.Find(instance.ItemDefId) is not ItemDef item || item.Kind != ItemKind.Consumable)
         {
             throw new Exception("That item cannot be used.");
-        }
-
-        if (item.Name != "Health Potion")
-        {
-            throw new Exception("Only health potions can be used right now.");
         }
 
         var heal = item.HealAmount;
@@ -1327,10 +1324,17 @@ public static partial class Module
         uint count = 0;
         foreach (var item in ctx.Db.PlayerItem.Owner.Filter(owner))
         {
-            if (item.EquippedSlot == EquipSlot.Bag)
+            if (item.EquippedSlot != EquipSlot.Bag)
             {
-                count++;
+                continue;
             }
+
+            if (ctx.Db.ItemDef.Id.Find(item.ItemDefId) is ItemDef def && def.Kind == ItemKind.Consumable)
+            {
+                continue;
+            }
+
+            count++;
         }
 
         return count;
@@ -1344,29 +1348,24 @@ public static partial class Module
         }
 
         var gear = EquippedGear(ctx, player);
+        var pips = EquippedHealthPips(ctx, owner);
         var strength = ClampStat(SaturatingAdd(player.BaseStrength, GearStat(gear, StatType.Strength)));
         var dexterity = ClampStat(SaturatingAdd(player.BaseDexterity, GearStat(gear, StatType.Dexterity)));
         var intelligence = ClampStat(SaturatingAdd(player.BaseIntelligence, GearStat(gear, StatType.Intelligence)));
         var speed = ClampStat(SaturatingAdd(player.BaseSpeed, GearStat(gear, StatType.Speed)));
         var atk = 0u;
-        var healthBonus = 0u;
         var manaBonus = 0u;
         foreach (var piece in gear)
         {
             atk = SaturatingAdd(atk, piece.AtkBonus);
-            healthBonus = SaturatingAdd(healthBonus, piece.MaxHealthBonus);
             manaBonus = SaturatingAdd(manaBonus, piece.MaxManaBonus);
         }
 
-        var maxHealth = SaturatingAdd(ClassMaxHealth(player.Class), healthBonus);
+        var maxHealth = SaturatingAdd(ClassMaxHealth(player.Class), pips);
         var maxMana = SaturatingAdd(SaturatingAdd(ClassBaseMana(player.Class), intelligence), manaBonus);
 
         var currHealth = player.CurrHealth;
-        if (maxHealth > player.MaxHealth)
-        {
-            currHealth = SaturatingAdd(currHealth, SaturatingSub(maxHealth, player.MaxHealth));
-        }
-        else if (currHealth > maxHealth)
+        if (currHealth > maxHealth)
         {
             currHealth = maxHealth;
         }
@@ -1411,6 +1410,28 @@ public static partial class Module
         if (itemDefId != 0 && ctx.Db.ItemDef.Id.Find(itemDefId) is ItemDef item)
         {
             gear.Add(item);
+        }
+    }
+
+    private static uint EquippedHealthPips(ReducerContext ctx, Identity owner)
+    {
+        uint pips = 0;
+        foreach (var item in ctx.Db.PlayerItem.Owner.Filter(owner))
+        {
+            if (item.EquippedSlot != EquipSlot.Bag && item.EquippedSlot != EquipSlot.Weapon)
+            {
+                pips = SaturatingAdd(pips, item.HealthPips);
+            }
+        }
+
+        return pips;
+    }
+
+    private static void RequireWeapon(Player player)
+    {
+        if (player.EquippedWeaponDefId == 0)
+        {
+            throw new Exception("Equip a weapon to attack.");
         }
     }
 
@@ -1568,8 +1589,6 @@ public static partial class Module
             PlayerClass.Mage,
             PlayerClass.Rogue,
         };
-        // Keep this mix in signed integer space. Timestamp is a long; mixing it
-        // with ulong makes `dotnet publish` fail with CS0019.
         var mix = ctx.Timestamp.MicrosecondsSinceUnixEpoch
             ^ ctx.Rng.Next()
             ^ ctx.Rng.Next()
@@ -1729,7 +1748,18 @@ public static partial class Module
 
     private static void GiveItem(ReducerContext ctx, Identity owner, uint itemDefId, uint quantity)
     {
-        if (BagCount(ctx, owner) >= BagCapacity)
+        if (ctx.Db.ItemDef.Id.Find(itemDefId) is not ItemDef def)
+        {
+            throw new Exception("Unknown item.");
+        }
+
+        var pips = 0u;
+        if (def.Kind == ItemKind.Armor)
+        {
+            pips = RollArmorPips(ctx.Rng, def.ArmorSlot);
+        }
+
+        if (def.Kind != ItemKind.Consumable && BagCount(ctx, owner) >= BagCapacity)
         {
             throw new Exception("Inventory is full.");
         }
@@ -1741,7 +1771,14 @@ public static partial class Module
             ItemDefId = itemDefId,
             Quantity = quantity,
             EquippedSlot = EquipSlot.Bag,
+            HealthPips = pips,
         });
+    }
+
+    private static uint RollArmorPips(Random rng, ArmorSlot slot)
+    {
+        var cap = ArmorPipCap(slot);
+        return cap == 0 ? 0 : RollInclusive(rng, ArmorPipMin, cap);
     }
 
     private static string StarterWeaponName(PlayerClass classChoice) => classChoice switch
