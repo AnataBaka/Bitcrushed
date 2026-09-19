@@ -122,6 +122,18 @@ public class ActionMenuView : MonoBehaviour
         ApplyPage();
     }
 
+    /// Returns the battle menu to Attack / Items / Focus after canceling a target pick.
+    public void ShowRoot()
+    {
+        if (_page == Page.Lobby)
+        {
+            return;
+        }
+
+        _page = Page.Root;
+        ApplyPage();
+    }
+
     void ApplyPage()
     {
         _lobby.gameObject.SetActive(_page == Page.Lobby);
@@ -130,7 +142,7 @@ public class ActionMenuView : MonoBehaviour
         _items.gameObject.SetActive(_page == Page.Items);
     }
 
-    public void Render(GameSession session, Entity me, bool myTurn, bool targeting)
+    public void Render(GameSession session, Entity me, bool myTurn, bool targeting, bool actionsLocked = false)
     {
         if (session == null)
         {
@@ -163,11 +175,15 @@ public class ActionMenuView : MonoBehaviour
                     : $"Lobby {session.PlayerCount}/{session.MaxPlayers}";
             _joinButton.gameObject.SetActive(session.Phase == BattlePhase.Waiting);
             _joinButton.interactable =
-                session.Phase == BattlePhase.Waiting
+                !actionsLocked
+                && session.Phase == BattlePhase.Waiting
                 && me == null
                 && session.PlayerCount < session.MaxPlayers;
             var localPlayer = GameManager.LocalPlayer();
-            var canReady = localPlayer != null && (session.Phase != BattlePhase.RestStop || (me != null && me.Alive));
+            var canReady =
+                !actionsLocked
+                && localPlayer != null
+                && (session.Phase != BattlePhase.RestStop || (me != null && me.Alive));
             _readyButton.interactable = canReady;
             SetReadyCaption(localPlayer != null && localPlayer.Ready);
             return;
@@ -216,7 +232,7 @@ public class ActionMenuView : MonoBehaviour
             _status.text = active == null ? "Waiting..." : $"Waiting for {active.Name}";
         }
 
-        var canAct = myTurn && !targeting;
+        var canAct = myTurn && !targeting && !actionsLocked;
         SetPageInteractable(_root, canAct);
 
         RebuildSkills(me);

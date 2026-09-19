@@ -121,6 +121,24 @@ public class BattleHud : MonoBehaviour
         }
 
         HandleInspectDismiss();
+        HandleTargetingCancel();
+    }
+
+    void HandleTargetingCancel()
+    {
+        if (!_targeting)
+        {
+            return;
+        }
+
+        if (!RightPressedThisFrame())
+        {
+            return;
+        }
+
+        ClearTargeting();
+        _menu.ShowRoot();
+        Refresh();
     }
 
     void Refresh()
@@ -420,6 +438,15 @@ public class BattleHud : MonoBehaviour
         return Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
 #else
         return Input.GetMouseButtonDown(0);
+#endif
+    }
+
+    static bool RightPressedThisFrame()
+    {
+#if ENABLE_INPUT_SYSTEM
+        return Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame;
+#else
+        return Input.GetMouseButtonDown(1);
 #endif
     }
 
