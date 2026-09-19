@@ -217,7 +217,7 @@ public static class SkillInspect
                 description = $"Once per battle, after {GameManager.FinishTheJobTurnRequirement} turns have passed. Gain 6 Enraged next turn, +6 ATK, and a battle-long stance that adds +2 skill power plus +8 more at the start of every turn. Unlocks Overthrow.";
                 return;
             case "Overthrow":
-                damage = "42 to all enemies";
+                damage = "42 + 12 Enraged to all enemies";
                 description = "Gain 12 Enraged on this Overthrow (applied now, not next turn), deal 42 to all enemies, and inflict 3 Weak and 4 Fragile on all enemies next turn. 40 MP. Requires Finish the Job stance.";
                 return;
             default:
