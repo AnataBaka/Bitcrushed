@@ -194,4 +194,109 @@ public static class SpriteFrameLoader
         sprite.name = texture.name;
         return sprite;
     }
+
+    /// Horizontally mirrors frames so left-facing sheets can look toward the
+    /// enemy line. Copies into a new readable texture.
+    public static Sprite[] MirrorX(Sprite[] frames)
+    {
+        if (frames == null || frames.Length == 0)
+        {
+            return frames;
+        }
+
+        var mirrored = new Sprite[frames.Length];
+        for (var i = 0; i < frames.Length; i++)
+        {
+            mirrored[i] = MirrorX(frames[i]);
+        }
+
+        return mirrored;
+    }
+
+    static Sprite MirrorX(Sprite sprite)
+    {
+        if (sprite == null || sprite.texture == null)
+        {
+            return sprite;
+        }
+
+        var source = CopyPixels(sprite);
+        if (source == null)
+        {
+            return sprite;
+        }
+
+        var width = source.width;
+        var height = source.height;
+        var pixels = source.GetPixels32();
+        var flipped = new Color32[pixels.Length];
+        for (var y = 0; y < height; y++)
+        {
+            var row = y * width;
+            for (var x = 0; x < width; x++)
+            {
+                flipped[row + x] = pixels[row + (width - 1 - x)];
+            }
+        }
+
+        var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+        {
+            name = sprite.name,
+            filterMode = sprite.texture.filterMode,
+            wrapMode = TextureWrapMode.Clamp,
+        };
+        texture.SetPixels32(flipped);
+        texture.Apply(false, false);
+        UnityEngine.Object.Destroy(source);
+
+        return SpriteFromTexture(texture, texture.filterMode);
+    }
+
+    static Texture2D CopyPixels(Sprite sprite)
+    {
+        var texture = sprite.texture;
+        var rect = sprite.textureRect;
+        var x = Mathf.RoundToInt(rect.x);
+        var y = Mathf.RoundToInt(rect.y);
+        var width = Mathf.RoundToInt(rect.width);
+        var height = Mathf.RoundToInt(rect.height);
+        if (width <= 0 || height <= 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            var copy = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                filterMode = texture.filterMode,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+            copy.SetPixels(texture.GetPixels(x, y, width, height));
+            copy.Apply(false, false);
+            return copy;
+        }
+        catch (UnityException)
+        {
+            var rt = RenderTexture.GetTemporary(texture.width, texture.height, 0, RenderTextureFormat.ARGB32);
+            var previous = RenderTexture.active;
+            Graphics.Blit(texture, rt);
+            RenderTexture.active = rt;
+            var full = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false);
+            full.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
+            full.Apply(false, false);
+            RenderTexture.active = previous;
+            RenderTexture.ReleaseTemporary(rt);
+
+            var copy = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                filterMode = texture.filterMode,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+            copy.SetPixels(full.GetPixels(x, y, width, height));
+            copy.Apply(false, false);
+            UnityEngine.Object.Destroy(full);
+            return copy;
+        }
+    }
 }

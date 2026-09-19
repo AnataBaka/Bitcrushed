@@ -212,8 +212,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
 
         var start = _home;
         var reach = targetPosition + new Vector2(-90f, 0f);
-        var outbound = MoveSeconds(start, reach);
-        var inbound = MoveSeconds(reach, start);
+        var outbound = MoveSeconds(start, reach, _spriteClass);
+        var inbound = MoveSeconds(reach, start, _spriteClass);
 
         var run = ClassSpriteArt.Run(_spriteClass);
         var idle = ClassSpriteArt.Idle(_spriteClass);
@@ -224,7 +224,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
 
         if (run != null && run.Length > 0)
         {
-            _flipbook.Play(run, ClassSpriteArt.RunFps, true);
+            _flipbook.Play(run, ClassSpriteArt.RunFpsFor(_spriteClass), true);
         }
 
         yield return Slide(start, reach, outbound);
@@ -245,7 +245,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
 
         if (!_deadPose && !_dying && _flipbook != null && run != null && run.Length > 0)
         {
-            _flipbook.Play(run, ClassSpriteArt.RunFps, true);
+            _flipbook.Play(run, ClassSpriteArt.RunFpsFor(_spriteClass), true);
         }
 
         yield return Slide(reach, _home, inbound);
@@ -299,10 +299,15 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         _death = null;
     }
 
-    static float MoveSeconds(Vector2 from, Vector2 to)
+    static float MoveSeconds(Vector2 from, Vector2 to, string className = null)
     {
         var distance = Vector2.Distance(from, to);
-        return Mathf.Clamp(distance / 4200f, 0.10f, 0.38f);
+        var speed = ClassSpriteArt.TravelSpeed(className);
+        return Mathf.Clamp(
+            distance / speed,
+            ClassSpriteArt.MinTravelSeconds(className),
+            ClassSpriteArt.MaxTravelSeconds(className)
+        );
     }
 
     IEnumerator LungeRoutine(Vector2 targetPosition)
@@ -523,6 +528,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         _shape.preserveAspect = true;
         _shape.type = Image.Type.Simple;
         _shape.color = Color.white;
+        ApplyFacingScale(1f);
     }
 
     static string StatusCaption(Entity entity)
