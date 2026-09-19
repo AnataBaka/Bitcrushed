@@ -37,7 +37,7 @@ public static partial class Module
             ctx,
             SkillNames.Furioso,
             PlayerClass.Knight,
-            100,
+            FuriosoManaCost,
             5,
             1,
             DamageType.Physical,
@@ -149,6 +149,17 @@ public static partial class Module
         AddEnemySkill(ctx, "Hex Bolt", 8, 10, 1, DamageType.Magical);
         AddEnemySkill(ctx, "Bite", 5, 7, 1, DamageType.Physical);
         AddEnemySkill(ctx, "Bone Slash", 7, 8, 1, DamageType.Physical);
+    }
+
+    public static void EnsureSkillCatalog(ReducerContext ctx)
+    {
+        foreach (var skill in ctx.Db.SkillDef.Iter().ToList())
+        {
+            if (skill.Name == SkillNames.Furioso && skill.ManaCost != FuriosoManaCost)
+            {
+                ctx.Db.SkillDef.Id.Update(skill with { ManaCost = FuriosoManaCost });
+            }
+        }
     }
 
     public static void EnsureEnemyCatalog(ReducerContext ctx)

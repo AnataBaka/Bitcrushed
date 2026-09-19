@@ -385,6 +385,11 @@ public class GameManager : MonoBehaviour
             return 0;
         }
 
+        if (skill.Name == "Furioso")
+        {
+            return 100;
+        }
+
         if (skill.Name == "Spear")
         {
             return Math.Max(0, 45 - caster.SpearDiscount);

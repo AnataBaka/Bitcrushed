@@ -28,12 +28,14 @@ public static partial class Module
         );
 
         SeedCatalog(ctx);
+        EnsureSkillCatalog(ctx);
         Log.Info("Testing Fight Stage initialized.");
     }
 
     [SpacetimeDB.Reducer(ReducerKind.ClientConnected)]
     public static void ClientConnected(ReducerContext ctx)
     {
+        EnsureSkillCatalog(ctx);
         if (ctx.Db.Player.Identity.Find(ctx.Sender) is Player player)
         {
             ctx.Db.Player.Identity.Update(player with { Online = true });
@@ -1118,6 +1120,7 @@ public static partial class Module
     static void SpawnEnemies(ReducerContext ctx)
     {
         EnsureEnemyCatalog(ctx);
+        EnsureSkillCatalog(ctx);
         var floor = CombatFloor(ctx);
         var players = PartyEncounterSize(ctx);
         var pool = EnemyPool;

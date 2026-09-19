@@ -53,6 +53,7 @@ public static partial class Module
     public const int FinishTheJobTurnRequirement = 4;
     public const int RushNextTurnSpeed = 99999;
     public const int EvadeDamageThreshold = 20;
+    public const int FuriosoManaCost = 100;
     public const int SpearBaseManaCost = 45;
     public const int VerticalCutBaseManaCost = 80;
     public const int SkillManaDiscountPerUse = 15;
@@ -352,6 +353,11 @@ public static partial class Module
 
     public static int EffectiveSkillManaCost(string skillName, int catalogCost, Entity caster)
     {
+        if (skillName == SkillNames.Furioso)
+        {
+            return FuriosoManaCost;
+        }
+
         if (skillName == SkillNames.Spear)
         {
             return Math.Max(0, SpearBaseManaCost - caster.SpearDiscount);
