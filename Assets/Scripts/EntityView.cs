@@ -294,7 +294,12 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         var parts = new System.Collections.Generic.List<string>();
         if (entity.StrengthBuff > 0)
         {
-            parts.Add($"Str {entity.StrengthBuff}");
+            parts.Add($"Enraged {entity.StrengthBuff}");
+        }
+
+        if (entity.NextTurnStrengthBonus > 0)
+        {
+            parts.Add($"Enraged next {entity.NextTurnStrengthBonus}");
         }
 
         if (entity.BurnStack > 0 && entity.BurnCount > 0)

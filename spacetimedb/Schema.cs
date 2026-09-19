@@ -185,7 +185,7 @@ public static partial class Module
         public int Atk;
         public int Defense;
 
-        /// Strength status stacks: +1 damage per stack on attacks this turn.
+        /// Enraged stacks: +1 damage per stack on attacks this turn.
         public int StrengthBuff;
         public int NextTurnStrengthBonus;
         /// Set by "always go first" skills; consumed when the next round is built.

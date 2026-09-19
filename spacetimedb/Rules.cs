@@ -20,8 +20,18 @@ public static partial class Module
     public const int MaxDodgePercent = 25;
     /// Enemy dodge is this many times smaller than the shared Dexterity formula.
     public const int EnemyDodgeDivisor = 3;
-    /// Archer passive: 0.5% dodge per Dexterity (50 basis points).
-    public const int ArcherDodgeBpsPerDex = 50;
+    /// Archer passive: 0.1% dodge per Dexterity (10 basis points).
+    public const int ArcherDodgeBpsPerDex = 10;
+    /// Knight passive: +0.5 damage per Strength, stored as tenths.
+    public const int KnightDamageTenthsPerStrength = 5;
+    /// Mage passive: +0.2 spell damage per Intelligence, stored as tenths.
+    public const int MageSpellDamageTenthsPerInt = 2;
+    /// Mage passive: +0.4 max mana per Intelligence, stored as tenths.
+    public const int MageManaTenthsPerInt = 4;
+    /// Ninja crit: 0.1% per Speed (10 basis points).
+    public const int NinjaCritBpsPerSpeed = 10;
+    public const int NinjaSpeedLeadForFirstAction = 5;
+    public const int NinjaGuaranteedFirstSpeed = 999999999;
     /// Non-archer dodge: 1% per Dexterity, then capped.
     public const int StandardDodgeBpsPerDex = 100;
     public const int BpsPerPercent = 100;
@@ -47,8 +57,8 @@ public static partial class Module
     public const int OffStatMin = 1;
     public const int OffStatMax = 3;
 
-    /// Character level 1 needs 100 EXP, level 2 needs 200, and so on.
-    public const uint ExpPerLevelStep = 100;
+    /// Character level L needs `100 * L^1.5` EXP to reach L+1.
+    public const uint ExpCurveBase = 100;
     /// Each kill grants 25 EXP times the current stage number.
     public const uint KillExpPerStage = 25;
     /// Unspent points granted to a living player on each character level-up.
@@ -81,7 +91,7 @@ public static partial class Module
             _ => "Adventurer",
         };
 
-    public static int ClassMaxHp(PlayerClass playerClass) =>
+    public static int ClassBaseHp(PlayerClass playerClass) =>
         playerClass switch
         {
             PlayerClass.Knight => 80,
@@ -90,6 +100,18 @@ public static partial class Module
             PlayerClass.Archer => 50,
             _ => 80,
         };
+
+    /// HP per level in tenths so Knight/Ninja 2.5 growth stays exact before rounding.
+    public static int ClassHpGrowthTenths(PlayerClass playerClass) =>
+        playerClass is PlayerClass.Knight or PlayerClass.Ninja ? 25 : 20;
+
+    /// MaxHP(L) = BaseHP + growth*L, rounded to nearest whole HP.
+    public static int ClassMaxHp(PlayerClass playerClass, uint characterLevel = 1)
+    {
+        var level = characterLevel == 0 ? 1 : (int)characterLevel;
+        var tenths = ClassBaseHp(playerClass) * 10 + ClassHpGrowthTenths(playerClass) * level;
+        return Math.Max(1, (tenths + 5) / 10);
+    }
 
     public static int ClassMaxMana(PlayerClass playerClass) =>
         playerClass switch
@@ -233,22 +255,36 @@ public static partial class Module
 
     // ------------------------------------------------------------------- math
 
-    /// The damage stat a class adds on top of a skill's base. Knight Strength is
-    /// deliberately absent because Strength is already a term in DealtDamage.
-    public static int ClassDamageStat(
+    /// Flat class passives: Knight +0.5/STR on every attack, Mage +0.2/INT on spells.
+    public static int ClassPassiveDamage(
         PlayerClass playerClass,
-        int dexterity,
+        int strength,
         int intelligence,
-        int speed
-    ) =>
-        playerClass switch
+        bool isSpell
+    )
+    {
+        var tenths = 0;
+        if (playerClass == PlayerClass.Knight)
         {
-            PlayerClass.Knight => 0,
-            PlayerClass.Mage => intelligence,
-            PlayerClass.Ninja => speed,
-            PlayerClass.Archer => dexterity,
-            _ => 0,
-        };
+            tenths += KnightDamageTenthsPerStrength * Math.Max(0, strength);
+        }
+
+        if (playerClass == PlayerClass.Mage && isSpell)
+        {
+            tenths += MageSpellDamageTenthsPerInt * Math.Max(0, intelligence);
+        }
+
+        return tenths <= 0 ? 0 : (tenths + 5) / 10;
+    }
+
+    public static int MageManaFromIntelligence(int intelligence) =>
+        Math.Max(0, (MageManaTenthsPerInt * Math.Max(0, intelligence) + 5) / 10);
+
+    public static int NinjaCritChanceBps(int speed) =>
+        Math.Max(0, speed) * NinjaCritBpsPerSpeed;
+
+    public static bool RollCrit(Random rng, int critBps) =>
+        critBps > 0 && rng.Next(1, 10001) <= Math.Min(critBps, 10000);
 
     public static int EffectiveSpeed(Entity entity) =>
         entity.CombatSpeed != 0 ? entity.CombatSpeed : entity.Speed;
@@ -312,13 +348,9 @@ public static partial class Module
     public static int NextDiscountedManaCost(int currentCost) =>
         Math.Max(0, currentCost - SkillManaDiscountPerUse);
 
-    /// Dealt damage = (character damage + strength + attack) + strength / 10.
-    /// The trailing term is integer-truncated, so 1 extra point per 10 Strength.
-    public static int DealtDamage(int characterDamage, int strength, int atk)
-    {
-        var core = characterDamage + strength + atk;
-        return Math.Max(0, core + (strength / 10));
-    }
+    /// Weapon/skill core. Class passives and Enraged stacks are added separately.
+    public static int DealtDamage(int characterDamage, int atk) =>
+        Math.Max(0, characterDamage + atk);
 
     public static int AfterDefense(int incoming, int defense) => Math.Max(0, incoming - defense);
 
@@ -333,7 +365,7 @@ public static partial class Module
         return chance;
     }
 
-    /// Dodge chance in basis points (10000 = 100%). Archer uses 0.5% per DEX.
+    /// Dodge chance in basis points (10000 = 100%). Archer uses 0.1% per DEX.
     public static int DodgeChanceBps(
         int dexterity,
         Team faction,
@@ -389,8 +421,30 @@ public static partial class Module
         return a > uint.MaxValue / b ? uint.MaxValue : a * b;
     }
 
-    /// EXP required to go from `level` to `level + 1` is `level * 100`.
-    public static uint XpToNextLevel(uint level) => SaturatingMul(level, ExpPerLevelStep);
+    /// EXP to go from `level` to `level + 1` is `100 * level^1.5`.
+    public static uint XpToNextLevel(uint level)
+    {
+        var n = level == 0 ? 1u : level;
+        var xp = ExpCurveBase * n * Math.Sqrt(n);
+        if (xp >= uint.MaxValue)
+        {
+            return uint.MaxValue;
+        }
+
+        return (uint)Math.Round(xp, MidpointRounding.AwayFromZero);
+    }
+
+    public static int EnemyHpForLevel(uint level)
+    {
+        var n = level == 0 ? 1 : (int)level;
+        return Math.Max(1, 30 + 6 * n);
+    }
+
+    public static int EnemyAtkForLevel(uint level)
+    {
+        var n = level == 0 ? 1 : (int)level;
+        return Math.Max(1, (int)Math.Round(4 + 0.6 * n, MidpointRounding.AwayFromZero));
+    }
 
     /// Each kill grants `25 * stage` EXP to every living party member.
     public static uint KillXp(uint stage) =>

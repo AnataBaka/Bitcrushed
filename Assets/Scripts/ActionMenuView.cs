@@ -34,7 +34,9 @@ public class ActionMenuView : MonoBehaviour
     Text _status;
     RectTransform _lobby;
     RectTransform _root;
+    RectTransform _skillsPage;
     RectTransform _skills;
+    ScrollRect _skillsScroll;
     RectTransform _items;
 
     Button _joinButton;
@@ -72,7 +74,7 @@ public class ActionMenuView : MonoBehaviour
 
         view._lobby = MakePage(panel.transform, "LobbyPage", 10f);
         view._root = MakePage(panel.transform, "RootPage", 10f);
-        view._skills = MakePage(panel.transform, "SkillsPage", 6f);
+        view._skillsPage = MakeScrollPage(panel.transform, "SkillsPage", 6f, out view._skills, out view._skillsScroll);
         view._items = MakePage(panel.transform, "ItemsPage", 6f);
 
         view._joinButton = UiFactory.TextButton(view._lobby, "Join", "Join Party");
@@ -116,6 +118,59 @@ public class ActionMenuView : MonoBehaviour
         return page;
     }
 
+    static RectTransform MakeScrollPage(
+        Transform parent,
+        string name,
+        float spacing,
+        out RectTransform content,
+        out ScrollRect scroll
+    )
+    {
+        var page = UiFactory.NewRect(parent, name);
+        page.anchorMin = Vector2.zero;
+        page.anchorMax = Vector2.one;
+        page.offsetMin = new Vector2(12f, 12f);
+        page.offsetMax = new Vector2(-12f, -52f);
+
+        scroll = page.gameObject.AddComponent<ScrollRect>();
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = 40f;
+        scroll.inertia = true;
+
+        var viewport = UiFactory.NewRect(page, "Viewport");
+        UiFactory.Anchor(viewport, Vector2.zero, Vector2.one);
+        var viewportImage = viewport.gameObject.AddComponent<Image>();
+        viewportImage.color = new Color(0f, 0f, 0f, 0.01f);
+        viewportImage.raycastTarget = true;
+        viewport.gameObject.AddComponent<RectMask2D>();
+
+        content = UiFactory.NewRect(viewport, "Content");
+        content.anchorMin = new Vector2(0f, 1f);
+        content.anchorMax = new Vector2(1f, 1f);
+        content.pivot = new Vector2(0.5f, 1f);
+        content.anchoredPosition = Vector2.zero;
+        content.sizeDelta = Vector2.zero;
+
+        var layout = content.gameObject.AddComponent<VerticalLayoutGroup>();
+        layout.spacing = spacing;
+        layout.childControlHeight = true;
+        layout.childControlWidth = true;
+        layout.childForceExpandHeight = false;
+        layout.childForceExpandWidth = true;
+        layout.childAlignment = TextAnchor.UpperCenter;
+        layout.padding = new RectOffset(0, 0, 0, 4);
+
+        var fitter = content.gameObject.AddComponent<ContentSizeFitter>();
+        fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        scroll.viewport = viewport;
+        scroll.content = content;
+        return page;
+    }
+
     void Go(Page page)
     {
         _page = page;
@@ -138,7 +193,7 @@ public class ActionMenuView : MonoBehaviour
     {
         _lobby.gameObject.SetActive(_page == Page.Lobby);
         _root.gameObject.SetActive(_page == Page.Root);
-        _skills.gameObject.SetActive(_page == Page.Skills);
+        _skillsPage.gameObject.SetActive(_page == Page.Skills);
         _items.gameObject.SetActive(_page == Page.Items);
     }
 
@@ -332,6 +387,12 @@ public class ActionMenuView : MonoBehaviour
 
         var back = UiFactory.TextButton(_skills, "Back", "Back", 18, SubButtonHeight);
         back.onClick.AddListener(() => Go(Page.Root));
+
+        if (_skillsScroll != null)
+        {
+            Canvas.ForceUpdateCanvases();
+            _skillsScroll.verticalNormalizedPosition = 1f;
+        }
     }
 
     /// Rebuilds the Items sub-page from whatever potions are in the bag.

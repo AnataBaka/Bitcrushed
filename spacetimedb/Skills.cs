@@ -42,7 +42,7 @@ public static partial class Module
                 QueueStrength(ctx, caster.EntityId, 2);
                 AddLog(
                     ctx,
-                    $"{caster.Name} uses {skill.Name} and gains 2 Strength next turn.",
+                    $"{caster.Name} uses {skill.Name} and gains 2 Enraged next turn.",
                     LogKind.Focus,
                     caster.EntityId,
                     caster.EntityId
@@ -53,7 +53,7 @@ public static partial class Module
                 QueueNextTurnSpeed(ctx, caster.EntityId, 1);
                 AddLog(
                     ctx,
-                    $"{caster.Name} uses {skill.Name}, gains 4 Strength, and will have Speed 1 next turn.",
+                    $"{caster.Name} uses {skill.Name}, gains 4 Enraged next turn, and will have Speed 1 next turn.",
                     LogKind.Focus,
                     caster.EntityId,
                     caster.EntityId
@@ -88,12 +88,25 @@ public static partial class Module
                 );
                 break;
             case SkillNames.TripleSlash:
+                var enragedHits = 0;
                 for (var hit = 0; hit < 3; hit++)
                 {
                     if (Strike(ctx, caster, targetEntityId, skill.Name, 12, isSkill: true).Connected)
                     {
                         GainStrengthNow(ctx, caster.EntityId, 1);
+                        enragedHits += 1;
                     }
+                }
+
+                if (enragedHits > 0)
+                {
+                    AddLog(
+                        ctx,
+                        $"{caster.Name} gains {enragedHits} Enraged from {skill.Name}.",
+                        LogKind.Focus,
+                        caster.EntityId,
+                        caster.EntityId
+                    );
                 }
 
                 break;
@@ -136,7 +149,7 @@ public static partial class Module
                     QueueStrength(ctx, caster.EntityId, 2);
                     AddLog(
                         ctx,
-                        $"{caster.Name} uses {skill.Name}, recovers 20 MP, and gains 2 Strength next turn.",
+                        $"{caster.Name} uses {skill.Name}, recovers 20 MP, and gains 2 Enraged next turn.",
                         LogKind.Focus,
                         caster.EntityId,
                         caster.EntityId
@@ -262,7 +275,7 @@ public static partial class Module
                 ArmEvade(ctx, caster.EntityId, EvadeDamageThreshold, fragileOnDodge: 0, strengthOnDodge: 5);
                 AddLog(
                     ctx,
-                    $"{caster.Name} uses {skill.Name} and will negate incoming hits below {EvadeDamageThreshold} damage.",
+                    $"{caster.Name} uses {skill.Name} and will negate incoming hits below {EvadeDamageThreshold} damage, gaining 5 Enraged on dodge.",
                     LogKind.Focus,
                     caster.EntityId,
                     caster.EntityId
@@ -555,7 +568,7 @@ public static partial class Module
 
         AddLog(
             ctx,
-            $"{caster.Name} finishes the job, gaining 6 Strength next turn and entering a battle-long stance.",
+            $"{caster.Name} finishes the job, gaining 6 Enraged next turn and entering a battle-long stance.",
             LogKind.Focus,
             caster.EntityId,
             caster.EntityId

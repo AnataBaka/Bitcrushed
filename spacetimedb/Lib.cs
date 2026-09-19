@@ -95,7 +95,7 @@ public static partial class Module
         var stats = RollStats(rng, playerClass);
         var className = ClassName(playerClass);
         var name = PartyName(slot);
-        var maxHp = ClassMaxHp(playerClass);
+        var maxHp = ClassMaxHp(playerClass, 1);
         var maxMana = ClassMaxMana(playerClass);
 
         var entity = ctx.Db.Entity.Insert(
@@ -647,8 +647,11 @@ public static partial class Module
             atk += 6;
         }
 
-        var maxHp = ClassMaxHp(player.Class) + hpBonus;
-        var maxMana = ClassMaxMana(player.Class) + manaBonus + intelligence;
+        var maxHp = ClassMaxHp(player.Class, player.CharacterLevel) + hpBonus;
+        var intelMana = player.Class == PlayerClass.Mage
+            ? MageManaFromIntelligence(intelligence)
+            : intelligence;
+        var maxMana = ClassMaxMana(player.Class) + manaBonus + intelMana;
 
         // Gaining max HP grants the difference; losing it only ever clamps.
         var hp = entity.Hp + Math.Max(0, maxHp - entity.MaxHp);
@@ -710,7 +713,7 @@ public static partial class Module
                 if (ctx.Db.Entity.EntityId.Find(target.EntityId) is Entity fresh && fresh.Alive)
                 {
                     var current = ctx.Db.Entity.EntityId.Find(enemy.EntityId) ?? enemy;
-                    ResolveHit(ctx, current, fresh, chosen.Name, chosen.BaseDamage, isSkill: true);
+                    ResolveHit(ctx, current, fresh, chosen.Name, 0, isSkill: true);
                 }
             }
         }
@@ -1114,28 +1117,19 @@ public static partial class Module
     static void SpawnEnemies(ReducerContext ctx)
     {
         EnsureEnemyCatalog(ctx);
-        var session = RequireSession(ctx);
-        var stage = session.StageNumber < 1 ? 1u : session.StageNumber;
+        var level = PartyCombatLevel(ctx);
         var pool = EnemyPool;
         var count = ctx.Rng.Next(1, (int)MaxEnemySlots + 1);
-        var vitalityBps = PackVitalityBps(count);
-        var powerBps = PackPowerBps(count);
+        var maxHp = EnemyHpForLevel(level);
+        var atk = EnemyAtkForLevel(level);
 
         for (uint slot = 0; slot < (uint)count; slot++)
         {
             var arch = pool[ctx.Rng.Next(0, pool.Length)];
-            var maxHp = Math.Max(1, ScaleByBps(ApplyStageScale(arch.MaxHp, stage), vitalityBps));
-            var maxMana = Math.Max(1, ScaleByBps(ApplyStageScale(arch.MaxMana, stage), vitalityBps));
-            var strength = Math.Max(1, ScaleByBps(ApplyStageScale(arch.Strength, stage), powerBps));
-            var dexterity = Math.Max(1, ScaleByBps(ApplyStageScale(arch.Dexterity, stage), powerBps));
-            var intelligence = Math.Max(1, ScaleByBps(ApplyStageScale(arch.Intelligence, stage), powerBps));
-            var speed = Math.Max(1, ScaleByBps(ApplyStageScale(arch.Speed, stage), powerBps));
-            var atk = Math.Max(1, ScaleByBps(ApplyStageScale(arch.Atk, stage), powerBps));
-            var defense = ScaleByBps(ApplyStageScale(Math.Max(0, arch.Defense), stage), powerBps);
-            if (arch.Defense == 0)
-            {
-                defense = 0;
-            }
+            var maxMana = Math.Max(1, arch.MaxMana);
+            var dexterity = Math.Max(1, arch.Dexterity);
+            var intelligence = Math.Max(1, arch.Intelligence);
+            var speed = Math.Max(1, arch.Speed);
 
             var enemy = ctx.Db.Entity.Insert(
                 new Entity
@@ -1149,16 +1143,16 @@ public static partial class Module
                     Hp = maxHp,
                     MaxMana = maxMana,
                     Mana = maxMana,
-                    BaseStrength = strength,
+                    BaseStrength = 0,
                     BaseDexterity = dexterity,
                     BaseIntelligence = intelligence,
                     BaseSpeed = speed,
-                    Strength = strength,
+                    Strength = 0,
                     Dexterity = dexterity,
                     Intelligence = intelligence,
                     Speed = speed,
                     Atk = atk,
-                    Defense = defense,
+                    Defense = 0,
                     StrengthBuff = 0,
                     NextTurnStrengthBonus = 0,
                     GoFirstNextRound = false,
@@ -1170,6 +1164,26 @@ public static partial class Module
 
             GrantSkillsByName(ctx, enemy.EntityId, new[] { arch.SkillName });
         }
+    }
+
+    static uint PartyCombatLevel(ReducerContext ctx)
+    {
+        uint level = 1;
+        foreach (var player in ctx.Db.Player.Iter())
+        {
+            if (!IsLivingPlayer(ctx, player))
+            {
+                continue;
+            }
+
+            var characterLevel = player.CharacterLevel == 0 ? 1u : player.CharacterLevel;
+            if (characterLevel > level)
+            {
+                level = characterLevel;
+            }
+        }
+
+        return level;
     }
 
     /// Fastest combatant first. Rush / Grand Undertaking jump the queue for one round.
@@ -1232,13 +1246,41 @@ public static partial class Module
         }
     }
 
+    static int PendingCombatSpeed(Entity entity) =>
+        entity.NextTurnSpeedSet != 0 ? entity.NextTurnSpeedSet : entity.Speed + entity.NextTurnSpeedDelta;
+
     static void RefreshRoundStatuses(ReducerContext ctx)
     {
+        var maxEnemySpeed = 0;
+        var hasEnemy = false;
+        foreach (var entity in ctx.Db.Entity.Iter())
+        {
+            if (entity.Faction != Team.Enemies || !entity.Alive)
+            {
+                continue;
+            }
+
+            if (!hasEnemy || entity.Speed > maxEnemySpeed)
+            {
+                maxEnemySpeed = entity.Speed;
+                hasEnemy = true;
+            }
+        }
+
         foreach (var entity in ctx.Db.Entity.Iter().ToList())
         {
-            var speed = entity.NextTurnSpeedSet != 0
-                ? entity.NextTurnSpeedSet
-                : entity.Speed + entity.NextTurnSpeedDelta;
+            var speed = PendingCombatSpeed(entity);
+            if (
+                hasEnemy
+                && entity.Faction == Team.Players
+                && entity.Alive
+                && ClassOf(ctx, entity) == PlayerClass.Ninja
+                && entity.Speed >= maxEnemySpeed + NinjaSpeedLeadForFirstAction
+            )
+            {
+                speed = NinjaGuaranteedFirstSpeed;
+            }
+
             ctx.Db.Entity.EntityId.Update(
                 entity with
                 {
@@ -1468,31 +1510,23 @@ public static partial class Module
         var power = skillBaseDamage + attacker.StrengthBuff + attacker.NextAttackBonus;
         if (isSkill && attackerClass == PlayerClass.Ninja)
         {
-            power += NinjaSpeedPowerBonus(EffectiveSpeed(attacker), EffectiveSpeed(target));
+            power += NinjaSpeedPowerBonus(attacker.Speed, target.Speed);
             if (attacker.FinishTheJobStance)
             {
                 power += 2 + attacker.FinishTheJobPower;
             }
         }
 
-        power += ClassDamageStat(
+        power += ClassPassiveDamage(
             attackerClass,
-            attacker.Dexterity,
+            attacker.Strength,
             attacker.Intelligence,
-            attacker.Speed
+            isSpell: attackerClass == PlayerClass.Mage && isSkill
         );
 
-        var raw = DealtDamage(power, attacker.Strength, attacker.Atk);
+        var raw = DealtDamage(power, attacker.Atk);
         raw = ApplyWeak(raw, attacker.WeakStacks);
         raw = AfterDefense(raw, target.Defense);
-        if (bludgeonFragile && target.FragileStacks > 0)
-        {
-            raw = ApplyBludgeonFragile(raw);
-        }
-        else
-        {
-            raw = ApplyFragile(raw, target.FragileStacks);
-        }
 
         if (attacker.NextAttackBonus != 0)
         {
@@ -1510,7 +1544,29 @@ public static partial class Module
         var dodged = RollDodge(ctx.Rng, dodgeBps);
         var evaded = !dodged && target.EvadeThreshold > 0 && raw < target.EvadeThreshold;
         var connected = !dodged && !evaded;
+        var crit = false;
         var damage = connected ? raw : 0;
+        if (
+            connected
+            && attackerClass == PlayerClass.Ninja
+            && RollCrit(ctx.Rng, NinjaCritChanceBps(attacker.Speed))
+        )
+        {
+            crit = true;
+            damage *= 2;
+        }
+
+        if (connected)
+        {
+            if (bludgeonFragile && target.FragileStacks > 0)
+            {
+                damage = ApplyBludgeonFragile(damage);
+            }
+            else
+            {
+                damage = ApplyFragile(damage, target.FragileStacks);
+            }
+        }
 
         var hp = Math.Max(0, target.Hp - damage);
         var alive = hp > 0;
@@ -1541,6 +1597,17 @@ public static partial class Module
                 target.EntityId,
                 damage
             );
+            if (crit)
+            {
+                AddLog(
+                    ctx,
+                    "CRITICAL HIT!",
+                    LogKind.Attack,
+                    attacker.EntityId,
+                    target.EntityId,
+                    damage
+                );
+            }
         }
 
         if (wasAlive && !alive)
@@ -1562,6 +1629,13 @@ public static partial class Module
         if (freshTarget.EvadeStrengthOnDodge > 0)
         {
             QueueStrength(ctx, freshTarget.EntityId, freshTarget.EvadeStrengthOnDodge);
+            AddLog(
+                ctx,
+                $"{freshTarget.Name} gains {freshTarget.EvadeStrengthOnDodge} Enraged next turn.",
+                LogKind.Focus,
+                freshTarget.EntityId,
+                freshTarget.EntityId
+            );
         }
 
         _ = evaded;
@@ -1755,6 +1829,7 @@ public static partial class Module
         }
 
         GrantUnlockedSkills(ctx, player.EntityId, player.Class, level);
+        RecomputeStats(ctx, player.Identity);
     }
 
     /// Spend one unspent character-level point on a combat stat. Health and

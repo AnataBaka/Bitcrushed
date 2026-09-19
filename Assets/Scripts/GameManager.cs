@@ -291,8 +291,18 @@ public class GameManager : MonoBehaviour
     public static PlayerItem EquippedIn(EquipSlot slot) =>
         EquippedIn(LocalIdentity, slot);
 
-    /// Display of the published EXP curve: next level costs `level * 100`.
-    public static uint XpToNextLevel(uint level) => (level == 0 ? 1u : level) * 100u;
+    /// Display of the published EXP curve: next level costs `100 * level^1.5`.
+    public static uint XpToNextLevel(uint level)
+    {
+        var n = level == 0 ? 1u : level;
+        var xp = 100.0 * n * Math.Sqrt(n);
+        if (xp >= uint.MaxValue)
+        {
+            return uint.MaxValue;
+        }
+
+        return (uint)Math.Round(xp, MidpointRounding.AwayFromZero);
+    }
 
     public static PlayerItem EquippedIn(Identity owner, EquipSlot slot)
     {
