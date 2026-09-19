@@ -37,10 +37,20 @@ public static class ClassSpriteArt
             || canonical == NinjaSpriteLibrary.ClassName && NinjaSpriteLibrary.Ready;
     }
 
-    /// Ninja sheets face left; players stand on the left, so they flip toward
-    /// the enemy line. Knight sheets already face right.
-    public static bool FlipX(string className) =>
-        CanonicalClass(className) == NinjaSpriteLibrary.ClassName;
+    /// Ninja sheets already face right after load-time mirroring.
+    public static bool FlipX(string className) => false;
+
+    public static float TravelSpeed(string className) =>
+        CanonicalClass(className) == NinjaSpriteLibrary.ClassName ? 11000f : 4200f;
+
+    public static float MinTravelSeconds(string className) =>
+        CanonicalClass(className) == NinjaSpriteLibrary.ClassName ? 0.04f : 0.10f;
+
+    public static float MaxTravelSeconds(string className) =>
+        CanonicalClass(className) == NinjaSpriteLibrary.ClassName ? 0.16f : 0.38f;
+
+    public static float RunFpsFor(string className) =>
+        CanonicalClass(className) == NinjaSpriteLibrary.ClassName ? 20f : RunFps;
 
     public static Sprite[] Idle(string className)
     {

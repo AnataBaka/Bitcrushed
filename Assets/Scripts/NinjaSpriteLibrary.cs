@@ -34,12 +34,12 @@ public static class NinjaSpriteLibrary
             return;
         }
 
-        Idle = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Idle", FilterMode.Point);
-        Run = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Run", FilterMode.Point);
-        Attack1 = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Attack_1", FilterMode.Point);
-        Attack2 = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Attack_2", FilterMode.Point);
-        Hurt = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Hurt", FilterMode.Point);
-        Dying = SpriteFrameLoader.LoadFolder("Sprites/Ninja/Dying", FilterMode.Point);
+        Idle = SpriteFrameLoader.MirrorX(SpriteFrameLoader.LoadFolder("Sprites/Ninja/Idle", FilterMode.Point));
+        Run = SpriteFrameLoader.MirrorX(SpriteFrameLoader.LoadFolder("Sprites/Ninja/Run", FilterMode.Point));
+        Attack1 = SpriteFrameLoader.MirrorX(SpriteFrameLoader.LoadFolder("Sprites/Ninja/Attack_1", FilterMode.Point));
+        Attack2 = SpriteFrameLoader.MirrorX(SpriteFrameLoader.LoadFolder("Sprites/Ninja/Attack_2", FilterMode.Point));
+        Hurt = SpriteFrameLoader.MirrorX(SpriteFrameLoader.LoadFolder("Sprites/Ninja/Hurt", FilterMode.Point));
+        Dying = SpriteFrameLoader.MirrorX(SpriteFrameLoader.LoadFolder("Sprites/Ninja/Dying", FilterMode.Point));
 
         if (!Ready)
         {
