@@ -82,7 +82,7 @@ MonoBehaviour:
   m_UseFastSRGBLinearConversion: 0
   m_SupportDataDrivenLensFlare: 1
   m_SupportScreenSpaceLensFlare: 1
-  m_GPUResidentDrawerMode: 1
+  m_GPUResidentDrawerMode: 0
   m_SmallMeshScreenPercentage: 0
   m_GPUResidentDrawerEnableOcclusionCullingInCameras: 0
   m_ShadowType: 1
@@ -103,7 +103,7 @@ MonoBehaviour:
   m_PrefilteringModeAdditionalLight: 4
   m_PrefilteringModeAdditionalLightShadows: 0
   m_PrefilterXRKeywords: 1
-  m_PrefilteringModeForwardPlus: 1
+  m_PrefilteringModeForwardPlus: 0
   m_PrefilteringModeDeferredRendering: 0
   m_PrefilteringModeScreenSpaceOcclusion: 1
   m_PrefilteringModeScreenSpaceReflection: 1
