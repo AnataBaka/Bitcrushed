@@ -168,18 +168,28 @@ public static partial class Module
                 StrikeLivingEnemies(ctx, caster, skill.Name, 4, hits: 3);
                 break;
             case SkillNames.Snipe:
-                Strike(ctx, caster, targetEntityId, skill.Name, 30, isSkill: true);
-                QueueFragile(ctx, targetEntityId, 4);
+                if (Strike(ctx, caster, targetEntityId, skill.Name, 30, isSkill: true).Connected)
+                {
+                    QueueFragile(ctx, targetEntityId, 4);
+                }
+
                 break;
             case SkillNames.CurvedShot:
                 foreach (var enemy in LivingMembers(ctx, Team.Enemies))
                 {
+                    var connected = false;
                     for (var hit = 0; hit < 2; hit++)
                     {
-                        Strike(ctx, caster, enemy.EntityId, skill.Name, 17, isSkill: true);
+                        if (Strike(ctx, caster, enemy.EntityId, skill.Name, 17, isSkill: true).Connected)
+                        {
+                            connected = true;
+                        }
                     }
 
-                    QueueFragile(ctx, enemy.EntityId, 4);
+                    if (connected)
+                    {
+                        QueueFragile(ctx, enemy.EntityId, 4);
+                    }
                 }
 
                 break;
@@ -204,12 +214,18 @@ public static partial class Module
                 Strike(ctx, caster, targetEntityId, skill.Name, grandshotDamage, isSkill: true);
                 break;
             case SkillNames.MagicMissile:
-                Strike(ctx, caster, targetEntityId, skill.Name, 10, isSkill: true);
-                QueueFragile(ctx, targetEntityId, 2);
+                if (Strike(ctx, caster, targetEntityId, skill.Name, 10, isSkill: true).Connected)
+                {
+                    QueueFragile(ctx, targetEntityId, 2);
+                }
+
                 break;
             case SkillNames.Fireball:
-                Strike(ctx, caster, targetEntityId, skill.Name, 2, isSkill: true);
-                ApplyBurn(ctx, targetEntityId, 5, 6);
+                if (Strike(ctx, caster, targetEntityId, skill.Name, 2, isSkill: true).Connected)
+                {
+                    ApplyBurn(ctx, targetEntityId, 5, 6);
+                }
+
                 break;
             case SkillNames.Concentrate:
                 RestoreMana(ctx, caster.EntityId, 20);
@@ -389,9 +405,19 @@ public static partial class Module
 
         foreach (var target in targets)
         {
+            var connected = false;
             for (var hit = 0; hit < def.Hits; hit++)
             {
-                Strike(ctx, caster, target.EntityId, SkillNames.MagicBullet, def.Damage, isSkill: true);
+                if (Strike(ctx, caster, target.EntityId, SkillNames.MagicBullet, def.Damage, isSkill: true)
+                    .Connected)
+                {
+                    connected = true;
+                }
+            }
+
+            if (!connected)
+            {
+                continue;
             }
 
             if (def.BurnStack > 0)
