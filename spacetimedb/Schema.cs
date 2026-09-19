@@ -35,7 +35,7 @@ public static partial class Module
     public enum ItemKind
     {
         Weapon,
-        Armor,
+        Amulet,
         Consumable,
     }
 
@@ -45,7 +45,7 @@ public static partial class Module
         None,
         Sword,
         Staff,
-        Dagger,
+        Katana,
         Bow,
     }
 
@@ -59,16 +59,15 @@ public static partial class Module
         Boots,
     }
 
-    /// Where an owned item currently lives. Bag means "carried, not worn".
+    /// Where an owned item currently lives. Bag is potions only. Inventory is
+    /// the 3x3 gear grid (see InventoryIndex). Weapon and Amulet are worn.
     [SpacetimeDB.Type]
     public enum EquipSlot
     {
         Bag,
         Weapon,
-        Helmet,
-        Chestplate,
-        Leggings,
-        Boots,
+        Amulet,
+        Inventory,
     }
 
     [SpacetimeDB.Type]
@@ -399,5 +398,8 @@ public static partial class Module
         public uint ItemDefId;
         public int Quantity;
         public EquipSlot EquippedSlot;
+        /// 0-8 when EquippedSlot is Inventory; otherwise InventoryNone (255).
+        [Default(255u)]
+        public uint InventoryIndex;
     }
 }

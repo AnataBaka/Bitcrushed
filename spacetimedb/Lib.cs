@@ -521,11 +521,6 @@ public static partial class Module
             throw new Exception($"A {ClassName(player.Class)} cannot wield a {def.Name}.");
         }
 
-        if (def.Kind == ItemKind.Armor && !CanWearArmor(player.Class))
-        {
-            throw new Exception($"A {ClassName(player.Class)} cannot wear armor.");
-        }
-
         var slot = SlotFor(def);
         if (slot == EquipSlot.Bag)
         {
@@ -622,7 +617,7 @@ public static partial class Module
 
         foreach (var instance in ctx.Db.PlayerItem.Owner.Filter(owner))
         {
-            if (instance.EquippedSlot == EquipSlot.Bag)
+            if (instance.EquippedSlot is not (EquipSlot.Weapon or EquipSlot.Amulet))
             {
                 continue;
             }

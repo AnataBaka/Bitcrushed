@@ -265,24 +265,11 @@ public static partial class Module
 
     static void SeedItems(ReducerContext ctx)
     {
-        AddWeapon(ctx, "Iron Sword", "SWD", WeaponType.Sword, atk: 12, strength: 1);
-        AddWeapon(ctx, "Oak Staff", "STF", WeaponType.Staff, atk: 6, intelligence: 2);
-        AddWeapon(ctx, "Twin Daggers", "DGR", WeaponType.Dagger, atk: 9, speed: 2);
-        AddWeapon(ctx, "Hunting Bow", "BOW", WeaponType.Bow, atk: 10, dexterity: 2);
-
-        AddArmor(ctx, "Leather Helm", "HLM", ArmorSlot.Helmet, defense: 1, maxHp: 6);
-        AddArmor(ctx, "Leather Vest", "CHS", ArmorSlot.Chestplate, defense: 2, maxHp: 10);
-        AddArmor(ctx, "Leather Greaves", "LEG", ArmorSlot.Leggings, defense: 1, maxHp: 6, speed: 1);
-        AddArmor(ctx, "Leather Boots", "BTS", ArmorSlot.Boots, defense: 1, speed: 1);
-        AddArmor(
-            ctx,
-            "Mage Robes",
-            "ROB",
-            ArmorSlot.Chestplate,
-            defense: 1,
-            maxMana: 20,
-            intelligence: 1
-        );
+        AddWeapon(ctx, "Chipped Sword", "CSW", WeaponType.Sword, atk: 12, strength: 1);
+        AddWeapon(ctx, "Wooden Cane", "WCN", WeaponType.Staff, atk: 6, intelligence: 2);
+        AddWeapon(ctx, "Rusted Katana", "KTN", WeaponType.Katana, atk: 9, speed: 2);
+        AddWeapon(ctx, "Weathered Bow", "WBW", WeaponType.Bow, atk: 10, dexterity: 2);
+        AddAmulet(ctx, "Health Amulet", "HPA", maxHp: 10);
 
         AddConsumable(ctx, "Health Potion", "HPT", heal: 30, mana: 0);
         AddConsumable(ctx, "Mana Potion", "MPT", heal: 0, mana: 30);
@@ -321,34 +308,24 @@ public static partial class Module
             }
         );
 
-    static void AddArmor(
-        ReducerContext ctx,
-        string name,
-        string shortName,
-        ArmorSlot armorSlot,
-        int defense,
-        int maxHp = 0,
-        int maxMana = 0,
-        int speed = 0,
-        int intelligence = 0
-    ) =>
+    static void AddAmulet(ReducerContext ctx, string name, string shortName, int maxHp) =>
         ctx.Db.ItemDef.Insert(
             new ItemDef
             {
                 Id = 0,
                 Name = name,
                 ShortName = shortName,
-                Kind = ItemKind.Armor,
+                Kind = ItemKind.Amulet,
                 WeaponType = WeaponType.None,
-                ArmorSlot = armorSlot,
+                ArmorSlot = ArmorSlot.None,
                 AtkBonus = 0,
-                DefenseBonus = defense,
+                DefenseBonus = 0,
                 StrengthBonus = 0,
                 DexterityBonus = 0,
-                IntelligenceBonus = intelligence,
-                SpeedBonus = speed,
+                IntelligenceBonus = 0,
+                SpeedBonus = 0,
                 MaxHpBonus = maxHp,
-                MaxManaBonus = maxMana,
+                MaxManaBonus = 0,
                 HealAmount = 0,
                 ManaRestoreAmount = 0,
             }
@@ -411,7 +388,8 @@ public static partial class Module
         throw new Exception($"Skill catalog is missing {name}.");
     }
 
-    /// Weapon worn on arrival, potions in the bag. Ninjas cannot wear armor.
+    /// Class base weapon worn, Amulet empty, 3x3 inventory empty. Potions stay
+    /// in the action-menu bag and are not part of inventory.
     public static void GiveStartingLoadout(
         ReducerContext ctx,
         Identity owner,
@@ -421,25 +399,17 @@ public static partial class Module
     {
         EquipFresh(ctx, owner, RequireItem(ctx, StarterWeaponName(playerClass)));
 
-        if (CanWearArmor(playerClass))
-        {
-            var chest = playerClass == PlayerClass.Mage
-                ? RequireItem(ctx, "Mage Robes")
-                : RequireItem(ctx, "Leather Vest");
-
-            EquipFresh(ctx, owner, RequireItem(ctx, "Leather Helm"));
-            EquipFresh(ctx, owner, chest);
-            EquipFresh(ctx, owner, RequireItem(ctx, "Leather Greaves"));
-            EquipFresh(ctx, owner, RequireItem(ctx, "Leather Boots"));
-
-            var spare = playerClass == PlayerClass.Mage
-                ? RequireItem(ctx, "Leather Vest")
-                : RequireItem(ctx, "Mage Robes");
-            GiveToBag(ctx, owner, spare.Id, 1);
-        }
-
         GiveToBag(ctx, owner, RequireItem(ctx, "Health Potion").Id, 3);
         GiveToBag(ctx, owner, RequireItem(ctx, "Mana Potion").Id, 2);
+
+        if (SeedTestItems)
+        {
+            TryAddItemToInventory(ctx, owner, RequireItem(ctx, "Health Amulet").Id);
+            TryAddItemToInventory(ctx, owner, RequireItem(ctx, "Chipped Sword").Id);
+            TryAddItemToInventory(ctx, owner, RequireItem(ctx, "Weathered Bow").Id);
+            TryAddItemToInventory(ctx, owner, RequireItem(ctx, "Wooden Cane").Id);
+            TryAddItemToInventory(ctx, owner, RequireItem(ctx, "Rusted Katana").Id);
+        }
 
         GrantUnlockedSkills(ctx, entity.EntityId, playerClass, 1);
         RecomputeStats(ctx, owner);
@@ -454,6 +424,7 @@ public static partial class Module
                 ItemDefId = item.Id,
                 Quantity = 1,
                 EquippedSlot = SlotFor(item),
+                InventoryIndex = InventoryNone,
             }
         );
 
@@ -472,8 +443,56 @@ public static partial class Module
                 ItemDefId = itemDefId,
                 Quantity = quantity,
                 EquippedSlot = EquipSlot.Bag,
+                InventoryIndex = InventoryNone,
             }
         );
+    }
+
+    /// First free 3x3 cell. Not a reducer; future drops call this. Clients cannot.
+    static bool TryAddItemToInventory(ReducerContext ctx, Identity owner, uint itemDefId)
+    {
+        var index = FirstFreeInventoryIndex(ctx, owner);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        ctx.Db.PlayerItem.Insert(
+            new PlayerItem
+            {
+                Id = 0,
+                Owner = owner,
+                ItemDefId = itemDefId,
+                Quantity = 1,
+                EquippedSlot = EquipSlot.Inventory,
+                InventoryIndex = (uint)index,
+            }
+        );
+        return true;
+    }
+
+    static int FirstFreeInventoryIndex(ReducerContext ctx, Identity owner)
+    {
+        var taken = new bool[InventoryCapacity];
+        foreach (var item in ctx.Db.PlayerItem.Owner.Filter(owner))
+        {
+            if (item.EquippedSlot != EquipSlot.Inventory || item.InventoryIndex >= InventoryCapacity)
+            {
+                continue;
+            }
+
+            taken[item.InventoryIndex] = true;
+        }
+
+        for (var i = 0; i < InventoryCapacity; i++)
+        {
+            if (!taken[i])
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     public static int BagCount(ReducerContext ctx, Identity owner) =>

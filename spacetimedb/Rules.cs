@@ -13,6 +13,10 @@ public static partial class Module
     public const int StageScalePercent = 8;
 
     public const int BagCapacity = 12;
+    public const int InventoryCapacity = 9;
+    public const uint InventoryNone = 255;
+    /// When true, join fills the 3x3 with the Health Amulet and every base weapon.
+    public const bool SeedTestItems = false;
     public const int FocusManaGain = 20;
     public const uint CheatCharacterLevel = 999;
     public const int ManaRegenPerTurn = 2;
@@ -150,7 +154,7 @@ public static partial class Module
         {
             PlayerClass.Knight => WeaponType.Sword,
             PlayerClass.Mage => WeaponType.Staff,
-            PlayerClass.Ninja => WeaponType.Dagger,
+            PlayerClass.Ninja => WeaponType.Katana,
             PlayerClass.Archer => WeaponType.Bow,
             _ => WeaponType.None,
         };
@@ -158,11 +162,11 @@ public static partial class Module
     public static string StarterWeaponName(PlayerClass playerClass) =>
         playerClass switch
         {
-            PlayerClass.Knight => "Iron Sword",
-            PlayerClass.Mage => "Oak Staff",
-            PlayerClass.Ninja => "Twin Daggers",
-            PlayerClass.Archer => "Hunting Bow",
-            _ => "Iron Sword",
+            PlayerClass.Knight => "Chipped Sword",
+            PlayerClass.Mage => "Wooden Cane",
+            PlayerClass.Ninja => "Rusted Katana",
+            PlayerClass.Archer => "Weathered Bow",
+            _ => "Chipped Sword",
         };
 
     public static string BasicAttackName(PlayerClass playerClass) =>
@@ -174,8 +178,6 @@ public static partial class Module
             PlayerClass.Archer => "Snap Shot",
             _ => "Strike",
         };
-
-    public static bool CanWearArmor(PlayerClass playerClass) => playerClass != PlayerClass.Ninja;
 
     /// Knights win speed ties so their High priority actually shows up in the queue.
     public static int ClassTurnPriority(PlayerClass playerClass) =>
@@ -618,14 +620,7 @@ public static partial class Module
         item.Kind switch
         {
             ItemKind.Weapon => EquipSlot.Weapon,
-            ItemKind.Armor => item.ArmorSlot switch
-            {
-                ArmorSlot.Helmet => EquipSlot.Helmet,
-                ArmorSlot.Chestplate => EquipSlot.Chestplate,
-                ArmorSlot.Leggings => EquipSlot.Leggings,
-                ArmorSlot.Boots => EquipSlot.Boots,
-                _ => EquipSlot.Bag,
-            },
+            ItemKind.Amulet => EquipSlot.Amulet,
             _ => EquipSlot.Bag,
         };
 }
