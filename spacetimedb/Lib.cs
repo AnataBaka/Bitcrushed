@@ -1127,6 +1127,7 @@ public static partial class Module
             1,
             ScaleByBps(EnemyAtkForEncounter(floor, partyLevel, players), PackPowerBps(count))
         );
+        var defense = EnemyDefenseBaseline(EncounterScaleLevel(floor, partyLevel));
 
         for (uint slot = 0; slot < (uint)count; slot++)
         {
@@ -1158,7 +1159,7 @@ public static partial class Module
                     Intelligence = intelligence,
                     Speed = speed,
                     Atk = atk,
-                    Defense = 0,
+                    Defense = defense,
                     StrengthBuff = 0,
                     NextTurnStrengthBonus = 0,
                     GoFirstNextRound = false,

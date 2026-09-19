@@ -518,19 +518,26 @@ public static partial class Module
         return Math.Max(stage, Math.Clamp(level, 1, 35));
     }
 
-    /// Late-game HP accelerates so capstones (Furioso ~153, Grandshot 100–250, Overthrow 54)
-    /// cannot wipe a pack in one round. L1 stays near 36; L30 baseline is ~525 before party/pack.
+    /// Raised for Snipe-at-1 (~40 with bow) and L30 nukes (Furioso ~153, Grandshot 100–250,
+    /// Overthrow 54, Grand Undertaking 50% max HP). L1 ~87; L30 ~722 before party/pack.
     public static int EnemyHpBaseline(int level)
     {
         var n = Math.Max(1, level);
-        return Math.Max(1, (int)Math.Round(30 + (6.0 * n) + (0.35 * n * n), MidpointRounding.AwayFromZero));
+        return Math.Max(1, (int)Math.Round(80 + (7.0 * n) + (0.48 * n * n), MidpointRounding.AwayFromZero));
     }
 
-    /// ATK also accelerates late. L1 stays near 5; L30 baseline is ~38 before party/pack.
+    /// Tracks the longer fights. L1 ~6; L30 ~42 before party/pack.
     public static int EnemyAtkBaseline(int level)
     {
         var n = Math.Max(1, level);
-        return Math.Max(1, (int)Math.Round(4 + (0.6 * n) + (0.018 * n * n), MidpointRounding.AwayFromZero));
+        return Math.Max(1, (int)Math.Round(5 + (0.65 * n) + (0.02 * n * n), MidpointRounding.AwayFromZero));
+    }
+
+    /// Light late-game armor so flat nukes chip instead of deleting. 0 until level 10.
+    public static int EnemyDefenseBaseline(int level)
+    {
+        var n = Math.Max(1, level);
+        return Math.Max(0, (n - 10) / 5);
     }
 
     /// EnemyHP = baseline(L) * (P / 3).
