@@ -24,6 +24,13 @@ public static partial class Module
     public const int OffStatMin = 1;
     public const int OffStatMax = 3;
 
+    /// Character level 1 needs 100 EXP, level 2 needs 200, and so on.
+    public const uint ExpPerLevelStep = 100;
+    /// Each kill grants 25 EXP times the current stage number.
+    public const uint KillExpPerStage = 25;
+    /// Anthony's level-up grant: 2 points, applied here to the class main stat.
+    public const uint StatPointsPerLevel = 2;
+
     // Enemy actions are spaced out so the battle log stays readable.
     public const long EnemyTurnDelayMicros = 2_000_000;
 
@@ -150,6 +157,28 @@ public static partial class Module
     }
 
     public static T Pick<T>(Random rng, T[] options) => options[rng.Next(options.Length)];
+
+    public static uint SaturatingAdd(uint a, uint b) =>
+        a > uint.MaxValue - b ? uint.MaxValue : a + b;
+
+    public static uint SaturatingSub(uint a, uint b) => a > b ? a - b : 0;
+
+    public static uint SaturatingMul(uint a, uint b)
+    {
+        if (a == 0 || b == 0)
+        {
+            return 0;
+        }
+
+        return a > uint.MaxValue / b ? uint.MaxValue : a * b;
+    }
+
+    /// EXP required to go from `level` to `level + 1` is `level * 100`.
+    public static uint XpToNextLevel(uint level) => SaturatingMul(level, ExpPerLevelStep);
+
+    /// Each kill grants `25 * stage` EXP to every living party member.
+    public static uint KillXp(uint stage) =>
+        SaturatingMul(KillExpPerStage, stage == 0 ? 1u : stage);
 
     /// Main stat rolls 3-6, every other stat rolls 1-3.
     public static (int Strength, int Dexterity, int Intelligence, int Speed) RollStats(

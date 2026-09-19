@@ -135,6 +135,8 @@ public static partial class Module
                 Class = playerClass,
                 EntityId = entity.EntityId,
                 Ready = false,
+                CharacterLevel = 1,
+                Xp = 0,
             }
         );
 
@@ -1024,6 +1026,11 @@ public static partial class Module
                 attacker.EntityId,
                 target.EntityId
             );
+
+            if (target.Faction == Team.Enemies)
+            {
+                GrantKillXp(ctx, 1u);
+            }
         }
     }
 
@@ -1076,6 +1083,87 @@ public static partial class Module
             actor.EntityId,
             actor.EntityId
         );
+    }
+
+    /// Every living party member receives kill EXP. Dead players sit this one out.
+    static void GrantKillXp(ReducerContext ctx, uint stage)
+    {
+        var xp = KillXp(stage);
+        foreach (var player in ctx.Db.Player.Iter().ToList())
+        {
+            if (ctx.Db.Entity.EntityId.Find(player.EntityId) is not Entity entity || !entity.Alive)
+            {
+                continue;
+            }
+
+            ApplyXp(ctx, player, entity.Name, xp);
+        }
+    }
+
+    static void ApplyXp(ReducerContext ctx, Player player, string name, uint xp)
+    {
+        if (xp == 0)
+        {
+            return;
+        }
+
+        var currentXp = SaturatingAdd(player.Xp, xp);
+        var level = player.CharacterLevel == 0 ? 1u : player.CharacterLevel;
+        var reached = new List<uint>();
+        while (true)
+        {
+            var need = XpToNextLevel(level);
+            if (need == 0 || currentXp < need)
+            {
+                break;
+            }
+
+            currentXp = SaturatingSub(currentXp, need);
+            level += 1;
+            reached.Add(level);
+        }
+
+        ctx.Db.Player.Identity.Update(
+            player with
+            {
+                Xp = currentXp,
+                CharacterLevel = level,
+            }
+        );
+
+        AddLog(ctx, $"{name} gained {xp} EXP.");
+
+        if (reached.Count == 0)
+        {
+            return;
+        }
+
+        GrowMainStat(ctx, player, (int)(StatPointsPerLevel * (uint)reached.Count));
+        foreach (var newLevel in reached)
+        {
+            AddLog(ctx, $"{name} reached level {newLevel}!");
+        }
+    }
+
+    /// Anthony granted 2 unspent points per level. This branch has no allocate UI,
+    /// so those points land on the class main stat and then gear is recomputed.
+    static void GrowMainStat(ReducerContext ctx, Player player, int points)
+    {
+        if (points <= 0 || ctx.Db.Entity.EntityId.Find(player.EntityId) is not Entity entity)
+        {
+            return;
+        }
+
+        var grown = MainStat(player.Class) switch
+        {
+            StatType.Strength => entity with { BaseStrength = entity.BaseStrength + points },
+            StatType.Dexterity => entity with { BaseDexterity = entity.BaseDexterity + points },
+            StatType.Intelligence =>
+                entity with { BaseIntelligence = entity.BaseIntelligence + points },
+            _ => entity with { BaseSpeed = entity.BaseSpeed + points },
+        };
+        ctx.Db.Entity.EntityId.Update(grown);
+        RecomputeStats(ctx, player.Identity);
     }
 
     // ---------------------------------------------------------------- helpers

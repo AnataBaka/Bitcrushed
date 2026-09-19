@@ -227,7 +227,9 @@ public class StatPopupView : MonoBehaviour
 
     void BindPlayerProgress(Player occupant)
     {
-        _xpRow.SetActive(false);
+        _xpRow.SetActive(true);
+        var need = GameManager.XpToNextLevel(occupant.CharacterLevel);
+        _xp.text = $"Lv {occupant.CharacterLevel}    EXP  {occupant.Xp} / {need}";
     }
 
     public void Place(Vector2 screenPoint)

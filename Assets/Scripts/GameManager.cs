@@ -291,6 +291,9 @@ public class GameManager : MonoBehaviour
     public static PlayerItem EquippedIn(EquipSlot slot) =>
         EquippedIn(LocalIdentity, slot);
 
+    /// Display of the published EXP curve: next level costs `level * 100`.
+    public static uint XpToNextLevel(uint level) => (level == 0 ? 1u : level) * 100u;
+
     public static PlayerItem EquippedIn(Identity owner, EquipSlot slot)
     {
         foreach (var item in ItemsOf(owner))
