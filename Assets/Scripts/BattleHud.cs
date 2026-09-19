@@ -42,7 +42,6 @@ public class BattleHud : MonoBehaviour
     StatPopupView _popup;
     TurnOrderStripView _turnStrip;
     EscapeMenuView _escape;
-    LevelUpMenuView _levelUp;
 
     readonly Dictionary<ulong, EntityView> _views = new Dictionary<ulong, EntityView>();
     readonly List<ulong> _stale = new List<ulong>();
@@ -69,8 +68,7 @@ public class BattleHud : MonoBehaviour
         Text stageLabel,
         StatPopupView popup,
         TurnOrderStripView turnStrip,
-        EscapeMenuView escape,
-        LevelUpMenuView levelUp
+        EscapeMenuView escape
     )
     {
         _field = field;
@@ -86,7 +84,6 @@ public class BattleHud : MonoBehaviour
         _popup = popup;
         _turnStrip = turnStrip;
         _escape = escape;
-        _levelUp = levelUp;
 
         _menu.OnJoin = GameManager.JoinGame;
         _menu.OnReady = HandleReadyClicked;
@@ -205,17 +202,8 @@ public class BattleHud : MonoBehaviour
         _popup?.Refresh();
         _turnStrip?.Render(session);
 
-        var hadLevelUp = _levelUp != null && _levelUp.IsOpen;
-        _levelUp?.Render(session);
-        var levelLocked = _levelUp != null && _levelUp.IsOpen;
-        if (levelLocked && !hadLevelUp)
-        {
-            ClearTargeting();
-            _menu.ShowRoot();
-        }
-
         _log.SetLines(GameManager.LogLines(60));
-        _menu.Render(session, me, myTurn, _targeting, levelLocked);
+        _menu.Render(session, me, myTurn, _targeting);
         _equipment.Render(
             me,
             session != null
@@ -241,10 +229,6 @@ public class BattleHud : MonoBehaviour
         {
             _popup?.Close();
             _overlay.SetAsLastSibling();
-            if (_levelUp != null && _levelUp.IsOpen)
-            {
-                _levelUp.transform.SetAsLastSibling();
-            }
             _escape?.transform.SetAsLastSibling();
             if (transitioning)
             {
@@ -416,10 +400,7 @@ public class BattleHud : MonoBehaviour
 
         if (_targeting)
         {
-            if (
-                (_levelUp != null && _levelUp.IsOpen)
-                || !GameManager.IsLocalTurn()
-            )
+            if (!GameManager.IsLocalTurn())
             {
                 return;
             }

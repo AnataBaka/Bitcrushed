@@ -210,7 +210,7 @@ public class ActionMenuView : MonoBehaviour
         }
     }
 
-    public void Render(GameSession session, Entity me, bool myTurn, bool targeting, bool actionsLocked = false)
+    public void Render(GameSession session, Entity me, bool myTurn, bool targeting)
     {
         if (session == null)
         {
@@ -243,14 +243,12 @@ public class ActionMenuView : MonoBehaviour
                     : $"Lobby {session.PlayerCount}/{session.MaxPlayers}";
             _joinButton.gameObject.SetActive(session.Phase == BattlePhase.Waiting);
             _joinButton.interactable =
-                !actionsLocked
-                && session.Phase == BattlePhase.Waiting
+                session.Phase == BattlePhase.Waiting
                 && me == null
                 && session.PlayerCount < session.MaxPlayers;
             var localPlayer = GameManager.LocalPlayer();
             var canReady =
-                !actionsLocked
-                && localPlayer != null
+                localPlayer != null
                 && (session.Phase != BattlePhase.RestStop || (me != null && me.Alive));
             _readyButton.interactable = canReady;
             SetReadyCaption(localPlayer != null && localPlayer.Ready);
@@ -300,7 +298,7 @@ public class ActionMenuView : MonoBehaviour
             _status.text = active == null ? "Waiting..." : $"Waiting for {active.Name}";
         }
 
-        var canAct = myTurn && !targeting && !actionsLocked;
+        var canAct = myTurn && !targeting;
         SetPageInteractable(_root, canAct);
 
         RebuildSkills(me, session);

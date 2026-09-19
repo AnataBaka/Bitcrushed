@@ -186,9 +186,28 @@ public class GameManager : MonoBehaviour
     /// Server-rejected actions surface here ("It is not your turn." etc).
     void HandleReducerError(ReducerEventContext _, Exception ex)
     {
+        if (IsQuietSpendRejection(ex.Message))
+        {
+            return;
+        }
+
         Status = ex.Message;
         Debug.LogWarning($"Reducer rejected: {ex.Message}");
         Changed();
+    }
+
+    static bool IsQuietSpendRejection(string message)
+    {
+        if (string.IsNullOrEmpty(message))
+        {
+            return false;
+        }
+
+        return message.IndexOf("unspent stat", StringComparison.OrdinalIgnoreCase) >= 0
+            || message.IndexOf("cannot be increased with points", StringComparison.OrdinalIgnoreCase)
+                >= 0
+            || message.IndexOf("Defeated players cannot spend", StringComparison.OrdinalIgnoreCase)
+                >= 0;
     }
 
     void HandleLogInserted(EventContext _, BattleLog row)

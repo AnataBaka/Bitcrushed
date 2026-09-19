@@ -1937,6 +1937,11 @@ public static partial class Module
             throw new Exception("No unspent stat points.");
         }
 
+        if (!IsSpendableStat(stat))
+        {
+            throw new Exception("That stat cannot be increased with points.");
+        }
+
         var grown = stat switch
         {
             StatType.Strength => entity with { BaseStrength = entity.BaseStrength + StatPointStrength },

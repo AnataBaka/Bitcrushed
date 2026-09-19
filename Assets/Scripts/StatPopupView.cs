@@ -2,16 +2,26 @@ using SpacetimeDB.Types;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// View-only inspect card. Reads table rows and never calls reducers.
+/// Inspect card. Reads table rows and, for the local living player, calls
+/// SpendStatPoint when a + is clicked. It never computes new stat values.
 public class StatPopupView : MonoBehaviour
 {
-    const float Width = 308f;
+    const float Width = 336f;
     const float CursorGap = 16f;
     const float EdgePad = 12f;
     const float HeaderHeight = 60f;
     const float LabelWidth = 112f;
     const float ValueWidth = 96f;
+    const float PlusWidth = 24f;
     const float RowHeight = 22f;
+
+    static readonly StatType[] SpendableStats =
+    {
+        StatType.Strength,
+        StatType.Speed,
+        StatType.Intelligence,
+        StatType.Dexterity,
+    };
 
     RectTransform _root;
     RectTransform _canvas;
@@ -27,6 +37,12 @@ public class StatPopupView : MonoBehaviour
     Text _speedText;
     Text _intelligenceText;
     Text _dexterityText;
+    Button _strengthPlus;
+    Button _speedPlus;
+    Button _intelligencePlus;
+    Button _dexterityPlus;
+    Text _pointsText;
+    GameObject _pointsRow;
     Text _levelText;
     Text _xpText;
     Text _weaponText;
@@ -111,13 +127,18 @@ public class StatPopupView : MonoBehaviour
 
         MakeResourceRow(body, "Health", UiFactory.HpColor, out view._hpFill, out view._hpText);
         MakeResourceRow(body, "Mana", UiFactory.ManaColor, out view._manaFill, out view._manaText);
-        view._strengthText = MakeValueRow(body, "Strength");
-        view._speedText = MakeValueRow(body, "Speed");
-        view._intelligenceText = MakeValueRow(body, "Intelligence");
-        view._dexterityText = MakeValueRow(body, "Dexterity");
+        view._strengthText = MakeStatRow(body, "Strength", StatType.Strength, out view._strengthPlus);
+        view._speedText = MakeStatRow(body, "Speed", StatType.Speed, out view._speedPlus);
+        view._intelligenceText = MakeStatRow(
+            body,
+            "Intelligence",
+            StatType.Intelligence,
+            out view._intelligencePlus
+        );
+        view._dexterityText = MakeStatRow(body, "Dexterity", StatType.Dexterity, out view._dexterityPlus);
 
         var extras = UiFactory.NewRect(body, "PlayerExtras");
-        extras.gameObject.AddComponent<LayoutElement>().preferredHeight = RowHeight * 6f;
+        extras.gameObject.AddComponent<LayoutElement>().preferredHeight = RowHeight * 7f;
         var extrasLayout = extras.gameObject.AddComponent<VerticalLayoutGroup>();
         extrasLayout.spacing = 3f;
         extrasLayout.childAlignment = TextAnchor.UpperLeft;
@@ -126,6 +147,7 @@ public class StatPopupView : MonoBehaviour
         extrasLayout.childForceExpandHeight = false;
         extrasLayout.childForceExpandWidth = true;
         view._playerExtras = extras.gameObject;
+        view._pointsText = MakeValueRow(extras, "Available Skill Points", out view._pointsRow);
         view._levelText = MakeValueRow(extras, "Level");
         view._xpText = MakeValueRow(extras, "EXP");
         view._weaponText = MakeValueRow(extras, "Weapon");
@@ -199,9 +221,29 @@ public class StatPopupView : MonoBehaviour
         overlay.gameObject.SetActive(false);
 
         value = MakeValue(row);
+        MakePlusSpacer(row);
     }
 
-    static Text MakeValueRow(Transform parent, string caption)
+    static Text MakeValueRow(Transform parent, string caption) =>
+        MakeValueRow(parent, caption, out _);
+
+    static Text MakeValueRow(Transform parent, string caption, out GameObject rowObject)
+    {
+        var row = MakeRow(parent, caption + "Row");
+        rowObject = row.gameObject;
+        MakeLabel(row, caption);
+
+        var spacer = UiFactory.NewRect(row, "Spacer");
+        var spacerElement = spacer.gameObject.AddComponent<LayoutElement>();
+        spacerElement.minWidth = 8f;
+        spacerElement.flexibleWidth = 1f;
+
+        var value = MakeValue(row);
+        MakePlusSpacer(row);
+        return value;
+    }
+
+    static Text MakeStatRow(Transform parent, string caption, StatType stat, out Button plus)
     {
         var row = MakeRow(parent, caption + "Row");
         MakeLabel(row, caption);
@@ -211,7 +253,47 @@ public class StatPopupView : MonoBehaviour
         spacerElement.minWidth = 8f;
         spacerElement.flexibleWidth = 1f;
 
-        return MakeValue(row);
+        var value = MakeValue(row);
+        plus = MakePlusButton(row, stat);
+        return value;
+    }
+
+    static void MakePlusSpacer(Transform row)
+    {
+        var spacer = UiFactory.NewRect(row, "PlusSlot");
+        var element = spacer.gameObject.AddComponent<LayoutElement>();
+        element.minWidth = PlusWidth;
+        element.preferredWidth = PlusWidth;
+        element.flexibleWidth = 0f;
+    }
+
+    static Button MakePlusButton(Transform row, StatType stat)
+    {
+        var button = UiFactory.TextButton(row, "Plus", "+", 16, RowHeight);
+        var element = button.gameObject.GetComponent<LayoutElement>();
+        element.minWidth = PlusWidth;
+        element.preferredWidth = PlusWidth;
+        element.flexibleWidth = 0f;
+        element.minHeight = RowHeight;
+        element.preferredHeight = RowHeight;
+        button.onClick.AddListener(
+            () =>
+            {
+                if (!IsSpendable(stat))
+                {
+                    return;
+                }
+
+                var player = GameManager.LocalPlayer();
+                if (player == null || player.UnspentStatPoints == 0)
+                {
+                    return;
+                }
+
+                GameManager.SpendStatPoint(stat);
+            }
+        );
+        return button;
     }
 
     public void Open(ulong entityId, Vector2 screenPoint)
@@ -274,6 +356,15 @@ public class StatPopupView : MonoBehaviour
         _dexterityText.text = entity.Dexterity.ToString();
 
         var occupant = GameManager.FindPlayer(entity.EntityId);
+        var local = GameManager.LocalEntity();
+        var isOwn = local != null && local.EntityId == entity.EntityId && occupant != null;
+        var points = occupant == null ? 0u : occupant.UnspentStatPoints;
+        var canSpend = isOwn && occupant != null && points > 0;
+        SetPlus(_strengthPlus, isOwn, canSpend);
+        SetPlus(_speedPlus, isOwn, canSpend);
+        SetPlus(_intelligencePlus, isOwn, canSpend);
+        SetPlus(_dexterityPlus, isOwn, canSpend);
+
         if (occupant == null)
         {
             _playerExtras.SetActive(false);
@@ -283,15 +374,41 @@ public class StatPopupView : MonoBehaviour
         }
 
         _playerExtras.SetActive(true);
+        if (_pointsRow != null)
+        {
+            _pointsRow.SetActive(true);
+        }
+
         var need = GameManager.XpToNextLevel(occupant.CharacterLevel);
+        _pointsText.text = occupant.UnspentStatPoints.ToString();
         _levelText.text = occupant.CharacterLevel.ToString();
         _xpText.text = $"{occupant.Xp}/{need}";
         _weaponText.text = GameManager.EquippedName(occupant.Identity, EquipSlot.Weapon);
         _helmetText.text = GameManager.EquippedName(occupant.Identity, EquipSlot.Helmet);
         _chestText.text = GameManager.EquippedName(occupant.Identity, EquipSlot.Chestplate);
         _leggingsText.text = GameManager.EquippedName(occupant.Identity, EquipSlot.Leggings);
-        _root.sizeDelta = new Vector2(Width, 392f);
+        _root.sizeDelta = new Vector2(Width, 414f);
         Place(_screenPoint);
+    }
+
+    static void SetPlus(Button plus, bool visible, bool interactable)
+    {
+        if (plus == null)
+        {
+            return;
+        }
+
+        plus.interactable = visible && interactable;
+        if (plus.targetGraphic != null)
+        {
+            plus.targetGraphic.enabled = visible;
+        }
+
+        var label = plus.GetComponentInChildren<Text>();
+        if (label != null)
+        {
+            label.enabled = visible;
+        }
     }
 
     /// Puts the top-left of the panel next to the cursor, flipping to the left
@@ -346,6 +463,19 @@ public class StatPopupView : MonoBehaviour
             Mathf.Lerp(parentRect.yMin, parentRect.yMax, _root.anchorMin.y)
         );
         _root.anchoredPosition = new Vector2(x, y) - anchorRef;
+    }
+
+    static bool IsSpendable(StatType stat)
+    {
+        foreach (var allowed in SpendableStats)
+        {
+            if (allowed == stat)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     Camera EventCamera()

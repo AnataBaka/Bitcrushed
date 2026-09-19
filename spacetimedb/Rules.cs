@@ -66,13 +66,19 @@ public static partial class Module
     /// Unspent points granted to a living player on each character level-up.
     public const uint StatPointsPerLevel = 3;
 
-    /// Per-point growth applied by SpendStatPoint. One level's 3 points total
-    /// +3 across chosen stats, comparable to the old automatic +2 on the class
-    /// main stat.
+    /// Per-point growth applied by SpendStatPoint. Health and Mana are not
+    /// spendable. One level still grants StatPointsPerLevel points across
+    /// Strength, Speed, Intelligence, and Dexterity.
     public const int StatPointStrength = 1;
     public const int StatPointDexterity = 1;
     public const int StatPointIntelligence = 1;
     public const int StatPointSpeed = 1;
+
+    public static bool IsSpendableStat(StatType stat) =>
+        stat is StatType.Strength
+            or StatType.Speed
+            or StatType.Intelligence
+            or StatType.Dexterity;
 
     // Enemy actions are spaced out so the battle log stays readable.
     public const long EnemyTurnDelayMicros = 2_000_000;
