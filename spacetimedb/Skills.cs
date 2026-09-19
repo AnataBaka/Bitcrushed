@@ -278,15 +278,24 @@ public static partial class Module
                 EnterFinishTheJob(ctx, caster);
                 break;
             case SkillNames.Overthrow:
-                GainStrengthNow(ctx, caster.EntityId, 12);
+                GainStrengthNow(ctx, caster.EntityId, OverthrowEnragedStacks);
                 AddLog(
                     ctx,
-                    $"{caster.Name} uses {skill.Name} and gains 12 Enraged.",
+                    $"{caster.Name} uses {skill.Name} and gains {OverthrowEnragedStacks} Enraged for this turn.",
                     LogKind.Focus,
                     caster.EntityId,
                     caster.EntityId
                 );
-                StrikeLivingEnemies(ctx, caster, skill.Name, 42, hits: 1);
+                foreach (var enemy in LivingMembers(ctx, Team.Enemies))
+                {
+                    if (Strike(ctx, caster, enemy.EntityId, skill.Name, OverthrowDamage, isSkill: true)
+                        .Connected)
+                    {
+                        QueueWeak(ctx, enemy.EntityId, OverthrowStatusStacks);
+                        QueueFragile(ctx, enemy.EntityId, OverthrowStatusStacks);
+                    }
+                }
+
                 break;
             default:
                 throw new Exception($"Unhandled skill {skill.Name}.");

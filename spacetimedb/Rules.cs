@@ -62,6 +62,9 @@ public static partial class Module
     public const int GrandshotBaseDamage = 50;
     public const int GrandshotDamagePerDodge = 50;
     public const int GrandshotDodgeCap = 4;
+    public const int OverthrowEnragedStacks = 12;
+    public const int OverthrowDamage = 42;
+    public const int OverthrowStatusStacks = 9;
     public const int SpearBaseManaCost = 45;
     public const int VerticalCutBaseManaCost = 80;
     public const int SkillManaDiscountPerUse = 15;

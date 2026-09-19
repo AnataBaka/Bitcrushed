@@ -218,7 +218,7 @@ public static class SkillInspect
                 return;
             case "Overthrow":
                 damage = "42 to all enemies";
-                description = "Gain 12 Enraged, then hit every living enemy for 42. Requires Finish the Job stance. Ninja attacks gain +0.5 per base Speed (not combat Speed), and skills also gain +1 power per Speed above the target (max +5).";
+                description = "Gain 12 Enraged for this turn, then hit every living enemy for 42. Each hit that connects inflicts 9 Weak and 9 Fragile next turn. Requires Finish the Job stance.";
                 return;
             default:
                 damage = "See battle log";
