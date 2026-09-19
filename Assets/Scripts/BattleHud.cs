@@ -56,6 +56,10 @@ public class BattleHud : MonoBehaviour
     bool _animating;
     ulong _aoeLungeActor;
 
+    const float EndScreenDelaySeconds = 0.85f;
+    BattlePhase _endScreenPhase;
+    float _endScreenAt;
+
     bool _targeting;
 
     /// Which attack the player picked before choosing a target. 0 is the free swing.
@@ -135,6 +139,16 @@ public class BattleHud : MonoBehaviour
         if (!_animating && _pendingHits.Count > 0)
         {
             StartCoroutine(PlayHit(_pendingHits.Dequeue()));
+        }
+
+        if (
+            !_overlay.gameObject.activeSelf
+            && (_endScreenPhase == BattlePhase.StageTransition || _endScreenPhase == BattlePhase.Defeat)
+            && Time.unscaledTime >= _endScreenAt
+            && !AnimationsPending()
+        )
+        {
+            Refresh();
         }
 
         HandleInspectDismiss();
@@ -259,24 +273,25 @@ public class BattleHud : MonoBehaviour
         var transitioning =
             session != null && session.Phase == BattlePhase.StageTransition;
         var finished = session != null && session.Phase == BattlePhase.Defeat;
-        _overlay.gameObject.SetActive(finished || transitioning);
+        var showEndScreen = EndScreenReady(session, transitioning, finished);
+        _overlay.gameObject.SetActive(showEndScreen);
         if (_resetButton != null)
         {
-            _resetButton.SetActive(finished);
+            _resetButton.SetActive(showEndScreen && finished);
         }
 
         if (finished || transitioning)
         {
             _popup?.Close();
             _inventory?.Close();
-            _overlay.SetAsLastSibling();
         }
 
         _banner?.Raise();
         _escape?.transform.SetAsLastSibling();
 
-        if (finished || transitioning)
+        if (showEndScreen)
         {
+            _overlay.SetAsLastSibling();
             if (transitioning)
             {
                 _overlayText.fontSize = 64;
@@ -301,6 +316,23 @@ public class BattleHud : MonoBehaviour
                 }
             }
         }
+    }
+
+    bool EndScreenReady(GameSession session, bool transitioning, bool finished)
+    {
+        if (session == null || (!transitioning && !finished))
+        {
+            _endScreenPhase = BattlePhase.Waiting;
+            return false;
+        }
+
+        if (_endScreenPhase != session.Phase)
+        {
+            _endScreenPhase = session.Phase;
+            _endScreenAt = Time.unscaledTime + EndScreenDelaySeconds;
+        }
+
+        return !AnimationsPending() && Time.unscaledTime >= _endScreenAt;
     }
 
     static string NextLine(GameSession session)
