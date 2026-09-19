@@ -1568,11 +1568,13 @@ public static partial class Module
             PlayerClass.Mage,
             PlayerClass.Rogue,
         };
-        var mix = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch
-            ^ (ulong)(uint)ctx.Rng.Next()
-            ^ (ulong)(uint)ctx.Rng.Next()
-            ^ (ulong)(uint)ctx.Sender.GetHashCode();
-        return classes[(int)(mix % 4)];
+        // Keep this mix in signed integer space. Timestamp is a long; mixing it
+        // with ulong makes `dotnet publish` fail with CS0019.
+        var mix = ctx.Timestamp.MicrosecondsSinceUnixEpoch
+            ^ ctx.Rng.Next()
+            ^ ctx.Rng.Next()
+            ^ ctx.Sender.GetHashCode();
+        return classes[(int)(mix & 3)];
     }
 
     private static void GiveHealthPotions(ReducerContext ctx, Identity owner, uint quantity)
