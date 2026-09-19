@@ -41,11 +41,17 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.Col<TurnOrder, uint> Idx { get; }
         public global::SpacetimeDB.Col<TurnOrder, ulong> EntityId { get; }
+        public global::SpacetimeDB.Col<TurnOrder, int> Speed { get; }
+        public global::SpacetimeDB.Col<TurnOrder, bool> HasActed { get; }
+        public global::SpacetimeDB.Col<TurnOrder, bool> IsRush { get; }
 
         public TurnOrderCols(string tableName)
         {
             Idx = new global::SpacetimeDB.Col<TurnOrder, uint>(tableName, "idx");
             EntityId = new global::SpacetimeDB.Col<TurnOrder, ulong>(tableName, "entity_id");
+            Speed = new global::SpacetimeDB.Col<TurnOrder, int>(tableName, "speed");
+            HasActed = new global::SpacetimeDB.Col<TurnOrder, bool>(tableName, "has_acted");
+            IsRush = new global::SpacetimeDB.Col<TurnOrder, bool>(tableName, "is_rush");
         }
     }
 

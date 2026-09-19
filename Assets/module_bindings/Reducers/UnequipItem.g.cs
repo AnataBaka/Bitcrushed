@@ -12,17 +12,17 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UseItemHandler(ReducerEventContext ctx, ulong playerItemId);
-        public event UseItemHandler? OnUseItem;
+        public delegate void UnequipItemHandler(ReducerEventContext ctx, ulong playerItemId);
+        public event UnequipItemHandler? OnUnequipItem;
 
-        public void UseItem(ulong playerItemId)
+        public void UnequipItem(ulong playerItemId)
         {
-            conn.InternalCallReducer(new Reducer.UseItem(playerItemId));
+            conn.InternalCallReducer(new Reducer.UnequipItem(playerItemId));
         }
 
-        public bool InvokeUseItem(ReducerEventContext ctx, Reducer.UseItem args)
+        public bool InvokeUnequipItem(ReducerEventContext ctx, Reducer.UnequipItem args)
         {
-            if (OnUseItem == null)
+            if (OnUnequipItem == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -34,7 +34,7 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
-            OnUseItem(
+            OnUnequipItem(
                 ctx,
                 args.PlayerItemId
             );
@@ -46,21 +46,21 @@ namespace SpacetimeDB.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class UseItem : Reducer, IReducerArgs
+        public sealed partial class UnequipItem : Reducer, IReducerArgs
         {
             [DataMember(Name = "player_item_id")]
             public ulong PlayerItemId;
 
-            public UseItem(ulong PlayerItemId)
+            public UnequipItem(ulong PlayerItemId)
             {
                 this.PlayerItemId = PlayerItemId;
             }
 
-            public UseItem()
+            public UnequipItem()
             {
             }
 
-            string IReducerArgs.ReducerName => "use_item";
+            string IReducerArgs.ReducerName => "unequip_item";
         }
     }
 }

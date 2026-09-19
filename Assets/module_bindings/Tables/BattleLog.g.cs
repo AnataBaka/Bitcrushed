@@ -42,6 +42,11 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<BattleLog, ulong> Id { get; }
         public global::SpacetimeDB.Col<BattleLog, uint> Round { get; }
         public global::SpacetimeDB.Col<BattleLog, string> Message { get; }
+        public global::SpacetimeDB.Col<BattleLog, LogKind> Kind { get; }
+        public global::SpacetimeDB.Col<BattleLog, ulong> ActorEntityId { get; }
+        public global::SpacetimeDB.Col<BattleLog, ulong> TargetEntityId { get; }
+        public global::SpacetimeDB.Col<BattleLog, int> Damage { get; }
+        public global::SpacetimeDB.Col<BattleLog, int> Healing { get; }
         public global::SpacetimeDB.Col<BattleLog, SpacetimeDB.Timestamp> CreatedAt { get; }
 
         public BattleLogCols(string tableName)
@@ -49,6 +54,11 @@ namespace SpacetimeDB.Types
             Id = new global::SpacetimeDB.Col<BattleLog, ulong>(tableName, "id");
             Round = new global::SpacetimeDB.Col<BattleLog, uint>(tableName, "round");
             Message = new global::SpacetimeDB.Col<BattleLog, string>(tableName, "message");
+            Kind = new global::SpacetimeDB.Col<BattleLog, LogKind>(tableName, "kind");
+            ActorEntityId = new global::SpacetimeDB.Col<BattleLog, ulong>(tableName, "actor_entity_id");
+            TargetEntityId = new global::SpacetimeDB.Col<BattleLog, ulong>(tableName, "target_entity_id");
+            Damage = new global::SpacetimeDB.Col<BattleLog, int>(tableName, "damage");
+            Healing = new global::SpacetimeDB.Col<BattleLog, int>(tableName, "healing");
             CreatedAt = new global::SpacetimeDB.Col<BattleLog, SpacetimeDB.Timestamp>(tableName, "created_at");
         }
     }
