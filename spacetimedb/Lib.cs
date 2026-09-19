@@ -29,6 +29,7 @@ public static partial class Module
 
         SeedCatalog(ctx);
         EnsureSkillCatalog(ctx);
+        EnsureItemCatalog(ctx);
         Log.Info("Testing Fight Stage initialized.");
     }
 
@@ -36,6 +37,7 @@ public static partial class Module
     public static void ClientConnected(ReducerContext ctx)
     {
         EnsureSkillCatalog(ctx);
+        EnsureItemCatalog(ctx);
         if (ctx.Db.Player.Identity.Find(ctx.Sender) is Player player)
         {
             ctx.Db.Player.Identity.Update(player with { Online = true });
@@ -406,7 +408,10 @@ public static partial class Module
 
         ValidatePlayerSkill(ctx, caster, skill, targetEntityId);
 
-        var manaCost = EffectiveSkillManaCost(skill.Name, skill.ManaCost, caster);
+        var manaCost = ApplySpellManaDiscount(
+            EffectiveSkillManaCost(skill.Name, skill.ManaCost, caster),
+            HasEmeraldPendant(ctx, caster)
+        );
         if (caster.Mana < manaCost)
         {
             AddLog(
@@ -642,6 +647,11 @@ public static partial class Module
         if (entity.FinishTheJobStance)
         {
             atk += 6;
+        }
+
+        if (entity.DoubleStrength)
+        {
+            strength *= 2;
         }
 
         var maxHp = ClassMaxHp(player.Class, player.CharacterLevel) + hpBonus;
@@ -1000,6 +1010,16 @@ public static partial class Module
             }
         );
         AddLog(ctx, "Rest stop. HP and mana restored. Ready up to continue.");
+
+        foreach (var player in ctx.Db.Player.Iter())
+        {
+            if (ctx.Db.Entity.EntityId.Find(player.EntityId) is not Entity entity || !entity.Alive)
+            {
+                continue;
+            }
+
+            GrantRandomUnownedAmulet(ctx, player.Identity, entity.Name);
+        }
     }
 
     static void RestorePartyAtRest(ReducerContext ctx)
@@ -1103,6 +1123,8 @@ public static partial class Module
                 DodgeCount = 0,
                 SkipNextTurn = false,
                 GrandUndertakingPending = false,
+                DoubleStrength = false,
+                NextTurnDoubleStrength = false,
             };
             ctx.Db.Entity.EntityId.Update(reset);
         }
@@ -1445,6 +1467,7 @@ public static partial class Module
         var stancePower = entity.FinishTheJobStance
             ? Math.Min(FinishTheJobPowerCap, entity.FinishTheJobPower + 8)
             : entity.FinishTheJobPower;
+        var doubleStrength = entity.NextTurnDoubleStrength;
         var refreshed = entity with
         {
             Mana = Math.Min(entity.MaxMana, entity.Mana + ManaRegenPerTurn),
@@ -1456,8 +1479,25 @@ public static partial class Module
             EvadeFragileOnDodge = 0,
             EvadeStrengthOnDodge = 0,
             FinishTheJobPower = stancePower,
+            DoubleStrength = doubleStrength,
+            NextTurnDoubleStrength = false,
         };
         ctx.Db.Entity.EntityId.Update(refreshed);
+        if (doubleStrength != entity.DoubleStrength && TryPlayerIdentity(ctx, refreshed.EntityId, out var owner))
+        {
+            RecomputeStats(ctx, owner);
+            refreshed = ctx.Db.Entity.EntityId.Find(refreshed.EntityId) ?? refreshed;
+            if (doubleStrength)
+            {
+                AddLog(
+                    ctx,
+                    $"{refreshed.Name}'s Dragonfly Charm doubles Strength this turn.",
+                    LogKind.Focus,
+                    refreshed.EntityId,
+                    refreshed.EntityId
+                );
+            }
+        }
 
         var session = RequireSession(ctx);
         ctx.Db.GameSession.Id.Update(
@@ -1617,7 +1657,7 @@ public static partial class Module
         var dodgeBps = DodgeChanceBps(
             target.Dexterity,
             target.Faction,
-            target.DodgeBonusPercent,
+            target.DodgeBonusPercent + EquippedDodgeBonusPercent(ctx, target),
             targetClass == PlayerClass.Archer
         );
         var dodged = RollDodge(ctx.Rng, dodgeBps);
@@ -1645,6 +1685,11 @@ public static partial class Module
             {
                 damage = ApplyFragile(damage, target.FragileStacks);
             }
+
+            damage = ApplyReceivedDamageReduction(
+                damage,
+                HasAmulet(ctx, target, AmuletNames.GuardiansPendant)
+            );
         }
 
         var hp = Math.Max(0, target.Hp - damage);
@@ -1693,6 +1738,9 @@ public static partial class Module
                     damage
                 );
             }
+
+            ApplyAmuletOnConnectedHit(ctx, attacker, target, damage);
+            ApplyAmuletOnDamageTaken(ctx, attacker, target, damage);
         }
 
         if (wasAlive && !alive)
@@ -1741,6 +1789,9 @@ public static partial class Module
             var session = RequireSession(ctx);
             GrantKillXp(ctx, session.StageNumber < 1 ? 1u : session.StageNumber);
         }
+
+        ApplyAmuletOnKill(ctx, attacker);
+        ApplyAmuletOnAllyDefeat(ctx, target);
     }
 
     static void ApplyPercentMaxHpDamage(
@@ -1757,7 +1808,10 @@ public static partial class Module
             return;
         }
 
-        var damage = ApplyFragile(ScaleByBps(target.MaxHp, maxHpBps), target.FragileStacks);
+        var damage = ApplyReceivedDamageReduction(
+            ApplyFragile(ScaleByBps(target.MaxHp, maxHpBps), target.FragileStacks),
+            HasAmulet(ctx, target, AmuletNames.GuardiansPendant)
+        );
         var hp = Math.Max(0, target.Hp - damage);
         var alive = hp > 0;
         ctx.Db.Entity.EntityId.Update(target with { Hp = hp, Alive = alive });
@@ -1774,6 +1828,8 @@ public static partial class Module
         {
             HandleDefeat(ctx, attacker, target);
         }
+
+        ApplyAmuletOnDamageTaken(ctx, attacker, target, damage);
     }
 
     static void TickBurn(ReducerContext ctx, ulong entityId)
@@ -1788,7 +1844,10 @@ public static partial class Module
             return;
         }
 
-        var damage = ApplyFragile(entity.BurnStack, entity.FragileStacks);
+        var damage = ApplyReceivedDamageReduction(
+            ApplyFragile(entity.BurnStack, entity.FragileStacks),
+            HasAmulet(ctx, entity, AmuletNames.GuardiansPendant)
+        );
         var hp = Math.Max(0, entity.Hp - damage);
         var alive = hp > 0;
         var count = entity.BurnCount - 1;
@@ -1838,7 +1897,7 @@ public static partial class Module
 
     static void ApplyFocus(ReducerContext ctx, Entity actor)
     {
-        var mana = Math.Min(actor.MaxMana, actor.Mana + FocusManaGain);
+        var mana = Math.Min(actor.MaxMana, actor.Mana + FocusManaFor(HasAmulet(ctx, actor, AmuletNames.AmethystSash)));
         var restored = mana - actor.Mana;
         ctx.Db.Entity.EntityId.Update(actor with { Mana = mana });
         AddLog(
@@ -1936,12 +1995,13 @@ public static partial class Module
         );
 
         GrantUnlockedSkills(ctx, player.EntityId, player.Class, CheatCharacterLevel);
+        GrantMissingAmulets(ctx, ctx.Sender);
         RecomputeStats(ctx, ctx.Sender);
 
         var fresh = ctx.Db.Entity.EntityId.Find(player.EntityId) ?? entity;
         AddLog(
             ctx,
-            $"{fresh.Name} cheats to level {CheatCharacterLevel}. All skills unlocked.",
+            $"{fresh.Name} cheats to level {CheatCharacterLevel}. All skills and amulets unlocked.",
             LogKind.Focus,
             fresh.EntityId,
             fresh.EntityId

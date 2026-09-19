@@ -91,6 +91,8 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Entity, bool> NecromancyUsed { get; }
         public global::SpacetimeDB.Col<Entity, bool> SkipNextTurn { get; }
         public global::SpacetimeDB.Col<Entity, bool> GrandUndertakingPending { get; }
+        public global::SpacetimeDB.Col<Entity, bool> DoubleStrength { get; }
+        public global::SpacetimeDB.Col<Entity, bool> NextTurnDoubleStrength { get; }
 
         public EntityCols(string tableName)
         {
@@ -146,6 +148,8 @@ namespace SpacetimeDB.Types
             NecromancyUsed = new global::SpacetimeDB.Col<Entity, bool>(tableName, "necromancy_used");
             SkipNextTurn = new global::SpacetimeDB.Col<Entity, bool>(tableName, "skip_next_turn");
             GrandUndertakingPending = new global::SpacetimeDB.Col<Entity, bool>(tableName, "grand_undertaking_pending");
+            DoubleStrength = new global::SpacetimeDB.Col<Entity, bool>(tableName, "double_strength");
+            NextTurnDoubleStrength = new global::SpacetimeDB.Col<Entity, bool>(tableName, "next_turn_double_strength");
         }
     }
 

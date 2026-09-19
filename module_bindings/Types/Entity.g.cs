@@ -117,6 +117,10 @@ namespace SpacetimeDB.Types
         public bool SkipNextTurn;
         [DataMember(Name = "grand_undertaking_pending")]
         public bool GrandUndertakingPending;
+        [DataMember(Name = "double_strength")]
+        public bool DoubleStrength;
+        [DataMember(Name = "next_turn_double_strength")]
+        public bool NextTurnDoubleStrength;
 
         public Entity(
             ulong EntityId,
@@ -170,7 +174,9 @@ namespace SpacetimeDB.Types
             int FinishTheJobPower,
             bool NecromancyUsed,
             bool SkipNextTurn,
-            bool GrandUndertakingPending
+            bool GrandUndertakingPending,
+            bool DoubleStrength,
+            bool NextTurnDoubleStrength
         )
         {
             this.EntityId = EntityId;
@@ -225,6 +231,8 @@ namespace SpacetimeDB.Types
             this.NecromancyUsed = NecromancyUsed;
             this.SkipNextTurn = SkipNextTurn;
             this.GrandUndertakingPending = GrandUndertakingPending;
+            this.DoubleStrength = DoubleStrength;
+            this.NextTurnDoubleStrength = NextTurnDoubleStrength;
         }
 
         public Entity()

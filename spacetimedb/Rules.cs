@@ -12,8 +12,18 @@ public static partial class Module
     public const uint RestStopEvery = 3;
     public const int StageScalePercent = 8;
 
-    public const int BagCapacity = 12;
+    public const int BagCapacity = 24;
     public const int FocusManaGain = 20;
+    public const int AmethystSashFocusMana = 50;
+    public const int GuardiansPendantReduceBps = 700;
+    public const int CountessNecklaceHeal = 2;
+    public const int HolyGrailHeal = 5;
+    public const int HiddenDreamcatcherDodgePercent = 5;
+    public const int EmeraldPendantManaDiscount = 5;
+    public const int RubyScepterBurnPower = 3;
+    public const int RedCocoonReflect = 1;
+    public const int RootedBladeSpeedPenalty = 1;
+    public const int DragonsFireBurnCap = 30;
     public const uint CheatCharacterLevel = 999;
     public const int ManaRegenPerTurn = 2;
 
@@ -199,6 +209,46 @@ public static partial class Module
         playerClass == PlayerClass.Knight ? 0 : 1;
 
     public static string PartyName(uint slot) => PartyNames[slot % (uint)PartyNames.Length];
+
+    public static class AmuletNames
+    {
+        public const string AmethystSash = "Amethyst Sash";
+        public const string GoldenCross = "Golden Cross";
+        public const string GuardiansPendant = "Guardian's Pendant";
+        public const string CountessNecklace = "Countess' Necklace";
+        public const string EyeOfTheWatcher = "Eye of the Watcher";
+        public const string SigilOfTheOld = "Sigil of the Old";
+        public const string DragonflyCharm = "Dragonfly Charm";
+        public const string TwinAmethystCharm = "Twin Amethyst Charm";
+        public const string DragonsFire = "Dragons' Fire";
+        public const string EmeraldPendant = "Emerald Pendant";
+        public const string JusticesWings = "Justices' Wings";
+        public const string HolyGrail = "Holy Grail";
+        public const string HiddenDreamcatcher = "Hidden Dreamcatcher";
+        public const string RootedBlade = "Rooted Blade";
+        public const string RedCocoon = "Red Cocoon";
+        public const string RubyScepter = "Ruby Scepter";
+    }
+
+    public static readonly string[] AllAmuletNames =
+    {
+        AmuletNames.AmethystSash,
+        AmuletNames.GoldenCross,
+        AmuletNames.GuardiansPendant,
+        AmuletNames.CountessNecklace,
+        AmuletNames.EyeOfTheWatcher,
+        AmuletNames.SigilOfTheOld,
+        AmuletNames.DragonflyCharm,
+        AmuletNames.TwinAmethystCharm,
+        AmuletNames.DragonsFire,
+        AmuletNames.EmeraldPendant,
+        AmuletNames.JusticesWings,
+        AmuletNames.HolyGrail,
+        AmuletNames.HiddenDreamcatcher,
+        AmuletNames.RootedBlade,
+        AmuletNames.RedCocoon,
+        AmuletNames.RubyScepter,
+    };
 
     public static class SkillNames
     {
@@ -415,6 +465,25 @@ public static partial class Module
 
         return catalogCost;
     }
+
+    public static int ApplySpellManaDiscount(int cost, bool hasEmeraldPendant) =>
+        hasEmeraldPendant ? Math.Max(0, cost - EmeraldPendantManaDiscount) : cost;
+
+    public static int ApplyReceivedDamageReduction(int damage, bool hasGuardiansPendant)
+    {
+        if (damage <= 0 || !hasGuardiansPendant)
+        {
+            return damage;
+        }
+
+        return ScaleByBps(damage, 10000 - GuardiansPendantReduceBps);
+    }
+
+    public static int BurnCapFor(bool hasDragonsFire) =>
+        hasDragonsFire ? DragonsFireBurnCap : BurnStackCap;
+
+    public static int FocusManaFor(bool hasAmethystSash) =>
+        hasAmethystSash ? AmethystSashFocusMana : FocusManaGain;
 
     public static int NextDiscountedManaCost(int currentCost) =>
         Math.Max(0, currentCost - SkillManaDiscountPerUse);
@@ -692,6 +761,7 @@ public static partial class Module
                 ArmorSlot.Boots => EquipSlot.Boots,
                 _ => EquipSlot.Bag,
             },
+            ItemKind.Amulet => EquipSlot.Amulet,
             _ => EquipSlot.Bag,
         };
 }

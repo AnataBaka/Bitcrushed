@@ -37,6 +37,7 @@ public static partial class Module
         Weapon,
         Armor,
         Consumable,
+        Amulet,
     }
 
     [SpacetimeDB.Type]
@@ -69,6 +70,7 @@ public static partial class Module
         Chestplate,
         Leggings,
         Boots,
+        Amulet,
     }
 
     [SpacetimeDB.Type]
@@ -262,6 +264,11 @@ public static partial class Module
         public bool SkipNextTurn;
         [Default(false)]
         public bool GrandUndertakingPending;
+        /// Dragonfly Charm: Strength is doubled for one turn after an ally dies.
+        [Default(false)]
+        public bool DoubleStrength;
+        [Default(false)]
+        public bool NextTurnDoubleStrength;
     }
 
     /// Rebuilt at the start of every round by BuildTurnOrder, fastest first.

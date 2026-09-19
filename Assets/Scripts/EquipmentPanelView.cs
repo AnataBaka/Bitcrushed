@@ -4,7 +4,7 @@ using SpacetimeDB.Types;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// Bottom-left 2x2 squares from the screenshot HUD: weapon plus three armor slots.
+/// Bottom-left gear squares: weapon, three armor slots, and an amulet.
 /// Worn pieces unequip on click; an empty square equips the first matching bag
 /// item. Boots stay in data and still affect stats even though they are not shown.
 public class EquipmentPanelView : MonoBehaviour
@@ -17,13 +17,16 @@ public class EquipmentPanelView : MonoBehaviour
         EquipSlot.Helmet,
         EquipSlot.Chestplate,
         EquipSlot.Leggings,
+        EquipSlot.Amulet,
     };
 
     sealed class Cell
     {
         public Image Background;
+        public Image Icon;
         public Text Caption;
         public Button Button;
+        public ItemHoverTip Hover;
         public ulong ItemId;
         public Action<ulong> Action;
     }
@@ -32,6 +35,7 @@ public class EquipmentPanelView : MonoBehaviour
     public Action<ulong> OnUnequip;
 
     readonly List<Cell> _cells = new List<Cell>();
+    ItemTooltipView _tooltip;
 
     public static EquipmentPanelView Create(Transform parent)
     {
@@ -58,10 +62,15 @@ public class EquipmentPanelView : MonoBehaviour
         grid.offsetMin = new Vector2(12f, 12f);
         grid.offsetMax = new Vector2(-12f, -34f);
 
+        var canvas = parent.GetComponentInParent<Canvas>();
+        view._tooltip = ItemTooltipView.Create(canvas != null ? canvas.transform : parent);
+
         var layout = grid.gameObject.AddComponent<GridLayoutGroup>();
-        layout.cellSize = new Vector2(70f, 70f);
-        layout.spacing = new Vector2(10f, 10f);
+        layout.cellSize = new Vector2(62f, 62f);
+        layout.spacing = new Vector2(8f, 8f);
         layout.childAlignment = TextAnchor.UpperLeft;
+        layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        layout.constraintCount = 2;
 
         foreach (var slot in GearSlots)
         {
@@ -75,6 +84,17 @@ public class EquipmentPanelView : MonoBehaviour
     {
         var background = UiFactory.Panel(parent, $"Slot_{caption}", UiFactory.SlotColor);
         background.raycastTarget = true;
+
+        var icon = UiFactory.Graphic(
+            background.transform,
+            "Icon",
+            PlaceholderArt.Solid(Color.white),
+            Color.white
+        );
+        icon.raycastTarget = false;
+        icon.preserveAspect = true;
+        UiFactory.Anchor(icon.rectTransform, new Vector2(0.12f, 0.22f), new Vector2(0.88f, 0.92f));
+        icon.gameObject.SetActive(false);
 
         var label = UiFactory.Label(
             background.transform,
@@ -100,11 +120,15 @@ public class EquipmentPanelView : MonoBehaviour
         colors.disabledColor = new Color(0.45f, 0.45f, 0.45f, 0.6f);
         button.colors = colors;
 
+        var hover = background.gameObject.AddComponent<ItemHoverTip>();
+
         var cell = new Cell
         {
             Background = background,
+            Icon = icon,
             Caption = label,
             Button = button,
+            Hover = hover,
         };
         button.onClick.AddListener(() => cell.Action?.Invoke(cell.ItemId));
         return cell;
@@ -125,7 +149,7 @@ public class EquipmentPanelView : MonoBehaviour
             var def = worn == null ? null : GameManager.ItemDefOf(worn);
             if (worn != null && def != null)
             {
-                Fill(_cells[i], def.ShortName, worn.Id, OnUnequip, allowChanges);
+                Fill(_cells[i], def, worn.Id, OnUnequip, allowChanges, _tooltip);
                 continue;
             }
 
@@ -160,6 +184,11 @@ public class EquipmentPanelView : MonoBehaviour
             return def.Kind == ItemKind.Weapon;
         }
 
+        if (slot == EquipSlot.Amulet)
+        {
+            return def.Kind == ItemKind.Amulet;
+        }
+
         return def.Kind == ItemKind.Armor && SlotForArmor(def.ArmorSlot) == slot;
     }
 
@@ -177,19 +206,36 @@ public class EquipmentPanelView : MonoBehaviour
     {
         cell.Caption.text = EmptyCaption;
         cell.Caption.color = UiFactory.MutedColor;
+        cell.Caption.gameObject.SetActive(true);
+        cell.Icon.gameObject.SetActive(false);
         cell.Background.color = UiFactory.SlotColor;
         cell.ItemId = itemId;
         cell.Action = action;
         cell.Button.interactable = allowChanges && action != null && itemId != 0;
+        cell.Hover.Bind(null, null);
     }
 
-    static void Fill(Cell cell, string caption, ulong itemId, Action<ulong> action, bool allowChanges)
+    static void Fill(
+        Cell cell,
+        ItemDef def,
+        ulong itemId,
+        Action<ulong> action,
+        bool allowChanges,
+        ItemTooltipView tooltip
+    )
     {
-        cell.Caption.text = caption;
+        var icon = AmuletArt.Icon(def.Name);
+        var showIcon = icon != null;
+        cell.Icon.sprite = icon;
+        cell.Icon.color = Color.white;
+        cell.Icon.gameObject.SetActive(showIcon);
+        cell.Caption.text = def.ShortName;
         cell.Caption.color = UiFactory.TextColor;
+        cell.Caption.gameObject.SetActive(!showIcon);
         cell.Background.color = new Color(0.27f, 0.25f, 0.20f, 1f);
         cell.ItemId = itemId;
         cell.Action = action;
         cell.Button.interactable = allowChanges && action != null && itemId != 0;
+        cell.Hover.Bind(tooltip, def);
     }
 }

@@ -179,7 +179,7 @@ public static class SkillInspect
                 return;
             case "Fireball":
                 damage = "2 to one enemy";
-                description = "A weak spell hit. If it connects, apply Burn 5 for 6 ticks. Burn stack is capped at 25; extra applications still add duration. Gains Mage spell damage (+0.2 per INT).";
+                description = "A weak spell hit. If it connects, apply Burn 5 for 6 ticks. Burn stack is capped at 25 (30 with Dragons' Fire); extra applications still add duration. Ruby Scepter adds +3 base power. Gains Mage spell damage (+0.2 per INT).";
                 return;
             case "Concentrate":
                 damage = "None";
@@ -263,7 +263,7 @@ public static class SkillInspect
                 return;
             default:
                 damage = "5 to one enemy";
-                description = "Stage I. One bolt. Applies Burn 2 for 2 ticks if it hits. Advances to II. Burn stack is capped at 25. Gains Mage spell damage (+0.2 per INT).";
+                description = "Stage I. One bolt. Applies Burn 2 for 2 ticks if it hits. Advances to II. Burn stack is capped at 25 (30 with Dragons' Fire). Ruby Scepter adds +3 base power to burning stages. Gains Mage spell damage (+0.2 per INT).";
                 return;
         }
     }
