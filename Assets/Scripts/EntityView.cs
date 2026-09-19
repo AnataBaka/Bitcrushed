@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using SpacetimeDB.Types;
 using UnityEngine;
 using UnityEngine.UI;
@@ -22,6 +23,13 @@ public class EntityView : MonoBehaviour
     RectTransform _manaRow;
 
     Action<ulong> _onClick;
+
+    Vector2 _home;
+    bool _lunging;
+    Coroutine _hit;
+
+    /// Where the card sits when nothing is animating.
+    public Vector2 Home => _home;
 
     public static EntityView Create(Transform parent, string name, Vector2 size, bool showMana)
     {
@@ -126,7 +134,77 @@ public class EntityView : MonoBehaviour
         _root.anchorMin = Vector2.zero;
         _root.anchorMax = Vector2.zero;
         _root.pivot = new Vector2(0.5f, 0f);
-        _root.anchoredPosition = anchoredPosition;
+        _home = anchoredPosition;
+
+        // A lunge in flight owns the position until it puts the card back.
+        if (!_lunging)
+        {
+            _root.anchoredPosition = anchoredPosition;
+        }
+    }
+
+    /// How long a full lunge takes, so callers can pace a volley of strikes.
+    public const float LungeSeconds = 0.32f;
+
+    /// Steps most of the way toward the target and back.
+    public void PlayLunge(Vector2 targetPosition) => StartCoroutine(LungeRoutine(targetPosition));
+
+    IEnumerator LungeRoutine(Vector2 targetPosition)
+    {
+        _lunging = true;
+        var start = _home;
+        var reach = Vector2.Lerp(start, targetPosition, 0.62f);
+
+        yield return Slide(start, reach, 0.14f);
+        yield return Slide(reach, _home, 0.18f);
+
+        _root.anchoredPosition = _home;
+        _lunging = false;
+    }
+
+    IEnumerator Slide(Vector2 from, Vector2 to, float duration)
+    {
+        var elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            var t = Mathf.Clamp01(elapsed / duration);
+            _root.anchoredPosition = Vector2.Lerp(from, to, t * t * (3f - (2f * t)));
+            yield return null;
+        }
+    }
+
+    /// Squash-and-flash on the receiving end of a hit.
+    public void PlayHit()
+    {
+        if (_hit != null)
+        {
+            StopCoroutine(_hit);
+            _shape.transform.localScale = Vector3.one;
+        }
+
+        _hit = StartCoroutine(HitRoutine());
+    }
+
+    IEnumerator HitRoutine()
+    {
+        var shape = _shape.transform;
+        var elapsed = 0f;
+        const float duration = 0.22f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            var t = Mathf.Clamp01(elapsed / duration);
+            var bump = 1f + (Mathf.Sin(t * Mathf.PI) * 0.22f);
+            shape.localScale = new Vector3(bump, bump, 1f);
+            _shape.color = Color.Lerp(Color.white, new Color(1f, 0.55f, 0.5f), 1f - t);
+            yield return null;
+        }
+
+        shape.localScale = Vector3.one;
+        _shape.color = Color.white;
+        _hit = null;
     }
 
     public void Bind(

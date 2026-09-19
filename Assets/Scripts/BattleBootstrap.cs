@@ -3,15 +3,16 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// Builds the entire "Testing Fight Stage" hierarchy at runtime: event system,
-/// canvas, battlefield, equipment placeholder, battle log, action menu and the
-/// end-of-battle overlay. Nothing needs to be assembled by hand in the editor.
+/// canvas, battlefield, turn order strip, equipment and bag panel, battle log,
+/// action menu and the end-of-battle overlay. Nothing needs to be assembled by
+/// hand in the editor.
 public class BattleBootstrap : MonoBehaviour
 {
     [SerializeField]
-    string serverUrl = "http://127.0.0.1:3000";
+    string serverUrl = "https://maincloud.spacetimedb.com";
 
     [SerializeField]
-    string databaseName = "hophacks-party";
+    string databaseName = "hophacks-party-vp";
 
     static bool _built;
 
@@ -78,17 +79,22 @@ public class BattleBootstrap : MonoBehaviour
         var field = UiFactory.NewRect(canvas, "Field");
         UiFactory.Anchor(field, new Vector2(0f, 0.26f), new Vector2(1f, 1f));
 
+        var turnOrder = TurnOrderView.Create(field);
+        var turnRect = turnOrder.GetComponent<RectTransform>();
+        UiFactory.Anchor(turnRect, new Vector2(0.012f, 0.26f), new Vector2(0.145f, 0.965f));
+
         var bottom = UiFactory.NewRect(canvas, "BottomBar");
         UiFactory.Anchor(bottom, Vector2.zero, new Vector2(1f, 0.26f));
 
-        var equipment = BuildEquipmentPanel(bottom);
-        UiFactory.Anchor(equipment, new Vector2(0f, 0f), new Vector2(0.185f, 1f));
-        equipment.offsetMin = new Vector2(10f, 10f);
-        equipment.offsetMax = new Vector2(-5f, -10f);
+        var equipment = EquipmentPanelView.Create(bottom);
+        var equipmentRect = equipment.GetComponent<RectTransform>();
+        UiFactory.Anchor(equipmentRect, new Vector2(0f, 0f), new Vector2(0.235f, 1f));
+        equipmentRect.offsetMin = new Vector2(10f, 10f);
+        equipmentRect.offsetMax = new Vector2(-5f, -10f);
 
         var log = BattleLogView.Create(bottom);
         var logRect = log.GetComponent<RectTransform>();
-        UiFactory.Anchor(logRect, new Vector2(0.185f, 0f), new Vector2(0.75f, 1f));
+        UiFactory.Anchor(logRect, new Vector2(0.235f, 0f), new Vector2(0.75f, 1f));
         logRect.offsetMin = new Vector2(5f, 10f);
         logRect.offsetMax = new Vector2(-5f, -10f);
 
@@ -101,7 +107,16 @@ public class BattleBootstrap : MonoBehaviour
         var overlay = BuildOverlay(canvas, out var overlayText);
 
         var hud = gameObject.AddComponent<BattleHud>();
-        hud.Init(field, log, menu, overlay, overlayText, connectionLabel);
+        hud.Init(
+            field,
+            log,
+            menu,
+            equipment,
+            turnOrder,
+            overlay,
+            overlayText,
+            connectionLabel
+        );
     }
 
     static void EnsureEventSystem()
@@ -174,57 +189,6 @@ public class BattleBootstrap : MonoBehaviour
         scaler.matchWidthOrHeight = 0.5f;
 
         return go.transform;
-    }
-
-    static RectTransform BuildEquipmentPanel(Transform parent)
-    {
-        var panel = UiFactory.Panel(parent, "Equipment", UiFactory.PanelColor);
-
-        var title = UiFactory.Label(
-            panel.transform,
-            "Title",
-            "EQUIPMENT",
-            16,
-            TextAnchor.UpperLeft,
-            UiFactory.MutedColor
-        );
-        title.rectTransform.anchorMin = new Vector2(0f, 1f);
-        title.rectTransform.anchorMax = new Vector2(1f, 1f);
-        title.rectTransform.pivot = new Vector2(0.5f, 1f);
-        title.rectTransform.sizeDelta = new Vector2(-20f, 22f);
-        title.rectTransform.anchoredPosition = new Vector2(0f, -8f);
-
-        var grid = UiFactory.NewRect(panel.transform, "Slots");
-        grid.anchorMin = Vector2.zero;
-        grid.anchorMax = Vector2.one;
-        grid.offsetMin = new Vector2(12f, 12f);
-        grid.offsetMax = new Vector2(-12f, -34f);
-
-        var layout = grid.gameObject.AddComponent<GridLayoutGroup>();
-        layout.cellSize = new Vector2(70f, 70f);
-        layout.spacing = new Vector2(10f, 10f);
-        layout.childAlignment = TextAnchor.UpperLeft;
-
-        // Visual only: no equipment behaviour exists yet.
-        AddSlot(grid, "WPN");
-        AddSlot(grid, "AMU");
-        AddSlot(grid, "AMU");
-        AddSlot(grid, "AMU");
-        return panel.rectTransform;
-    }
-
-    static void AddSlot(Transform parent, string caption)
-    {
-        var slot = UiFactory.Panel(parent, $"Slot_{caption}", UiFactory.SlotColor);
-        var label = UiFactory.Label(
-            slot.transform,
-            "Label",
-            caption,
-            16,
-            TextAnchor.MiddleCenter,
-            UiFactory.MutedColor
-        );
-        UiFactory.Anchor(label.rectTransform, Vector2.zero, Vector2.one);
     }
 
     static RectTransform BuildOverlay(Transform parent, out Text overlayText)

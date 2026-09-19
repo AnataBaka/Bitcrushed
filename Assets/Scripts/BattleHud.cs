@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using SpacetimeDB.Types;
 using UnityEngine;
@@ -9,9 +10,9 @@ public class BattleHud : MonoBehaviour
 {
     static readonly Vector2[] PlayerSlots =
     {
-        new Vector2(330f, 120f),
-        new Vector2(510f, 290f),
-        new Vector2(690f, 460f),
+        new Vector2(420f, 120f),
+        new Vector2(600f, 290f),
+        new Vector2(780f, 460f),
     };
 
     static readonly Vector2[] EnemySlots =
@@ -26,6 +27,8 @@ public class BattleHud : MonoBehaviour
     RectTransform _field;
     BattleLogView _log;
     ActionMenuView _menu;
+    EquipmentPanelView _equipment;
+    TurnOrderView _turnOrder;
     RectTransform _overlay;
     Text _overlayText;
     Text _connectionLabel;
@@ -33,12 +36,21 @@ public class BattleHud : MonoBehaviour
     readonly Dictionary<ulong, EntityView> _views = new Dictionary<ulong, EntityView>();
     readonly List<ulong> _stale = new List<ulong>();
 
+    /// Hits waiting to be animated, oldest first.
+    readonly Queue<BattleLog> _pendingHits = new Queue<BattleLog>();
+    bool _animating;
+
     bool _targeting;
+
+    /// Which attack the player picked before choosing a target. 0 is the free swing.
+    uint _pendingSkillId;
 
     public void Init(
         RectTransform field,
         BattleLogView log,
         ActionMenuView menu,
+        EquipmentPanelView equipment,
+        TurnOrderView turnOrder,
         RectTransform overlay,
         Text overlayText,
         Text connectionLabel
@@ -47,6 +59,8 @@ public class BattleHud : MonoBehaviour
         _field = field;
         _log = log;
         _menu = menu;
+        _equipment = equipment;
+        _turnOrder = turnOrder;
         _overlay = overlay;
         _overlayText = overlayText;
         _connectionLabel = connectionLabel;
@@ -55,24 +69,48 @@ public class BattleHud : MonoBehaviour
         _menu.OnStartBattle = GameManager.StartBattle;
         _menu.OnFocus = () =>
         {
-            _targeting = false;
+            ClearTargeting();
             GameManager.Focus();
         };
-        _menu.OnUseItem = item =>
+        _menu.OnUseItem = itemId =>
         {
-            _targeting = false;
-            GameManager.UseItem(item);
+            ClearTargeting();
+            GameManager.UseItem(itemId);
         };
-        _menu.OnSkillSelected = () => _targeting = true;
+        _menu.OnAttackSelected = HandleAttackSelected;
+
+        _equipment.OnEquip = GameManager.EquipItem;
+        _equipment.OnUnequip = GameManager.UnequipItem;
+        _equipment.OnUse = itemId =>
+        {
+            ClearTargeting();
+            GameManager.UseItem(itemId);
+        };
 
         Refresh();
     }
 
-    void OnEnable() => GameManager.StateChanged += Refresh;
+    void OnEnable()
+    {
+        GameManager.StateChanged += Refresh;
+        GameManager.LogAppended += HandleLogAppended;
+    }
 
-    void OnDisable() => GameManager.StateChanged -= Refresh;
+    void OnDisable()
+    {
+        GameManager.StateChanged -= Refresh;
+        GameManager.LogAppended -= HandleLogAppended;
+    }
 
     void Start() => Refresh();
+
+    void Update()
+    {
+        if (!_animating && _pendingHits.Count > 0)
+        {
+            StartCoroutine(PlayHit(_pendingHits.Dequeue()));
+        }
+    }
 
     void Refresh()
     {
@@ -93,7 +131,7 @@ public class BattleHud : MonoBehaviour
 
         if (!myTurn)
         {
-            _targeting = false;
+            ClearTargeting();
         }
 
         SyncTeam(GameManager.TeamMembers(Team.Players), PlayerSlots, PlayerCardSize, true, me);
@@ -102,6 +140,8 @@ public class BattleHud : MonoBehaviour
 
         _log.SetLines(GameManager.LogLines(60));
         _menu.Render(session, me, myTurn, _targeting);
+        _equipment.Render(me, myTurn);
+        _turnOrder.Render(session);
 
         var finished =
             session != null
@@ -132,8 +172,9 @@ public class BattleHud : MonoBehaviour
 
         foreach (var entity in entities)
         {
-            // Defeated combatants leave the screen.
-            if (!entity.Alive)
+            // Defeated combatants leave the screen, but not until their last hit
+            // has finished animating.
+            if (!entity.Alive && !AnimationsPending())
             {
                 continue;
             }
@@ -147,7 +188,7 @@ public class BattleHud : MonoBehaviour
             var index = (int)Mathf.Min(entity.Slot, slots.Length - 1);
             view.SetPosition(slots[index]);
 
-            var targetable = _targeting && myTurn && entity.Faction == Team.Enemies;
+            var targetable = _targeting && myTurn && entity.Faction == Team.Enemies && entity.Alive;
             var isLocal = me != null && me.EntityId == entity.EntityId;
             view.Bind(entity, activeId == entity.EntityId, isLocal, targetable, HandleTargetClicked);
         }
@@ -155,11 +196,16 @@ public class BattleHud : MonoBehaviour
 
     void PruneMissing()
     {
+        if (AnimationsPending())
+        {
+            return;
+        }
+
         _stale.Clear();
 
         foreach (var pair in _views)
         {
-            var entity = GameManager.Conn?.Db.Entity.EntityId.Find(pair.Key);
+            var entity = GameManager.FindEntity(pair.Key);
             if (entity == null || !entity.Alive)
             {
                 _stale.Add(pair.Key);
@@ -177,6 +223,33 @@ public class BattleHud : MonoBehaviour
         }
     }
 
+    bool AnimationsPending() => _animating || _pendingHits.Count > 0;
+
+    void HandleAttackSelected(uint skillDefId)
+    {
+        if (skillDefId == 0)
+        {
+            _pendingSkillId = 0;
+            _targeting = true;
+            Refresh();
+            return;
+        }
+
+        var skill = GameManager.Conn?.Db.SkillDef.Id.Find(skillDefId);
+
+        // Buffs have nobody to point at, so they resolve on the spot.
+        if (skill != null && skill.TargetCount == 0)
+        {
+            ClearTargeting();
+            GameManager.CastSkill(skillDefId, 0);
+            return;
+        }
+
+        _pendingSkillId = skillDefId;
+        _targeting = true;
+        Refresh();
+    }
+
     void HandleTargetClicked(ulong entityId)
     {
         if (!_targeting || !GameManager.IsLocalTurn())
@@ -184,7 +257,77 @@ public class BattleHud : MonoBehaviour
             return;
         }
 
+        var skillDefId = _pendingSkillId;
+        ClearTargeting();
+
+        if (skillDefId == 0)
+        {
+            GameManager.Attack(entityId);
+            return;
+        }
+
+        GameManager.CastSkill(skillDefId, entityId);
+    }
+
+    void ClearTargeting()
+    {
         _targeting = false;
-        GameManager.Attack(entityId);
+        _pendingSkillId = 0;
+    }
+
+    /// The module stamps every strike with its actor and target, so the log the
+    /// player reads is also the animation script.
+    void HandleLogAppended(BattleLog row)
+    {
+        // The initial subscription replays the whole log; only animate live rows.
+        if (GameManager.Instance == null || !GameManager.Instance.SubscriptionReady)
+        {
+            return;
+        }
+
+        if (row.Kind != LogKind.Attack)
+        {
+            return;
+        }
+
+        if (row.ActorEntityId == 0 || row.TargetEntityId == 0)
+        {
+            return;
+        }
+
+        if (row.ActorEntityId == row.TargetEntityId)
+        {
+            return;
+        }
+
+        _pendingHits.Enqueue(row);
+    }
+
+    IEnumerator PlayHit(BattleLog row)
+    {
+        _animating = true;
+
+        if (
+            _views.TryGetValue(row.ActorEntityId, out var actor)
+            && _views.TryGetValue(row.TargetEntityId, out var target)
+            && actor != null
+            && target != null
+        )
+        {
+            actor.PlayLunge(target.Home);
+            yield return new WaitForSeconds(0.14f);
+            target.PlayHit();
+            // Waiting on a fixed duration rather than the lunge coroutine keeps
+            // the queue moving even if the card is destroyed mid-strike.
+            yield return new WaitForSeconds(EntityView.LungeSeconds - 0.14f);
+        }
+
+        _animating = false;
+
+        // A defeated combatant only leaves once its last hit has played out.
+        if (_pendingHits.Count == 0)
+        {
+            Refresh();
+        }
     }
 }
