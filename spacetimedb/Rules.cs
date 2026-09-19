@@ -452,12 +452,24 @@ public static partial class Module
         return f + 0.25 * capped;
     }
 
-    /// EnemyHP = (30 + 6*blend) * (P/3). Blend is floor + 0.25*min(playerLevel, 35).
-    public static int EnemyHpForEncounter(uint floor, uint playerLevel, int playerCount)
+    /// EnemyHP = (30 + 6*blend) * (P/3) * packVitality.
+    /// Blend is floor + 0.25*min(playerLevel, 35). Pack vitality beefs up solos and
+    /// thins out 4-packs so total fight HP stays in a sensible band at full party (3).
+    public static int EnemyHpForEncounter(
+        uint floor,
+        uint playerLevel,
+        int playerCount,
+        int enemyCount
+    )
     {
         var baseline = 30 + 6 * EnemyScaleLevel(floor, playerLevel);
         var p = Math.Max(1, playerCount);
-        return Math.Max(1, (int)Math.Round(baseline * (p / 3.0), MidpointRounding.AwayFromZero));
+        var fromParty = baseline * (p / 3.0);
+        var vitalityBps = PackVitalityBps(Math.Max(1, enemyCount));
+        return Math.Max(
+            1,
+            (int)Math.Round(fromParty * vitalityBps / 10000.0, MidpointRounding.AwayFromZero)
+        );
     }
 
     /// ATK is not cut by party size — starter armor is 5, so P/3 was zeroing solo hits.

@@ -1122,7 +1122,7 @@ public static partial class Module
         var playerLevel = PartyCombatLevel(ctx);
         var pool = EnemyPool;
         var count = RollEnemyPackSize(ctx, players);
-        var maxHp = EnemyHpForEncounter(floor, playerLevel, players);
+        var maxHp = EnemyHpForEncounter(floor, playerLevel, players, count);
         var atk = EnemyAtkForEncounter(floor, playerLevel);
         var strength = EnemyStrengthForEncounter(floor, playerLevel);
 
@@ -1214,9 +1214,14 @@ public static partial class Module
         return Math.Max(1, LivingMembers(ctx, Team.Players).Count);
     }
 
+    /// Full party (MaxPartySize = 3) can face 1-4 enemies. Smaller parties cap
+    /// the pack at party size so a duo never walks into a four-pack.
     static int RollEnemyPackSize(ReducerContext ctx, int playerCount)
     {
-        var maxPack = Math.Clamp(playerCount, 1, (int)MaxEnemySlots);
+        var maxPack =
+            playerCount >= (int)MaxPartySize
+                ? (int)MaxEnemySlots
+                : Math.Clamp(playerCount, 1, (int)MaxEnemySlots);
         return ctx.Rng.Next(1, maxPack + 1);
     }
 
