@@ -143,6 +143,9 @@ public static partial class Module
         public uint CharacterLevel;
         [Default(0u)]
         public uint Xp;
+        /// Unspent character-level points. Accrues on level-up; spent via SpendStatPoint.
+        [Default(0u)]
+        public uint UnspentStatPoints;
     }
 
     /// Every combatant, player or enemy, lives here so turn order and damage

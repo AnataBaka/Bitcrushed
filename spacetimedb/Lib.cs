@@ -139,6 +139,7 @@ public static partial class Module
                 Ready = false,
                 CharacterLevel = 1,
                 Xp = 0,
+                UnspentStatPoints = 0,
             }
         );
 
@@ -1443,6 +1444,10 @@ public static partial class Module
             {
                 Xp = currentXp,
                 CharacterLevel = level,
+                UnspentStatPoints = SaturatingAdd(
+                    player.UnspentStatPoints,
+                    SaturatingMul(StatPointsPerLevel, (uint)reached.Count)
+                ),
             }
         );
 
@@ -1453,32 +1458,59 @@ public static partial class Module
             return;
         }
 
-        GrowMainStat(ctx, player, (int)(StatPointsPerLevel * (uint)reached.Count));
         foreach (var newLevel in reached)
         {
             AddLog(ctx, $"{name} reached level {newLevel}!");
+            Log.Info($"{name} reached level {newLevel}.");
         }
     }
 
-    /// Anthony granted 2 unspent points per level. This branch has no allocate UI,
-    /// so those points land on the class main stat and then gear is recomputed.
-    static void GrowMainStat(ReducerContext ctx, Player player, int points)
+    /// Spend one unspent character-level point on a combat stat. Health and
+    /// Mana are not spendable; only Strength, Speed, Intelligence, and Dexterity.
+    [SpacetimeDB.Reducer]
+    public static void SpendStatPoint(ReducerContext ctx, StatType stat)
     {
-        if (points <= 0 || ctx.Db.Entity.EntityId.Find(player.EntityId) is not Entity entity)
+        var player = RequirePlayer(ctx);
+        if (ctx.Db.Entity.EntityId.Find(player.EntityId) is not Entity entity)
         {
-            return;
+            throw new Exception("Your character is missing.");
         }
 
-        var grown = MainStat(player.Class) switch
+        if (!entity.Alive)
         {
-            StatType.Strength => entity with { BaseStrength = entity.BaseStrength + points },
-            StatType.Dexterity => entity with { BaseDexterity = entity.BaseDexterity + points },
+            throw new Exception("Defeated players cannot spend stat points.");
+        }
+
+        if (player.UnspentStatPoints == 0)
+        {
+            throw new Exception("No unspent stat points.");
+        }
+
+        var grown = stat switch
+        {
+            StatType.Strength => entity with { BaseStrength = entity.BaseStrength + StatPointStrength },
+            StatType.Dexterity => entity with { BaseDexterity = entity.BaseDexterity + StatPointDexterity },
             StatType.Intelligence =>
-                entity with { BaseIntelligence = entity.BaseIntelligence + points },
-            _ => entity with { BaseSpeed = entity.BaseSpeed + points },
+                entity with { BaseIntelligence = entity.BaseIntelligence + StatPointIntelligence },
+            StatType.Speed => entity with { BaseSpeed = entity.BaseSpeed + StatPointSpeed },
+            _ => throw new Exception("That stat cannot be increased with points."),
         };
+
+        ctx.Db.Player.Identity.Update(
+            player with { UnspentStatPoints = player.UnspentStatPoints - 1 }
+        );
         ctx.Db.Entity.EntityId.Update(grown);
         RecomputeStats(ctx, player.Identity);
+
+        var label = stat switch
+        {
+            StatType.Strength => "Strength",
+            StatType.Dexterity => "Dexterity",
+            StatType.Intelligence => "Intelligence",
+            _ => "Speed",
+        };
+        AddLog(ctx, $"{entity.Name} increased {label}.");
+        Log.Info($"{entity.Name} increased {label}.");
     }
 
     // ---------------------------------------------------------------- helpers

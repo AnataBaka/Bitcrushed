@@ -405,6 +405,8 @@ public class GameManager : MonoBehaviour
 
     public static void LeaveGame() => Conn?.Reducers.LeaveGame();
 
+    public static void SpendStatPoint(StatType stat) => Conn?.Reducers.SpendStatPoint(stat);
+
     public static void Disconnect()
     {
         if (Conn == null)

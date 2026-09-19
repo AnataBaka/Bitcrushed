@@ -67,6 +67,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Player, bool> Ready { get; }
         public global::SpacetimeDB.Col<Player, uint> CharacterLevel { get; }
         public global::SpacetimeDB.Col<Player, uint> Xp { get; }
+        public global::SpacetimeDB.Col<Player, uint> UnspentStatPoints { get; }
 
         public PlayerCols(string tableName)
         {
@@ -78,6 +79,7 @@ namespace SpacetimeDB.Types
             Ready = new global::SpacetimeDB.Col<Player, bool>(tableName, "ready");
             CharacterLevel = new global::SpacetimeDB.Col<Player, uint>(tableName, "character_level");
             Xp = new global::SpacetimeDB.Col<Player, uint>(tableName, "xp");
+            UnspentStatPoints = new global::SpacetimeDB.Col<Player, uint>(tableName, "unspent_stat_points");
         }
     }
 

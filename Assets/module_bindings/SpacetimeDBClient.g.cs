@@ -645,6 +645,7 @@ namespace SpacetimeDB.Types
                 Reducer.LeaveGame args => Reducers.InvokeLeaveGame(eventContext, args),
                 Reducer.ResetStage args => Reducers.InvokeResetStage(eventContext, args),
                 Reducer.SetReady args => Reducers.InvokeSetReady(eventContext, args),
+                Reducer.SpendStatPoint args => Reducers.InvokeSpendStatPoint(eventContext, args),
                 Reducer.UnequipItem args => Reducers.InvokeUnequipItem(eventContext, args),
                 Reducer.UseItem args => Reducers.InvokeUseItem(eventContext, args),
                 _ => throw new ArgumentOutOfRangeException("Reducer", $"Unknown reducer {reducer}")

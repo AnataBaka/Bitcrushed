@@ -31,8 +31,16 @@ public static partial class Module
     public const uint ExpPerLevelStep = 100;
     /// Each kill grants 25 EXP times the current stage number.
     public const uint KillExpPerStage = 25;
-    /// Anthony's level-up grant: 2 points, applied here to the class main stat.
-    public const uint StatPointsPerLevel = 2;
+    /// Unspent points granted to a living player on each character level-up.
+    public const uint StatPointsPerLevel = 3;
+
+    /// Per-point growth applied by SpendStatPoint. One level's 3 points total
+    /// +3 across chosen stats, comparable to the old automatic +2 on the class
+    /// main stat.
+    public const int StatPointStrength = 1;
+    public const int StatPointDexterity = 1;
+    public const int StatPointIntelligence = 1;
+    public const int StatPointSpeed = 1;
 
     // Enemy actions are spaced out so the battle log stays readable.
     public const long EnemyTurnDelayMicros = 2_000_000;
