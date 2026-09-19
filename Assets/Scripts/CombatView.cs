@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using SpacetimeDB.Types;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -7,25 +8,31 @@ using CombatActionType = SpacetimeDB.Types.CombatActionType;
 
 public class CombatView : MonoBehaviour
 {
+    const int SlotCount = 3;
+    const float OrbScale = 1.05f;
+
     [SerializeField] Sprite playerSprite;
     [SerializeField] Sprite enemySprite;
 
-    SpriteRenderer _playerOrb;
-    SpriteRenderer _enemyOrb;
-    TextMesh _playerLabel;
-    TextMesh _enemyLabel;
-    Button _attack;
-    Button _spells;
+    readonly SlotView[] _players = new SlotView[SlotCount];
+    readonly SlotView[] _enemies = new SlotView[SlotCount];
+
+    Button _attacks;
     Button _defend;
     Button _items;
+    GameObject _attacksMenu;
+    bool _attacksMenuOpen;
+
+    struct SlotView
+    {
+        public SpriteRenderer Orb;
+        public TextMesh Label;
+    }
 
     void Start()
     {
         SetupCamera();
-        _playerOrb = CreateOrb("Player", new Vector3(-3f, 0.4f, 0f), new Color(0.2f, 0.85f, 0.25f), playerSprite);
-        _enemyOrb = CreateOrb("Enemy", new Vector3(3f, 0.4f, 0f), new Color(0.85f, 0.2f, 0.2f), enemySprite);
-        _playerLabel = CreateLabel(_playerOrb.transform, "Player");
-        _enemyLabel = CreateLabel(_enemyOrb.transform, "Enemy");
+        CreateParty();
         CreateButtons();
         GameManager.PartyChanged += Refresh;
         Refresh();
@@ -45,21 +52,39 @@ public class CombatView : MonoBehaviour
         }
 
         camera.orthographic = true;
-        camera.orthographicSize = 5f;
-        camera.transform.position = new Vector3(0f, 0.4f, -10f);
+        camera.orthographicSize = 4.6f;
+        camera.transform.position = new Vector3(0f, 0.2f, -10f);
         camera.clearFlags = CameraClearFlags.SolidColor;
         camera.backgroundColor = new Color(0.08f, 0.09f, 0.12f);
     }
 
-    SpriteRenderer CreateOrb(string name, Vector3 position, Color color, Sprite sprite)
+    void CreateParty()
+    {
+        var playerXs = new[] { -4.15f, -3.45f, -4.15f };
+        var enemyXs = new[] { 4.15f, 3.45f, 4.15f };
+        var ys = new[] { 1.85f, 0.2f, -1.45f };
+        var playerColor = new Color(0.2f, 0.85f, 0.25f);
+        var enemyColor = new Color(0.85f, 0.2f, 0.2f);
+
+        for (var i = 0; i < SlotCount; i++)
+        {
+            _players[i] = CreateSlot($"Player{i}", new Vector3(playerXs[i], ys[i], 0f), playerColor, playerSprite);
+            _enemies[i] = CreateSlot($"Enemy{i}", new Vector3(enemyXs[i], ys[i], 0f), enemyColor, enemySprite);
+        }
+    }
+
+    SlotView CreateSlot(string name, Vector3 position, Color color, Sprite sprite)
     {
         var go = new GameObject(name);
         go.transform.position = position;
-        go.transform.localScale = Vector3.one * 1.6f;
+        go.transform.localScale = Vector3.one * OrbScale;
         var renderer = go.AddComponent<SpriteRenderer>();
         renderer.sprite = sprite != null ? sprite : CreateOrbSprite(color);
-
-        return renderer;
+        return new SlotView
+        {
+            Orb = renderer,
+            Label = CreateLabel(go.transform, name),
+        };
     }
 
     static Sprite CreateOrbSprite(Color color)
@@ -90,15 +115,15 @@ public class CombatView : MonoBehaviour
     {
         var go = new GameObject("Label");
         go.transform.SetParent(parent, false);
-        go.transform.localPosition = new Vector3(0f, 0.85f, 0f);
-        go.transform.localScale = Vector3.one * 0.08f;
+        go.transform.localPosition = new Vector3(0f, 0.78f, 0f);
+        go.transform.localScale = Vector3.one * 0.07f;
         var mesh = go.AddComponent<TextMesh>();
         mesh.text = text;
         mesh.anchor = TextAnchor.LowerCenter;
         mesh.alignment = TextAlignment.Center;
-        mesh.fontSize = 48;
+        mesh.fontSize = 36;
         mesh.color = Color.white;
-        mesh.characterSize = 0.5f;
+        mesh.characterSize = 0.42f;
         var meshRenderer = go.GetComponent<MeshRenderer>();
         if (meshRenderer != null)
         {
@@ -114,26 +139,46 @@ public class CombatView : MonoBehaviour
         var canvasGo = new GameObject("CombatButtons");
         var canvas = canvasGo.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvasGo.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
         canvasGo.AddComponent<GraphicRaycaster>();
 
         var row = new GameObject("Row", typeof(RectTransform), typeof(HorizontalLayoutGroup));
         row.transform.SetParent(canvasGo.transform, false);
         var rowRect = row.GetComponent<RectTransform>();
-        rowRect.anchorMin = new Vector2(0.1f, 0.04f);
-        rowRect.anchorMax = new Vector2(0.9f, 0.16f);
+        rowRect.anchorMin = new Vector2(0.28f, 0.018f);
+        rowRect.anchorMax = new Vector2(0.72f, 0.078f);
         rowRect.offsetMin = Vector2.zero;
         rowRect.offsetMax = Vector2.zero;
         var layout = row.GetComponent<HorizontalLayoutGroup>();
-        layout.spacing = 12f;
+        layout.spacing = 8f;
         layout.childAlignment = TextAnchor.MiddleCenter;
         layout.childForceExpandHeight = true;
         layout.childForceExpandWidth = true;
+        layout.padding = new RectOffset(4, 4, 2, 2);
 
-        _attack = CreateButton(row.transform, "Attack", OnAttack);
-        _spells = CreateButton(row.transform, "Spells", OnSpells);
+        _attacks = CreateButton(row.transform, "Attacks", ToggleAttacksMenu);
         _defend = CreateButton(row.transform, "Defend", OnDefend);
         _items = CreateButton(row.transform, "Items", OnItems);
+
+        _attacksMenu = new GameObject("AttacksMenu", typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup));
+        _attacksMenu.transform.SetParent(canvasGo.transform, false);
+        var menuRect = _attacksMenu.GetComponent<RectTransform>();
+        menuRect.anchorMin = new Vector2(0.28f, 0.09f);
+        menuRect.anchorMax = new Vector2(0.5f, 0.38f);
+        menuRect.offsetMin = Vector2.zero;
+        menuRect.offsetMax = Vector2.zero;
+        _attacksMenu.GetComponent<Image>().color = new Color(0.08f, 0.09f, 0.12f, 0.92f);
+        var menuLayout = _attacksMenu.GetComponent<VerticalLayoutGroup>();
+        menuLayout.spacing = 4f;
+        menuLayout.padding = new RectOffset(8, 8, 8, 8);
+        menuLayout.childAlignment = TextAnchor.UpperCenter;
+        menuLayout.childForceExpandHeight = false;
+        menuLayout.childForceExpandWidth = true;
+        menuLayout.childControlHeight = true;
+        menuLayout.childControlWidth = true;
+        _attacksMenu.SetActive(false);
     }
 
     static void EnsureEventSystem()
@@ -161,8 +206,9 @@ public class CombatView : MonoBehaviour
 
     static Button CreateButton(Transform parent, string label, UnityEngine.Events.UnityAction onClick)
     {
-        var go = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(Button));
+        var go = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
         go.transform.SetParent(parent, false);
+        go.GetComponent<LayoutElement>().preferredHeight = 36f;
         var image = go.GetComponent<Image>();
         image.color = new Color(0.18f, 0.2f, 0.26f, 0.95f);
         var button = go.GetComponent<Button>();
@@ -180,7 +226,7 @@ public class CombatView : MonoBehaviour
         text.text = label;
         text.alignment = TextAnchor.MiddleCenter;
         text.color = Color.white;
-        text.fontSize = 22;
+        text.fontSize = 16;
         text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         if (text.font == null)
         {
@@ -193,77 +239,165 @@ public class CombatView : MonoBehaviour
     void Refresh()
     {
         var gm = GameManager.Instance;
-        var player = gm != null ? gm.GetLocalPlayer() : null;
-        var enemy = FirstEnemy();
+        var local = gm != null ? gm.GetLocalPlayer() : null;
         var session = gm != null ? gm.GetSession() : null;
+        var target = FirstLivingEnemy();
 
-        if (player != null)
+        for (uint slot = 0; slot < SlotCount; slot++)
         {
-            _playerLabel.text = $"{player.Name}\nHP {player.CurrHealth}/{player.MaxHealth}";
-            _playerOrb.color = player.Alive ? Color.white : new Color(0.35f, 0.35f, 0.35f);
+            BindPlayer(_players[slot], gm != null ? gm.GetPlayerInSlot(slot) : null, local, session);
+            BindEnemy(_enemies[slot], EnemyInSlot(slot), target);
         }
 
-        if (enemy != null)
-        {
-            _enemyLabel.text = $"{enemy.Name}\nHP {enemy.CurrHealth}/{enemy.MaxHealth}";
-            _enemyOrb.color = enemy.Alive ? Color.white : new Color(0.35f, 0.35f, 0.35f);
-        }
-
-        var canAct = player != null
-            && player.Alive
-            && enemy != null
-            && enemy.Alive
+        var canAct = local != null
+            && local.Alive
+            && target != null
             && session != null
             && session.Phase == GamePhase.Combat
             && session.ActiveKind == CombatantKind.Player
-            && session.ActiveCombatantId == player.Slot;
+            && session.ActiveCombatantId == local.Slot;
 
         SetButtons(canAct);
+        if (!canAct)
+        {
+            CloseAttacksMenu();
+        }
+        else if (_attacksMenuOpen)
+        {
+            RebuildAttacksMenu();
+        }
+    }
+
+    static void BindPlayer(SlotView slot, Player player, Player local, GameSession session)
+    {
+        if (player == null)
+        {
+            slot.Orb.gameObject.SetActive(true);
+            slot.Orb.color = new Color(0.28f, 0.3f, 0.34f, 0.45f);
+            slot.Label.text = "Empty";
+            return;
+        }
+
+        slot.Orb.gameObject.SetActive(true);
+        var isTurn = session != null
+            && session.Phase == GamePhase.Combat
+            && session.ActiveKind == CombatantKind.Player
+            && session.ActiveCombatantId == player.Slot;
+        var you = local != null && player.Identity == local.Identity ? " *" : "";
+        slot.Label.text = $"{player.Name}{you}\n{player.Class}\nHP {player.CurrHealth}/{player.MaxHealth}";
+        if (!player.Alive)
+        {
+            slot.Orb.color = new Color(0.35f, 0.35f, 0.35f);
+        }
+        else if (isTurn)
+        {
+            slot.Orb.color = new Color(1f, 0.92f, 0.45f);
+        }
+        else
+        {
+            slot.Orb.color = Color.white;
+        }
+    }
+
+    static void BindEnemy(SlotView slot, Enemy enemy, Enemy target)
+    {
+        if (enemy == null)
+        {
+            slot.Orb.gameObject.SetActive(false);
+            slot.Label.text = string.Empty;
+            return;
+        }
+
+        slot.Orb.gameObject.SetActive(true);
+        var mark = target != null && target.Id == enemy.Id ? " >" : "";
+        slot.Label.text = $"{enemy.Name}{mark}\nHP {enemy.CurrHealth}/{enemy.MaxHealth}";
+        slot.Orb.color = enemy.Alive
+            ? (target != null && target.Id == enemy.Id ? new Color(1f, 0.55f, 0.55f) : Color.white)
+            : new Color(0.35f, 0.35f, 0.35f);
     }
 
     void SetButtons(bool enabled)
     {
-        if (_attack == null)
+        if (_attacks == null)
         {
             return;
         }
 
-        _attack.interactable = enabled;
-        _spells.interactable = enabled;
+        _attacks.interactable = enabled;
         _defend.interactable = enabled;
         _items.interactable = enabled;
     }
 
-    void OnAttack()
+    void ToggleAttacksMenu()
     {
-        var enemy = FirstEnemy();
+        _attacksMenuOpen = !_attacksMenuOpen;
+        if (_attacksMenuOpen)
+        {
+            RebuildAttacksMenu();
+            _attacksMenu.SetActive(true);
+        }
+        else
+        {
+            _attacksMenu.SetActive(false);
+        }
+    }
+
+    void CloseAttacksMenu()
+    {
+        _attacksMenuOpen = false;
+        if (_attacksMenu != null)
+        {
+            _attacksMenu.SetActive(false);
+        }
+    }
+
+    void RebuildAttacksMenu()
+    {
+        if (_attacksMenu == null)
+        {
+            return;
+        }
+
+        for (var i = _attacksMenu.transform.childCount - 1; i >= 0; i--)
+        {
+            DestroyImmediate(_attacksMenu.transform.GetChild(i).gameObject);
+        }
+
+        var skills = UnlockedSkills();
+        if (skills.Count == 0)
+        {
+            CreateButton(_attacksMenu.transform, "No spells unlocked", () => { });
+            return;
+        }
+
+        foreach (var skill in skills)
+        {
+            var captured = skill;
+            CreateButton(_attacksMenu.transform, $"{captured.Name}  {captured.ManaCost} MP", () => CastSpell(captured.Id));
+        }
+    }
+
+    void CastSpell(uint skillId)
+    {
+        var enemy = FirstLivingEnemy();
         if (enemy == null || GameManager.Instance == null)
         {
             return;
         }
 
-        GameManager.Instance.SubmitAction(CombatActionType.Attack, 0, enemy.Id);
-    }
-
-    void OnSpells()
-    {
-        var enemy = FirstEnemy();
-        var skillId = FirstUnlockedSkillId();
-        if (enemy == null || skillId == 0 || GameManager.Instance == null)
-        {
-            return;
-        }
-
         GameManager.Instance.SubmitAction(CombatActionType.Spell, skillId, enemy.Id);
+        CloseAttacksMenu();
     }
 
     void OnDefend()
     {
+        CloseAttacksMenu();
         GameManager.Instance?.SubmitAction(CombatActionType.Defend);
     }
 
     void OnItems()
     {
+        CloseAttacksMenu();
         var itemId = FirstConsumableId();
         if (itemId == 0 || GameManager.Instance == null)
         {
@@ -273,7 +407,31 @@ public class CombatView : MonoBehaviour
         GameManager.Instance.SubmitAction(CombatActionType.Item, 0, 0, itemId);
     }
 
-    static Enemy FirstEnemy()
+    static Enemy FirstLivingEnemy()
+    {
+        if (GameManager.Conn == null)
+        {
+            return null;
+        }
+
+        Enemy first = null;
+        foreach (var enemy in GameManager.Conn.Db.Enemy.Iter())
+        {
+            if (!enemy.Alive)
+            {
+                continue;
+            }
+
+            if (first == null || enemy.Slot < first.Slot)
+            {
+                first = enemy;
+            }
+        }
+
+        return first;
+    }
+
+    static Enemy EnemyInSlot(uint slot)
     {
         if (GameManager.Conn == null)
         {
@@ -282,26 +440,22 @@ public class CombatView : MonoBehaviour
 
         foreach (var enemy in GameManager.Conn.Db.Enemy.Iter())
         {
-            if (enemy.Alive)
+            if (enemy.Slot == slot)
             {
                 return enemy;
             }
         }
 
-        foreach (var enemy in GameManager.Conn.Db.Enemy.Iter())
-        {
-            return enemy;
-        }
-
         return null;
     }
 
-    static uint FirstUnlockedSkillId()
+    static List<SkillDef> UnlockedSkills()
     {
+        var skills = new List<SkillDef>();
         var local = GameManager.Instance?.GetLocalPlayer();
         if (local == null || GameManager.Conn == null)
         {
-            return 0;
+            return skills;
         }
 
         foreach (var owned in GameManager.Conn.Db.PlayerSkill.Iter())
@@ -311,10 +465,17 @@ public class CombatView : MonoBehaviour
                 continue;
             }
 
-            return owned.SkillDefId;
+            var skill = GameManager.Conn.Db.SkillDef.Id.Find(owned.SkillDefId);
+            if (skill == null || skill.IsEnemySkill || skill.Class != local.Class)
+            {
+                continue;
+            }
+
+            skills.Add(skill);
         }
 
-        return 0;
+        skills.Sort((a, b) => a.Id.CompareTo(b.Id));
+        return skills;
     }
 
     static uint FirstConsumableId()

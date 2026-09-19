@@ -172,6 +172,30 @@ public static partial class Module
     }
 
     [SpacetimeDB.Reducer]
+    public static void ResetEncounter(ReducerContext ctx)
+    {
+        RequirePlayer(ctx);
+        foreach (var player in ctx.Db.Player.Iter().ToList())
+        {
+            ctx.Db.Player.Identity.Update(player with
+            {
+                CurrHealth = player.MaxHealth,
+                CurrMana = player.MaxMana,
+                Alive = true,
+                IsDefending = false,
+                StrengthBuff = 0,
+                NextTurnStrengthBonus = 0,
+                NextTurnSpeedOverride = 0,
+                GoFirstNextRound = false,
+                Defense = player.BaseDefense,
+            });
+        }
+
+        BeginFloor(ctx, 1);
+        Log.Info("Test encounter reset to full HP on floor 1.");
+    }
+
+    [SpacetimeDB.Reducer]
     public static void AdvanceFloor(ReducerContext ctx)
     {
         RequirePlayer(ctx);
@@ -352,7 +376,7 @@ public static partial class Module
 
     private static void SpawnEncounter(ReducerContext ctx, uint floor, Biome biome, bool boss)
     {
-        var enemyCount = 1u;
+        var enemyCount = MaxPartySize;
         for (uint slot = 0; slot < enemyCount; slot++)
         {
             var isBoss = boss && slot == 0;
