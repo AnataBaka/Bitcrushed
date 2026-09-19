@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using SpacetimeDB.Types;
@@ -350,7 +351,7 @@ public class BattleHud : MonoBehaviour
             {
                 _stale.Add(pair.Key);
             }
-            else if (!entity.Alive && !AnimationsPending() && entity.Faction == Team.Enemies)
+            else if (!entity.Alive && !AnimationsPending() && (pair.Value == null || !pair.Value.Busy) && entity.Faction == Team.Enemies)
             {
                 _stale.Add(pair.Key);
             }
@@ -367,7 +368,23 @@ public class BattleHud : MonoBehaviour
         }
     }
 
-    bool AnimationsPending() => _animating || _pendingHits.Count > 0;
+    bool AnimationsPending()
+    {
+        if (_animating || _pendingHits.Count > 0)
+        {
+            return true;
+        }
+
+        foreach (var pair in _views)
+        {
+            if (pair.Value != null && pair.Value.Busy)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     void HandleReadyClicked()
     {
@@ -565,6 +582,12 @@ public class BattleHud : MonoBehaviour
             return;
         }
 
+        // "CRITICAL HIT!" reuses LogKind.Attack but is not a strike of its own.
+        if (KnightSpriteLibrary.ActionNameFromLog(row.Message) == null)
+        {
+            return;
+        }
+
         _pendingHits.Enqueue(row);
     }
 
@@ -579,12 +602,57 @@ public class BattleHud : MonoBehaviour
             && target != null
         )
         {
-            actor.PlayLunge(target.Home);
-            yield return new WaitForSeconds(0.14f);
-            target.PlayHit();
-            // Waiting on a fixed duration rather than the lunge coroutine keeps
-            // the queue moving even if the card is destroyed mid-strike.
-            yield return new WaitForSeconds(EntityView.LungeSeconds - 0.14f);
+            var actionName = KnightSpriteLibrary.ActionNameFromLog(row.Message);
+            var actorEntity = GameManager.FindEntity(row.ActorEntityId);
+
+            void Impact()
+            {
+                if (target != null)
+                {
+                    target.PlayHit();
+                    if (
+                        actorEntity != null
+                        && actorEntity.ClassName == KnightSpriteLibrary.ClassName
+                        && row.Damage > 0
+                        && KnightSpriteLibrary.TryHitEffect(actionName, out var effect)
+                    )
+                    {
+                        CombatVfx.Spawn(_field, target.ShapeRect, effect);
+                    }
+                }
+
+                var victim = GameManager.FindEntity(row.TargetEntityId);
+                if (victim != null && !victim.Alive && target != null)
+                {
+                    target.PlayDeath();
+                }
+            }
+
+            if (actor.UsesKnightSprites)
+            {
+                yield return actor.PlayStrike(
+                    target.Home,
+                    Impact,
+                    KnightSpriteLibrary.AttackClipFor(actionName),
+                    KnightSpriteLibrary.AttackFps
+                );
+            }
+            else
+            {
+                actor.PlayLunge(target.Home);
+                yield return new WaitForSeconds(0.14f);
+                Impact();
+                // Waiting on a fixed duration rather than the lunge coroutine keeps
+                // the queue moving even if the card is destroyed mid-strike.
+                yield return new WaitForSeconds(EntityView.LungeSeconds - 0.14f);
+            }
+
+            var wait = 0f;
+            while (target != null && target.Busy && wait < 2f)
+            {
+                wait += Time.deltaTime;
+                yield return null;
+            }
         }
 
         _animating = false;
