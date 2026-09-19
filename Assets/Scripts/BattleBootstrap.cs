@@ -11,7 +11,7 @@ public class BattleBootstrap : MonoBehaviour
     string serverUrl = "https://maincloud.spacetimedb.com";
 
     [SerializeField]
-    string databaseName = "hophacks-party-vp";
+    string databaseName = "hophacks-party-vp2";
 
     static bool _built;
 

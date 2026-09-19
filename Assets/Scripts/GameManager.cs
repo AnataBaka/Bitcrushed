@@ -15,7 +15,7 @@ public class GameManager : MonoBehaviour
     string serverUrl = "https://maincloud.spacetimedb.com";
 
     [SerializeField]
-    string databaseName = "hophacks-party-vp";
+    string databaseName = "hophacks-party-vp2";
 
     // Tokens are namespaced per server+database so switching between the local
     // server and Maincloud never reuses a token signed by the wrong key (which
