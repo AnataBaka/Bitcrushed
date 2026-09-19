@@ -1,0 +1,4 @@
+CraftPix.net free knight character sprites (Knight_1).
+Source: https://craftpix.net/freebies/free-knight-character-sprites-pixel-art/
+License: https://craftpix.net/file-licenses/
+Used in-game as the Warrior class.
