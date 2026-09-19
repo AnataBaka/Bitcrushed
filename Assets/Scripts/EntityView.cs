@@ -2,11 +2,12 @@ using System;
 using System.Collections;
 using SpacetimeDB.Types;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// One combatant card: shape, name, HP bar with cur/max, and (players only) a
 /// mana bar. Purely presentational; clicking only reports the entity id upward.
-public class EntityView : MonoBehaviour
+public class EntityView : MonoBehaviour, IPointerClickHandler
 {
     public ulong EntityId { get; private set; }
 
@@ -23,7 +24,7 @@ public class EntityView : MonoBehaviour
     Button _button;
     RectTransform _manaRow;
 
-    Action<ulong> _onClick;
+    Action<ulong, Vector2> _onClick;
 
     public RectTransform Rect => _root;
 
@@ -46,7 +47,6 @@ public class EntityView : MonoBehaviour
 
         view._button = card.gameObject.AddComponent<Button>();
         view._button.transition = Selectable.Transition.None;
-        view._button.onClick.AddListener(view.HandleClick);
 
         // Shape sits in the upper portion of the card.
         var shapeRect = UiFactory.NewRect(card.transform, "Shape");
@@ -93,7 +93,7 @@ public class EntityView : MonoBehaviour
         footer.anchorMin = new Vector2(0f, 0f);
         footer.anchorMax = new Vector2(1f, 0f);
         footer.pivot = new Vector2(0.5f, 0f);
-        footer.sizeDelta = new Vector2(0f, showMana ? 74f : 50f);
+        footer.sizeDelta = new Vector2(0f, showMana ? 62f : 42f);
         footer.anchoredPosition = Vector2.zero;
 
         view._nameText = UiFactory.Label(
@@ -111,36 +111,26 @@ public class EntityView : MonoBehaviour
         view._nameText.rectTransform.anchoredPosition = Vector2.zero;
 
         var hpRow = UiFactory.NewRect(footer, "HpRow");
-        hpRow.anchorMin = new Vector2(0f, 1f);
-        hpRow.anchorMax = new Vector2(1f, 1f);
+        hpRow.anchorMin = new Vector2(0.16f, 1f);
+        hpRow.anchorMax = new Vector2(0.84f, 1f);
         hpRow.pivot = new Vector2(0.5f, 1f);
-        hpRow.sizeDelta = new Vector2(0f, 20f);
-        hpRow.anchoredPosition = new Vector2(0f, -26f);
+        hpRow.sizeDelta = new Vector2(0f, 16f);
+        hpRow.anchoredPosition = new Vector2(0f, -24f);
         view._hpFill = UiFactory.Bar(hpRow, "Hp", UiFactory.HpColor, out view._hpText);
-        UiFactory.Anchor(
-            view._hpFill.transform.parent.GetComponent<RectTransform>(),
-            Vector2.zero,
-            Vector2.one
-        );
 
         if (showMana)
         {
             view._manaRow = UiFactory.NewRect(footer, "ManaRow");
-            view._manaRow.anchorMin = new Vector2(0f, 1f);
-            view._manaRow.anchorMax = new Vector2(1f, 1f);
+            view._manaRow.anchorMin = new Vector2(0.16f, 1f);
+            view._manaRow.anchorMax = new Vector2(0.84f, 1f);
             view._manaRow.pivot = new Vector2(0.5f, 1f);
-            view._manaRow.sizeDelta = new Vector2(0f, 20f);
-            view._manaRow.anchoredPosition = new Vector2(0f, -48f);
+            view._manaRow.sizeDelta = new Vector2(0f, 16f);
+            view._manaRow.anchoredPosition = new Vector2(0f, -43f);
             view._manaFill = UiFactory.Bar(
                 view._manaRow,
                 "Mana",
                 UiFactory.ManaColor,
                 out view._manaText
-            );
-            UiFactory.Anchor(
-                view._manaFill.transform.parent.GetComponent<RectTransform>(),
-                Vector2.zero,
-                Vector2.one
             );
         }
 
@@ -230,7 +220,7 @@ public class EntityView : MonoBehaviour
         bool isActive,
         bool isLocal,
         bool targetable,
-        Action<ulong> onClick
+        Action<ulong, Vector2> onClick
     )
     {
         EntityId = entity.EntityId;
@@ -290,5 +280,18 @@ public class EntityView : MonoBehaviour
         _readyBanner.text = visible ? "READY" : "";
     }
 
-    void HandleClick() => _onClick?.Invoke(EntityId);
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (_button != null && !_button.interactable)
+        {
+            return;
+        }
+
+        if (eventData.button != PointerEventData.InputButton.Left)
+        {
+            return;
+        }
+
+        _onClick?.Invoke(EntityId, eventData.position);
+    }
 }

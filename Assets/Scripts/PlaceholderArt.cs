@@ -326,8 +326,8 @@ public static class UiFactory
     public static readonly Color SlotColor = new Color(0.22f, 0.22f, 0.27f, 1f);
     public static readonly Color TextColor = new Color(0.94f, 0.94f, 0.90f, 1f);
     public static readonly Color MutedColor = new Color(0.62f, 0.62f, 0.66f, 1f);
-    public static readonly Color HpColor = new Color(0.78f, 0.25f, 0.25f, 1f);
-    public static readonly Color ManaColor = new Color(0.30f, 0.50f, 0.88f, 1f);
+    public static readonly Color HpColor = new Color(0.78f, 0.25f, 0.25f, 0.95f);
+    public static readonly Color ManaColor = new Color(0.30f, 0.50f, 0.88f, 0.95f);
     public static readonly Color ActiveColor = new Color(0.95f, 0.82f, 0.30f, 1f);
 
     public static RectTransform NewRect(Transform parent, string name)
@@ -436,30 +436,52 @@ public static class UiFactory
         return button;
     }
 
-    /// Background track plus a left-anchored fill, returned as the fill image.
+    /// Background track plus a left-to-right fill. Stretches to fill `parent`,
+    /// so the caller only has to size the row.
     public static Image Bar(Transform parent, string name, Color fillColor, out Text valueText)
     {
-        var track = Panel(parent, name, new Color(0.07f, 0.07f, 0.09f, 1f));
-        track.raycastTarget = false;
+        var track = NewRect(parent, name);
+        Anchor(track, Vector2.zero, Vector2.one);
+        var trackImage = track.gameObject.AddComponent<Image>();
+        trackImage.sprite = PlaceholderArt.Solid(Color.white);
+        trackImage.color = new Color(0.07f, 0.07f, 0.09f, 0.72f);
+        trackImage.type = Image.Type.Simple;
+        trackImage.raycastTarget = false;
 
-        var fill = Panel(track.transform, "Fill", fillColor);
+        var fillRt = NewRect(track, "Fill");
+        fillRt.anchorMin = Vector2.zero;
+        fillRt.anchorMax = Vector2.one;
+        fillRt.offsetMin = new Vector2(2f, 2f);
+        fillRt.offsetMax = new Vector2(-2f, -2f);
+        var fill = fillRt.gameObject.AddComponent<Image>();
+        fill.sprite = PlaceholderArt.Solid(Color.white);
+        fill.color = fillColor;
+        fill.type = Image.Type.Filled;
+        fill.fillMethod = Image.FillMethod.Horizontal;
+        fill.fillOrigin = (int)Image.OriginHorizontal.Left;
+        fill.fillAmount = 1f;
         fill.raycastTarget = false;
-        fill.rectTransform.anchorMin = Vector2.zero;
-        fill.rectTransform.anchorMax = Vector2.one;
-        fill.rectTransform.offsetMin = Vector2.zero;
-        fill.rectTransform.offsetMax = Vector2.zero;
 
-        valueText = Label(track.transform, "Value", "", 16, TextAnchor.MiddleCenter, TextColor);
+        valueText = Label(track, "Value", "", 12, TextAnchor.MiddleCenter, TextColor);
         Anchor(valueText.rectTransform, Vector2.zero, Vector2.one);
         return fill;
     }
 
     public static void SetBar(Image fill, int current, int max)
     {
+        if (fill == null)
+        {
+            return;
+        }
+
         var pct = max <= 0 ? 0f : Mathf.Clamp01((float)current / max);
-        fill.rectTransform.anchorMin = Vector2.zero;
-        fill.rectTransform.anchorMax = new Vector2(pct, 1f);
-        fill.rectTransform.offsetMin = Vector2.zero;
-        fill.rectTransform.offsetMax = Vector2.zero;
+        if (fill.type != Image.Type.Filled)
+        {
+            fill.type = Image.Type.Filled;
+            fill.fillMethod = Image.FillMethod.Horizontal;
+            fill.fillOrigin = (int)Image.OriginHorizontal.Left;
+        }
+
+        fill.fillAmount = pct;
     }
 }
