@@ -13,7 +13,7 @@ using SpacetimeDB;
 public static partial class Module
 {
     public const uint SessionId = 1;
-    public const uint MaxPartySize = 4;
+    public const uint MaxPartySize = 3;
     public const uint StatCap = 99;
     public const uint MaxDodgePercent = 25;
     public const uint MpRegenPerTurn = 10;

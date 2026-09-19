@@ -7,7 +7,7 @@ public class GameManager : MonoBehaviour
 {
     public const string ServerUrl = "http://127.0.0.1:3000";
     public const string DatabaseName = "hophacks-party";
-    public const uint MaxPlayers = 4;
+    public const uint MaxPlayers = 3;
     const string TokenPrefsKey = "hophacks.spacetimedb.token";
 
     public static GameManager Instance { get; private set; }
