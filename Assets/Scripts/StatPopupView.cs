@@ -1,16 +1,17 @@
 using SpacetimeDB.Types;
 using UnityEngine;
 using UnityEngine.UI;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
 
 /// View-only inspect card. Reads table rows and never calls reducers.
 public class StatPopupView : MonoBehaviour
 {
-    const float Width = 276f;
+    const float Width = 308f;
     const float CursorGap = 16f;
     const float EdgePad = 12f;
+    const float HeaderHeight = 60f;
+    const float LabelWidth = 112f;
+    const float ValueWidth = 96f;
+    const float RowHeight = 22f;
 
     RectTransform _root;
     RectTransform _canvas;
@@ -22,10 +23,17 @@ public class StatPopupView : MonoBehaviour
     Text _hpText;
     Image _manaFill;
     Text _manaText;
-    Text _body;
-    Text _gear;
-    Text _xp;
-    GameObject _xpRow;
+    Text _strengthText;
+    Text _speedText;
+    Text _intelligenceText;
+    Text _dexterityText;
+    Text _levelText;
+    Text _xpText;
+    Text _weaponText;
+    Text _helmetText;
+    Text _chestText;
+    Text _leggingsText;
+    GameObject _playerExtras;
 
     ulong _entityId;
     BattlePhase _phaseWhenOpened;
@@ -87,103 +95,123 @@ public class StatPopupView : MonoBehaviour
         view._subtitle.rectTransform.offsetMin = new Vector2(12f, 4f);
         view._subtitle.rectTransform.offsetMax = new Vector2(-12f, 0f);
 
-        MakeResourceRow(
-            panel.transform,
-            "HpRow",
-            "HP",
-            UiFactory.HpColor,
-            -68f,
-            out view._hpFill,
-            out view._hpText
-        );
-        MakeResourceRow(
-            panel.transform,
-            "ManaRow",
-            "MP",
-            UiFactory.ManaColor,
-            -92f,
-            out view._manaFill,
-            out view._manaText
-        );
+        var body = UiFactory.NewRect(panel.transform, "Body");
+        body.anchorMin = new Vector2(0f, 0f);
+        body.anchorMax = new Vector2(1f, 1f);
+        body.offsetMin = new Vector2(14f, 10f);
+        body.offsetMax = new Vector2(-14f, -HeaderHeight);
+        var layout = body.gameObject.AddComponent<VerticalLayoutGroup>();
+        layout.spacing = 3f;
+        layout.childAlignment = TextAnchor.UpperLeft;
+        layout.childControlHeight = true;
+        layout.childControlWidth = true;
+        layout.childForceExpandHeight = false;
+        layout.childForceExpandWidth = true;
+        layout.padding = new RectOffset(0, 0, 0, 0);
 
-        view._xp = UiFactory.Label(
-            panel.transform,
-            "Xp",
-            "",
-            15,
-            TextAnchor.UpperLeft,
-            UiFactory.TextColor
-        );
-        view._xpRow = view._xp.gameObject;
-        view._xp.rectTransform.anchorMin = new Vector2(0f, 1f);
-        view._xp.rectTransform.anchorMax = new Vector2(1f, 1f);
-        view._xp.rectTransform.pivot = new Vector2(0.5f, 1f);
-        view._xp.rectTransform.sizeDelta = new Vector2(-24f, 40f);
-        view._xp.rectTransform.anchoredPosition = new Vector2(0f, -118f);
+        MakeResourceRow(body, "Health", UiFactory.HpColor, out view._hpFill, out view._hpText);
+        MakeResourceRow(body, "Mana", UiFactory.ManaColor, out view._manaFill, out view._manaText);
+        view._strengthText = MakeValueRow(body, "Strength");
+        view._speedText = MakeValueRow(body, "Speed");
+        view._intelligenceText = MakeValueRow(body, "Intelligence");
+        view._dexterityText = MakeValueRow(body, "Dexterity");
 
-        view._body = UiFactory.Label(
-            panel.transform,
-            "Body",
-            "",
-            16,
-            TextAnchor.UpperLeft,
-            UiFactory.TextColor
-        );
-        view._body.rectTransform.anchorMin = new Vector2(0f, 0f);
-        view._body.rectTransform.anchorMax = new Vector2(1f, 1f);
-        view._body.rectTransform.offsetMin = new Vector2(14f, 78f);
-        view._body.rectTransform.offsetMax = new Vector2(-14f, -160f);
+        var extras = UiFactory.NewRect(body, "PlayerExtras");
+        extras.gameObject.AddComponent<LayoutElement>().preferredHeight = RowHeight * 6f;
+        var extrasLayout = extras.gameObject.AddComponent<VerticalLayoutGroup>();
+        extrasLayout.spacing = 3f;
+        extrasLayout.childAlignment = TextAnchor.UpperLeft;
+        extrasLayout.childControlHeight = true;
+        extrasLayout.childControlWidth = true;
+        extrasLayout.childForceExpandHeight = false;
+        extrasLayout.childForceExpandWidth = true;
+        view._playerExtras = extras.gameObject;
+        view._levelText = MakeValueRow(extras, "Level");
+        view._xpText = MakeValueRow(extras, "EXP");
+        view._weaponText = MakeValueRow(extras, "Weapon");
+        view._helmetText = MakeValueRow(extras, "Helmet");
+        view._chestText = MakeValueRow(extras, "Chest");
+        view._leggingsText = MakeValueRow(extras, "Legs");
 
-        view._gear = UiFactory.Label(
-            panel.transform,
-            "Gear",
-            "",
-            14,
-            TextAnchor.LowerLeft,
-            UiFactory.MutedColor
-        );
-        view._gear.rectTransform.anchorMin = new Vector2(0f, 0f);
-        view._gear.rectTransform.anchorMax = new Vector2(1f, 0f);
-        view._gear.rectTransform.pivot = new Vector2(0.5f, 0f);
-        view._gear.rectTransform.sizeDelta = new Vector2(-24f, 72f);
-        view._gear.rectTransform.anchoredPosition = new Vector2(0f, 10f);
-
-        view._xpRow.SetActive(false);
+        view._playerExtras.SetActive(false);
         view.gameObject.SetActive(false);
         return view;
     }
 
+    static RectTransform MakeRow(Transform parent, string name)
+    {
+        var row = UiFactory.NewRect(parent, name);
+        var layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+        layout.spacing = 6f;
+        layout.childAlignment = TextAnchor.MiddleLeft;
+        layout.childControlHeight = true;
+        layout.childControlWidth = true;
+        layout.childForceExpandHeight = true;
+        layout.childForceExpandWidth = false;
+        var element = row.gameObject.AddComponent<LayoutElement>();
+        element.minHeight = RowHeight;
+        element.preferredHeight = RowHeight;
+        element.flexibleWidth = 1f;
+        return row;
+    }
+
+    static Text MakeLabel(Transform row, string caption)
+    {
+        var label = UiFactory.Label(row, "Label", caption, 15, TextAnchor.MiddleLeft, UiFactory.MutedColor);
+        label.fontStyle = FontStyle.Bold;
+        label.horizontalOverflow = HorizontalWrapMode.Overflow;
+        var element = label.gameObject.AddComponent<LayoutElement>();
+        element.minWidth = LabelWidth;
+        element.preferredWidth = LabelWidth;
+        element.flexibleWidth = 0f;
+        return label;
+    }
+
+    static Text MakeValue(Transform row)
+    {
+        var value = UiFactory.Label(row, "Value", "", 15, TextAnchor.MiddleRight, UiFactory.TextColor);
+        value.horizontalOverflow = HorizontalWrapMode.Overflow;
+        var element = value.gameObject.AddComponent<LayoutElement>();
+        element.minWidth = ValueWidth;
+        element.preferredWidth = ValueWidth;
+        element.flexibleWidth = 0f;
+        return value;
+    }
+
     static void MakeResourceRow(
-        Transform panel,
-        string name,
-        string tag,
+        Transform parent,
+        string caption,
         Color color,
-        float yFromTop,
         out Image fill,
         out Text value
     )
     {
-        var row = UiFactory.NewRect(panel, name);
-        row.anchorMin = new Vector2(0f, 1f);
-        row.anchorMax = new Vector2(1f, 1f);
-        row.pivot = new Vector2(0.5f, 1f);
-        row.sizeDelta = new Vector2(-24f, 20f);
-        row.anchoredPosition = new Vector2(0f, yFromTop);
-
-        var label = UiFactory.Label(row, "Tag", tag, 13, TextAnchor.MiddleLeft, UiFactory.MutedColor);
-        label.fontStyle = FontStyle.Bold;
-        label.rectTransform.anchorMin = new Vector2(0f, 0f);
-        label.rectTransform.anchorMax = new Vector2(0f, 1f);
-        label.rectTransform.pivot = new Vector2(0f, 0.5f);
-        label.rectTransform.sizeDelta = new Vector2(34f, 0f);
-        label.rectTransform.anchoredPosition = Vector2.zero;
+        var row = MakeRow(parent, caption + "Row");
+        MakeLabel(row, caption);
 
         var barHost = UiFactory.NewRect(row, "BarHost");
-        barHost.anchorMin = Vector2.zero;
-        barHost.anchorMax = Vector2.one;
-        barHost.offsetMin = new Vector2(34f, 2f);
-        barHost.offsetMax = new Vector2(0f, -2f);
-        fill = UiFactory.Bar(barHost, "Bar", color, out value);
+        var hostElement = barHost.gameObject.AddComponent<LayoutElement>();
+        hostElement.minWidth = 48f;
+        hostElement.flexibleWidth = 1f;
+        hostElement.minHeight = 14f;
+        hostElement.preferredHeight = 14f;
+        fill = UiFactory.Bar(barHost, "Bar", color, out var overlay);
+        overlay.gameObject.SetActive(false);
+
+        value = MakeValue(row);
+    }
+
+    static Text MakeValueRow(Transform parent, string caption)
+    {
+        var row = MakeRow(parent, caption + "Row");
+        MakeLabel(row, caption);
+
+        var spacer = UiFactory.NewRect(row, "Spacer");
+        var spacerElement = spacer.gameObject.AddComponent<LayoutElement>();
+        spacerElement.minWidth = 8f;
+        spacerElement.flexibleWidth = 1f;
+
+        return MakeValue(row);
     }
 
     public void Open(ulong entityId, Vector2 screenPoint)
@@ -240,38 +268,30 @@ public class StatPopupView : MonoBehaviour
         _hpText.text = $"{entity.Hp}/{entity.MaxHp}";
         UiFactory.SetBar(_manaFill, entity.Mana, entity.MaxMana);
         _manaText.text = $"{entity.Mana}/{entity.MaxMana}";
-
-        _body.text =
-            $"Strength       {entity.Strength}\n"
-            + $"Dexterity      {entity.Dexterity}\n"
-            + $"Intelligence   {entity.Intelligence}\n"
-            + $"Speed          {entity.Speed}";
+        _strengthText.text = entity.Strength.ToString();
+        _speedText.text = entity.Speed.ToString();
+        _intelligenceText.text = entity.Intelligence.ToString();
+        _dexterityText.text = entity.Dexterity.ToString();
 
         var occupant = GameManager.FindPlayer(entity.EntityId);
         if (occupant == null)
         {
-            _xpRow.SetActive(false);
-            _gear.text = "";
-            _root.sizeDelta = new Vector2(Width, 280f);
+            _playerExtras.SetActive(false);
+            _root.sizeDelta = new Vector2(Width, 236f);
             Place(_screenPoint);
             return;
         }
 
-        BindPlayerProgress(occupant);
-        _gear.text =
-            $"WPN  {GameManager.EquippedName(occupant.Identity, EquipSlot.Weapon)}\n"
-            + $"HLM  {GameManager.EquippedName(occupant.Identity, EquipSlot.Helmet)}\n"
-            + $"CHS  {GameManager.EquippedName(occupant.Identity, EquipSlot.Chestplate)}\n"
-            + $"LEG  {GameManager.EquippedName(occupant.Identity, EquipSlot.Leggings)}";
-        _root.sizeDelta = new Vector2(Width, _xpRow.activeSelf ? 392f : 352f);
-        Place(_screenPoint);
-    }
-
-    void BindPlayerProgress(Player occupant)
-    {
-        _xpRow.SetActive(true);
+        _playerExtras.SetActive(true);
         var need = GameManager.XpToNextLevel(occupant.CharacterLevel);
-        _xp.text = $"Lv {occupant.CharacterLevel}    EXP  {occupant.Xp} / {need}";
+        _levelText.text = occupant.CharacterLevel.ToString();
+        _xpText.text = $"{occupant.Xp}/{need}";
+        _weaponText.text = GameManager.EquippedName(occupant.Identity, EquipSlot.Weapon);
+        _helmetText.text = GameManager.EquippedName(occupant.Identity, EquipSlot.Helmet);
+        _chestText.text = GameManager.EquippedName(occupant.Identity, EquipSlot.Chestplate);
+        _leggingsText.text = GameManager.EquippedName(occupant.Identity, EquipSlot.Leggings);
+        _root.sizeDelta = new Vector2(Width, 392f);
+        Place(_screenPoint);
     }
 
     /// Puts the top-left of the panel next to the cursor, flipping to the left
@@ -321,8 +341,6 @@ public class StatPopupView : MonoBehaviour
         x = Mathf.Clamp(x, minX, Mathf.Max(minX, maxX));
         y = Mathf.Clamp(y, minY, Mathf.Max(minY, maxY));
 
-        // ScreenPointToLocalPoint is relative to the canvas pivot. AnchoredPosition
-        // is relative to this child's anchors, so convert before assigning.
         var anchorRef = new Vector2(
             Mathf.Lerp(parentRect.xMin, parentRect.xMax, _root.anchorMin.x),
             Mathf.Lerp(parentRect.yMin, parentRect.yMax, _root.anchorMin.y)
@@ -338,27 +356,5 @@ public class StatPopupView : MonoBehaviour
         }
 
         return _canvasComponent.worldCamera;
-    }
-
-    void Update()
-    {
-        if (!IsOpen)
-        {
-            return;
-        }
-
-        if (CancelPressed())
-        {
-            Close();
-        }
-    }
-
-    static bool CancelPressed()
-    {
-#if ENABLE_INPUT_SYSTEM
-        return Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
-#else
-        return Input.GetKeyDown(KeyCode.Escape);
-#endif
     }
 }
