@@ -185,7 +185,7 @@ public static partial class Module
             _ => "Strike",
         };
 
-    public static bool CanWearArmor(PlayerClass playerClass) => playerClass != PlayerClass.Ninja;
+    public static bool CanWearArmor(PlayerClass playerClass) => true;
 
     /// Knights win speed ties so their High priority actually shows up in the queue.
     public static int ClassTurnPriority(PlayerClass playerClass) =>

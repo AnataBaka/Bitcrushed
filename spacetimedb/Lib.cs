@@ -523,11 +523,6 @@ public static partial class Module
             throw new Exception($"A {ClassName(player.Class)} cannot wield a {def.Name}.");
         }
 
-        if (def.Kind == ItemKind.Armor && !CanWearArmor(player.Class))
-        {
-            throw new Exception($"A {ClassName(player.Class)} cannot wear armor.");
-        }
-
         var slot = SlotFor(def);
         if (slot == EquipSlot.Bag)
         {

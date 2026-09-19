@@ -446,7 +446,7 @@ public static partial class Module
         throw new Exception($"Skill catalog is missing {name}.");
     }
 
-    /// Weapon worn on arrival, potions in the bag. Ninjas cannot wear armor.
+    /// Weapon worn on arrival, potions in the bag. Every class can wear armor.
     public static void GiveStartingLoadout(
         ReducerContext ctx,
         Identity owner,
