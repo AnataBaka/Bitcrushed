@@ -1,0 +1,17 @@
+{
+  "name": "Hophacks SpacetimeDB backend",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "spacetimedb-logs",
+      "command": "touch /tmp/spacetimedb-server.log && tail -n +1 -F /tmp/spacetimedb-server.log"
+    }
+  ],
+  "ports": [
+    {
+      "name": "SpacetimeDB",
+      "port": 3000
+    }
+  ]
+}
