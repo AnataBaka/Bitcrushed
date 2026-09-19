@@ -110,7 +110,7 @@ public class LevelUpBannerView : MonoBehaviour
 
     void ObservePlayers()
     {
-        if (!GameManager.SubscriptionReady || GameManager.Conn == null)
+        if (GameManager.Instance == null || !GameManager.Instance.SubscriptionReady || GameManager.Conn == null)
         {
             _primed = false;
             _levels.Clear();
