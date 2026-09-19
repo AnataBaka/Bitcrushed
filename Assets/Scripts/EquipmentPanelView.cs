@@ -4,17 +4,19 @@ using SpacetimeDB.Types;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// Bottom-left 2x2 squares from the screenshot HUD: WPN plus three AMU slots.
+/// Bottom-left 2x2 squares from the screenshot HUD: weapon plus three armor slots.
 /// Worn pieces unequip on click; an empty square equips the first matching bag
 /// item. Boots stay in data and still affect stats even though they are not shown.
 public class EquipmentPanelView : MonoBehaviour
 {
-    static readonly (EquipSlot Slot, string Caption)[] GearSlots =
+    const string EmptyCaption = "EMPTY";
+
+    static readonly EquipSlot[] GearSlots =
     {
-        (EquipSlot.Weapon, "WPN"),
-        (EquipSlot.Helmet, "AMU"),
-        (EquipSlot.Chestplate, "AMU"),
-        (EquipSlot.Leggings, "AMU"),
+        EquipSlot.Weapon,
+        EquipSlot.Helmet,
+        EquipSlot.Chestplate,
+        EquipSlot.Leggings,
     };
 
     sealed class Cell
@@ -63,7 +65,7 @@ public class EquipmentPanelView : MonoBehaviour
 
         foreach (var slot in GearSlots)
         {
-            view._cells.Add(view.MakeCell(grid, slot.Caption));
+            view._cells.Add(view.MakeCell(grid, slot.ToString()));
         }
 
         return view;
@@ -77,12 +79,17 @@ public class EquipmentPanelView : MonoBehaviour
         var label = UiFactory.Label(
             background.transform,
             "Label",
-            caption,
+            EmptyCaption,
             16,
             TextAnchor.MiddleCenter,
             UiFactory.MutedColor
         );
         UiFactory.Anchor(label.rectTransform, Vector2.zero, Vector2.one);
+        label.resizeTextForBestFit = true;
+        label.resizeTextMinSize = 10;
+        label.resizeTextMaxSize = 16;
+        label.horizontalOverflow = HorizontalWrapMode.Overflow;
+        label.verticalOverflow = VerticalWrapMode.Overflow;
 
         var button = background.gameObject.AddComponent<Button>();
         button.targetGraphic = background;
@@ -103,27 +110,27 @@ public class EquipmentPanelView : MonoBehaviour
         return cell;
     }
 
-    public void Render(Entity me)
+    public void Render(Entity me, bool allowChanges)
     {
         for (var i = 0; i < _cells.Count; i++)
         {
             var slot = GearSlots[i];
             if (me == null)
             {
-                SetEmpty(_cells[i], slot.Caption, 0, null);
+                SetEmpty(_cells[i], 0, null, false);
                 continue;
             }
 
-            var worn = GameManager.EquippedIn(slot.Slot);
+            var worn = GameManager.EquippedIn(slot);
             var def = worn == null ? null : GameManager.ItemDefOf(worn);
             if (worn != null && def != null)
             {
-                Fill(_cells[i], def.ShortName, worn.Id, OnUnequip);
+                Fill(_cells[i], def.ShortName, worn.Id, OnUnequip, allowChanges);
                 continue;
             }
 
-            var spare = FirstBagItemFor(slot.Slot);
-            SetEmpty(_cells[i], slot.Caption, spare, spare == 0 ? null : OnEquip);
+            var spare = FirstBagItemFor(slot);
+            SetEmpty(_cells[i], spare, spare == 0 ? null : OnEquip, allowChanges);
         }
     }
 
@@ -166,23 +173,23 @@ public class EquipmentPanelView : MonoBehaviour
             _ => EquipSlot.Bag,
         };
 
-    static void SetEmpty(Cell cell, string caption, ulong itemId, Action<ulong> action)
+    static void SetEmpty(Cell cell, ulong itemId, Action<ulong> action, bool allowChanges)
     {
-        cell.Caption.text = caption;
+        cell.Caption.text = EmptyCaption;
         cell.Caption.color = UiFactory.MutedColor;
         cell.Background.color = UiFactory.SlotColor;
         cell.ItemId = itemId;
         cell.Action = action;
-        cell.Button.interactable = action != null && itemId != 0;
+        cell.Button.interactable = allowChanges && action != null && itemId != 0;
     }
 
-    static void Fill(Cell cell, string caption, ulong itemId, Action<ulong> action)
+    static void Fill(Cell cell, string caption, ulong itemId, Action<ulong> action, bool allowChanges)
     {
         cell.Caption.text = caption;
         cell.Caption.color = UiFactory.TextColor;
         cell.Background.color = new Color(0.27f, 0.25f, 0.20f, 1f);
         cell.ItemId = itemId;
         cell.Action = action;
-        cell.Button.interactable = action != null && itemId != 0;
+        cell.Button.interactable = allowChanges && action != null && itemId != 0;
     }
 }
