@@ -385,7 +385,7 @@ public class GameManager : MonoBehaviour
             return 0;
         }
 
-        if (skill.Name == "Furioso")
+        if (skill.Name == "Furioso" || skill.Name == "Grandshot")
         {
             return 100;
         }

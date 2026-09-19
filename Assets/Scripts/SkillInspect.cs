@@ -31,7 +31,7 @@ public static class SkillInspect
             name,
             "Free",
             "Weapon ATK to one enemy",
-            "A free weapon swing. Adds class passives (Knight +0.2 per STR, Archer +0.5 per DEX and +2% dodge per DEX capped at 50%, Ninja +0.5 per Speed). Mage basic attacks are not spells.",
+            "A free weapon swing. Adds class passives (Knight +0.2 per STR, Archer +0.5 per DEX and +2% dodge per DEX capped at 50%, Ninja +0.5 per base Speed). Mage basic attacks are not spells.",
             ""
         );
     }
@@ -136,7 +136,7 @@ public static class SkillInspect
                 return;
             case "Furioso":
                 damage = "9 hits, starting at 5";
-                description = "Nine strikes on one enemy. The first hit deals 5; each connecting hit adds +9 damage to the remaining hits.";
+                description = "Nine strikes on one enemy. The first hit deals 5; each connecting hit adds +3 base power to the remaining hits of this skill only.";
                 return;
             case "Shoot":
                 damage = "4 to one enemy";
@@ -168,7 +168,7 @@ public static class SkillInspect
                 return;
             case "Grandshot":
                 damage = "30 + 6 per heads (9 coins)";
-                description = "Flip 9 coins, then fire one shot dealing 30 plus 6 per heads (30–84). Requires having dodged at least once this battle.";
+                description = "Can only be used after you have dodged once this battle. Flip 9 coins in a row; each heads adds +6 base power. Deals 30 plus the coin bonus.";
                 return;
             case "Magic Missile":
                 damage = "10 to one enemy";
@@ -199,11 +199,11 @@ public static class SkillInspect
                 return;
             case "Spear":
                 damage = "12 to one enemy";
-                description = "A single-target skill. Each use discounts Spear's MP cost by 15 (floor 0). Ninja attacks gain +0.5 per Speed, and skills also gain +1 power per Speed above the target (max +5).";
+                description = "A single-target skill. Each use discounts Spear's MP cost by 15 (floor 0). Ninja attacks gain +0.5 per base Speed (not combat Speed), and skills also gain +1 power per Speed above the target (max +5).";
                 return;
             case "Vertical Cut":
                 damage = "27 to one enemy";
-                description = "A heavy single-target skill. Each use discounts Vertical Cut's MP cost by 15 (floor 0). Ninja attacks gain +0.5 per Speed, and skills also gain +1 power per Speed above the target (max +5).";
+                description = "A heavy single-target skill. Each use discounts Vertical Cut's MP cost by 15 (floor 0). Ninja attacks gain +0.5 per base Speed (not combat Speed), and skills also gain +1 power per Speed above the target (max +5).";
                 return;
             case "Focus Spirit":
                 damage = "None";
@@ -215,7 +215,7 @@ public static class SkillInspect
                 return;
             case "Overthrow":
                 damage = "42 to all enemies";
-                description = "Hit every living enemy. Requires Finish the Job stance. Ninja attacks gain +0.5 per Speed, and skills also gain +1 power per Speed above the target (max +5).";
+                description = "Hit every living enemy. Requires Finish the Job stance. Ninja attacks gain +0.5 per base Speed (not combat Speed), and skills also gain +1 power per Speed above the target (max +5).";
                 return;
             default:
                 damage = "See battle log";

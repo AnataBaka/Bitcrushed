@@ -1541,7 +1541,7 @@ public static partial class Module
                 attacker.Strength,
                 attacker.Dexterity,
                 attacker.Intelligence,
-                attacker.Speed,
+                attacker.BaseSpeed,
                 isSpell: attackerClass == PlayerClass.Mage && isSkill
             );
         }

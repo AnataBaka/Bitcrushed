@@ -38,11 +38,11 @@ public static partial class Module
             SkillNames.Furioso,
             PlayerClass.Knight,
             FuriosoManaCost,
-            5,
+            FuriosoBaseDamage,
             1,
             DamageType.Physical,
             30,
-            hitCount: 9
+            hitCount: FuriosoHitCount
         );
 
         AddPlayerSkill(ctx, SkillNames.Shoot, PlayerClass.Archer, 0, 4, 1, DamageType.Physical, 1);
@@ -76,11 +76,11 @@ public static partial class Module
             ctx,
             SkillNames.Grandshot,
             PlayerClass.Archer,
-            100,
-            30,
+            GrandshotManaCost,
+            GrandshotBaseDamage,
             1,
             DamageType.Physical,
-            30
+            GrandshotLevelRequired
         );
 
         AddPlayerSkill(
@@ -158,6 +158,16 @@ public static partial class Module
             if (skill.Name == SkillNames.Furioso && skill.ManaCost != FuriosoManaCost)
             {
                 ctx.Db.SkillDef.Id.Update(skill with { ManaCost = FuriosoManaCost });
+            }
+
+            if (
+                skill.Name == SkillNames.Grandshot
+                && (skill.ManaCost != GrandshotManaCost || skill.LevelRequired != GrandshotLevelRequired)
+            )
+            {
+                ctx.Db.SkillDef.Id.Update(
+                    skill with { ManaCost = GrandshotManaCost, LevelRequired = GrandshotLevelRequired }
+                );
             }
         }
     }

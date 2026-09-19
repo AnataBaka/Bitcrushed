@@ -54,6 +54,14 @@ public static partial class Module
     public const int RushNextTurnSpeed = 99999;
     public const int EvadeDamageThreshold = 20;
     public const int FuriosoManaCost = 100;
+    public const int FuriosoHitCount = 9;
+    public const int FuriosoBaseDamage = 5;
+    public const int FuriosoBonusPerHit = 3;
+    public const int GrandshotManaCost = 100;
+    public const uint GrandshotLevelRequired = 30;
+    public const int GrandshotCoinCount = 9;
+    public const int GrandshotDamagePerHeads = 6;
+    public const int GrandshotBaseDamage = 30;
     public const int SpearBaseManaCost = 45;
     public const int VerticalCutBaseManaCost = 80;
     public const int SkillManaDiscountPerUse = 15;
@@ -263,14 +271,14 @@ public static partial class Module
 
     // ------------------------------------------------------------------- math
 
-    /// Flat class passives: Knight +0.2/STR, Archer +0.5/DEX, Ninja +0.5/Speed,
-    /// Mage +0.2/INT on spells. CombatSpeed must not be passed in for Ninja.
+    /// Flat class passives: Knight +0.2/STR, Archer +0.5/DEX, Ninja +0.5/BaseSpeed,
+    /// Mage +0.2/INT on spells. Ninja must be given BaseSpeed, never CombatSpeed.
     public static int ClassPassiveDamage(
         PlayerClass playerClass,
         int strength,
         int dexterity,
         int intelligence,
-        int speed,
+        int baseSpeed,
         bool isSpell
     )
     {
@@ -287,7 +295,7 @@ public static partial class Module
 
         if (playerClass == PlayerClass.Ninja)
         {
-            tenths += NinjaDamageTenthsPerSpeed * Math.Max(0, speed);
+            tenths += NinjaDamageTenthsPerSpeed * NinjaPassiveBaseSpeed(baseSpeed);
         }
 
         if (playerClass == PlayerClass.Mage && isSpell)
@@ -296,6 +304,18 @@ public static partial class Module
         }
 
         return tenths <= 0 ? 0 : (tenths + 5) / 10;
+    }
+
+    /// Passive 3 uses rolled/spent BaseSpeed only. CombatSpeed first-action
+    /// (999999999) and temporary Speed sets must never feed this bonus.
+    public static int NinjaPassiveBaseSpeed(int baseSpeed)
+    {
+        if (baseSpeed <= 0 || baseSpeed >= NinjaGuaranteedFirstSpeed)
+        {
+            return 0;
+        }
+
+        return baseSpeed;
     }
 
     public static int MageManaFromIntelligence(int intelligence) =>
@@ -356,6 +376,11 @@ public static partial class Module
         if (skillName == SkillNames.Furioso)
         {
             return FuriosoManaCost;
+        }
+
+        if (skillName == SkillNames.Grandshot)
+        {
+            return GrandshotManaCost;
         }
 
         if (skillName == SkillNames.Spear)

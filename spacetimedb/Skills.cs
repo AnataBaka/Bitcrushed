@@ -112,19 +112,19 @@ public static partial class Module
                 break;
             case SkillNames.Furioso:
                 var furiosoBonus = 0;
-                for (var hit = 0; hit < 9; hit++)
+                for (var hit = 0; hit < FuriosoHitCount; hit++)
                 {
                     var landed = Strike(
                         ctx,
                         caster,
                         targetEntityId,
                         skill.Name,
-                        5 + furiosoBonus,
+                        FuriosoBaseDamage + furiosoBonus,
                         isSkill: true
                     );
                     if (landed.Connected)
                     {
-                        furiosoBonus += 9;
+                        furiosoBonus += FuriosoBonusPerHit;
                     }
                 }
 
@@ -209,7 +209,7 @@ public static partial class Module
                 break;
             case SkillNames.Grandshot:
                 var heads = 0;
-                for (var coin = 0; coin < 9; coin++)
+                for (var coin = 0; coin < GrandshotCoinCount; coin++)
                 {
                     if (ctx.Rng.Next(0, 2) == 1)
                     {
@@ -217,10 +217,10 @@ public static partial class Module
                     }
                 }
 
-                var grandshotDamage = 30 + (heads * 6);
+                var grandshotDamage = GrandshotBaseDamage + (heads * GrandshotDamagePerHeads);
                 AddLog(
                     ctx,
-                    $"{caster.Name} flips 9 coins for {skill.Name}: {heads} heads (+{heads * 6} damage).",
+                    $"{caster.Name} flips {GrandshotCoinCount} coins for {skill.Name}: {heads} heads (+{heads * GrandshotDamagePerHeads} damage).",
                     LogKind.Focus,
                     caster.EntityId,
                     caster.EntityId
