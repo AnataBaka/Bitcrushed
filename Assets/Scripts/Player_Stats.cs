@@ -3,7 +3,8 @@ using UnityEngine;
 public class CharacterStats
 {
 
-    public int health =80;
+    public int maxHealth =80;
+    public int currHealth = 80;
     public int speed = Random.Range(1,8); //rogues get a buff
     public int mana = Random.Range(80,100); //mages get a flat 100
     public int dexterity = Random.Range(1,8); //archer gets a buff
