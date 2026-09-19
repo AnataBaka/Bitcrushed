@@ -64,6 +64,9 @@ public static partial class Module
     public const int GrandshotBaseDamage = 50;
     public const int GrandshotDamagePerDodge = 50;
     public const int GrandshotDodgeCap = 4;
+    public const int SnipeDamage = 10;
+    public const int SnipeManaCost = 50;
+    public const uint SnipeLevelRequired = 1;
     public const int OverthrowEnragedStacks = 12;
     public const int OverthrowDamage = 42;
     public const int OverthrowManaCost = 40;
@@ -518,19 +521,20 @@ public static partial class Module
         return Math.Max(stage, Math.Clamp(level, 1, 35));
     }
 
-    /// Raised for Snipe-at-1 (~40 with bow) and L30 nukes (Furioso ~153, Grandshot 100–250,
-    /// Overthrow 54, Grand Undertaking 50% max HP). L1 ~87; L30 ~722 before party/pack.
+    /// Early HP eased now that Snipe is 10, not 30. Late HP stays high for L30 nukes
+    /// (Furioso ~153, Grandshot 100–250, Overthrow 54, Grand Undertaking 50% max HP).
+    /// L1 ~52; L30 ~693 before party/pack.
     public static int EnemyHpBaseline(int level)
     {
         var n = Math.Max(1, level);
-        return Math.Max(1, (int)Math.Round(80 + (7.0 * n) + (0.48 * n * n), MidpointRounding.AwayFromZero));
+        return Math.Max(1, (int)Math.Round(45 + (6.0 * n) + (0.52 * n * n), MidpointRounding.AwayFromZero));
     }
 
-    /// Tracks the longer fights. L1 ~6; L30 ~42 before party/pack.
+    /// Tracks the longer late fights without over-tuning the opener. L1 ~6; L30 ~41.
     public static int EnemyAtkBaseline(int level)
     {
         var n = Math.Max(1, level);
-        return Math.Max(1, (int)Math.Round(5 + (0.65 * n) + (0.02 * n * n), MidpointRounding.AwayFromZero));
+        return Math.Max(1, (int)Math.Round(5 + (0.6 * n) + (0.02 * n * n), MidpointRounding.AwayFromZero));
     }
 
     /// Light late-game armor so flat nukes chip instead of deleting. 0 until level 10.
