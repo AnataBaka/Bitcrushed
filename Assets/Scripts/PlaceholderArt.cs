@@ -51,6 +51,35 @@ public static class PlaceholderArt
 
     public static Sprite Solid(Color color) => Shape(ShapeKind.Rect, color, 8, 8);
 
+    /// 2x2 white square with no outline. Use for flat UI fills so a stretched
+    /// 8x8 outlined Solid does not turn into a lighter inner rectangle.
+    public static Sprite FlatWhite()
+    {
+        const string key = "flat:white:2";
+        if (Cache.TryGetValue(key, out var cached))
+        {
+            return cached;
+        }
+
+        var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Point,
+            wrapMode = TextureWrapMode.Clamp,
+        };
+        var white = new Color32(255, 255, 255, 255);
+        texture.SetPixels32(new[] { white, white, white, white });
+        texture.Apply();
+
+        var sprite = Sprite.Create(
+            texture,
+            new Rect(0, 0, 2, 2),
+            new Vector2(0.5f, 0.5f),
+            100f
+        );
+        Cache[key] = sprite;
+        return sprite;
+    }
+
     /// 9-slice rounded panel so popups can be any size without stretching corners.
     public static Sprite RoundedSlice(Color color, int size = 64, int radius = 14)
     {
@@ -440,14 +469,13 @@ public static class UiFactory
         return button;
     }
 
-    /// Background track plus a left-to-right fill. Stretches to fill `parent`,
-    /// so the caller only has to size the row.
+    /// Dark track with a single solid fill edge to edge. No inset highlight.
     public static Image Bar(Transform parent, string name, Color fillColor, out Text valueText)
     {
         var track = NewRect(parent, name);
         Anchor(track, Vector2.zero, Vector2.one);
         var trackImage = track.gameObject.AddComponent<Image>();
-        trackImage.sprite = PlaceholderArt.Solid(Color.white);
+        trackImage.sprite = PlaceholderArt.FlatWhite();
         trackImage.color = new Color(0.07f, 0.07f, 0.09f, 0.72f);
         trackImage.type = Image.Type.Simple;
         trackImage.raycastTarget = false;
@@ -455,10 +483,10 @@ public static class UiFactory
         var fillRt = NewRect(track, "Fill");
         fillRt.anchorMin = Vector2.zero;
         fillRt.anchorMax = Vector2.one;
-        fillRt.offsetMin = new Vector2(2f, 2f);
-        fillRt.offsetMax = new Vector2(-2f, -2f);
+        fillRt.offsetMin = Vector2.zero;
+        fillRt.offsetMax = Vector2.zero;
         var fill = fillRt.gameObject.AddComponent<Image>();
-        fill.sprite = PlaceholderArt.Solid(Color.white);
+        fill.sprite = PlaceholderArt.FlatWhite();
         fill.color = fillColor;
         fill.type = Image.Type.Filled;
         fill.fillMethod = Image.FillMethod.Horizontal;
@@ -487,5 +515,6 @@ public static class UiFactory
         }
 
         fill.fillAmount = pct;
+        fill.enabled = pct > 0.0001f;
     }
 }
