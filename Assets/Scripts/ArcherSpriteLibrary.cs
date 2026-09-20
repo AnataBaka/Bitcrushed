@@ -98,7 +98,7 @@ public static class ArcherSpriteLibrary
                 return true;
             case "Grandshot":
             case "Grand Shot":
-                kind = HitEffectKind.CurvedImpact;
+                kind = HitEffectKind.BloodImpact;
                 return true;
             default:
                 kind = default;

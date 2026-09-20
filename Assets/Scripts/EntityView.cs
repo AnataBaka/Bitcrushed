@@ -418,7 +418,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         var height = Mathf.Abs(corners[2].y - corners[0].y);
         // Attack_2 is a crouch so the nock sits near the sprite center. Attack_1
         // stands taller; raise the spawn so the arrow leaves from the bow.
-        var y = ArcherSpriteLibrary.UsesCrouchShot(actionName) ? 0.04f : 0.18f;
+        var y = ArcherSpriteLibrary.UsesCrouchShot(actionName) ? 0.04f : 0.15f;
         return center + new Vector3(width * 0.12f, height * y, 0f);
     }
 

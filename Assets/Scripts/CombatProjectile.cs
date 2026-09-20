@@ -143,16 +143,16 @@ public class CombatProjectile : MonoBehaviour
         switch (actionName)
         {
             case "Snipe":
-                return 0.18f;
+                return 0.11f;
             case "Rain Down":
-                return 0.58f;
+                return 0.38f;
             case "Curved Shot":
-                return 0.44f;
+                return 0.26f;
             case "Grandshot":
             case "Grand Shot":
-                return 0.36f;
+                return 0.16f;
             default:
-                return 0.28f;
+                return 0.16f;
         }
     }
 
