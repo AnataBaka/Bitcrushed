@@ -131,6 +131,9 @@ public static partial class Module
         public bool IsBossStage;
         [Default(false)]
         public bool BossLootGranted;
+        /// True after this rest stop has already granted living players their amulet.
+        [Default(false)]
+        public bool RestAmuletGranted;
         [Default("")]
         public string StageClearNote;
     }
@@ -435,6 +438,9 @@ public static partial class Module
         public int MaxManaBonus;
         public int HealAmount;
         public int ManaRestoreAmount;
+        /// One-line special effect. Empty when the item is only a stat stick.
+        [Default("")]
+        public string Description;
     }
 
     /// One stack of one item owned by one player, either worn or in the bag.

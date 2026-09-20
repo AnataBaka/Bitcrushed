@@ -28,6 +28,7 @@ public static partial class Module
                 NextBiome = WorldBiome.Plains,
                 IsBossStage = false,
                 BossLootGranted = false,
+                RestAmuletGranted = false,
                 StageClearNote = "",
             }
         );
@@ -388,6 +389,7 @@ public static partial class Module
                 NextBiome = WorldBiome.Plains,
                 IsBossStage = false,
                 BossLootGranted = false,
+                RestAmuletGranted = false,
                 StageClearNote = "",
             }
         );
@@ -1099,6 +1101,7 @@ public static partial class Module
                 NextBiome = BiomeOf(stage + 1),
                 IsBossStage = IsBossStageNumber(stage),
                 BossLootGranted = false,
+                RestAmuletGranted = false,
                 StageClearNote = "",
             }
         );
@@ -1216,6 +1219,7 @@ public static partial class Module
         RestorePartyAtRest(ctx);
 
         var session = RequireSession(ctx);
+        var alreadyGranted = session.RestAmuletGranted;
         ctx.Db.GameSession.Id.Update(
             session with
             {
@@ -1224,6 +1228,7 @@ public static partial class Module
                 TurnIndex = 0,
                 ActiveEntityId = 0,
                 UpcomingRestStop = false,
+                RestAmuletGranted = true,
             }
         );
         AddLog(ctx, "Rest stop. HP and mana restored. Ready up to continue.");
@@ -1236,7 +1241,11 @@ public static partial class Module
                 continue;
             }
 
-            GrantRandomUnownedAmulet(ctx, player.Identity, entity.Name);
+            if (!alreadyGranted)
+            {
+                GrantRandomUnownedAmulet(ctx, player.Identity, entity.Name);
+            }
+
             GrantRandomUnownedWeapon(ctx, player.Identity, player.Class, entity.Name);
         }
     }
@@ -2077,13 +2086,17 @@ public static partial class Module
         var hp = Math.Max(0, target.Hp - damage);
         var alive = hp > 0;
         var wasAlive = target.Alive;
+        var tallyDodge =
+            (dodged || evaded)
+            && target.Faction == Team.Players
+            && targetClass == PlayerClass.Archer;
         ctx.Db.Entity.EntityId.Update(
             target with
             {
                 Hp = hp,
                 Alive = alive,
                 HasDodged = target.HasDodged || dodged || evaded,
-                DodgeCount = target.DodgeCount + (dodged || evaded ? 1 : 0),
+                DodgeCount = target.DodgeCount + (tallyDodge ? 1 : 0),
             }
         );
 

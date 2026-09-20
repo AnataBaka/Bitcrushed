@@ -509,6 +509,17 @@ public static partial class Module
 
             SeedOneUniqueWeapon(ctx, name);
         }
+
+        foreach (var item in ctx.Db.ItemDef.Iter().ToList())
+        {
+            var description = DescriptionFor(item.Name);
+            if (item.Description == description)
+            {
+                continue;
+            }
+
+            ctx.Db.ItemDef.Id.Update(item with { Description = description });
+        }
     }
 
     static void SeedAmulets(ReducerContext ctx)
@@ -627,13 +638,13 @@ public static partial class Module
                 AddWeapon(ctx, name, "SOQ", WeaponType.Staff, atk: 6, intelligence: 3);
                 break;
             case UniqueWeaponNames.RustedPummel:
-                AddWeapon(ctx, name, "RPM", WeaponType.Dagger, atk: 9, speed: 1);
+                AddWeapon(ctx, name, "RPM", WeaponType.Katana, atk: 9, speed: 1);
                 break;
             case UniqueWeaponNames.CrimsonDagger:
-                AddWeapon(ctx, name, "CRD", WeaponType.Dagger, atk: 9, speed: 2);
+                AddWeapon(ctx, name, "CRD", WeaponType.Katana, atk: 9, speed: 2);
                 break;
             case UniqueWeaponNames.AzureDagger:
-                AddWeapon(ctx, name, "AZD", WeaponType.Dagger, atk: 9, speed: 3);
+                AddWeapon(ctx, name, "AZD", WeaponType.Katana, atk: 9, speed: 3);
                 break;
         }
     }
@@ -667,6 +678,7 @@ public static partial class Module
                 MaxManaBonus = 0,
                 HealAmount = 0,
                 ManaRestoreAmount = 0,
+                Description = DescriptionFor(name),
             }
         );
 
@@ -689,6 +701,7 @@ public static partial class Module
                 MaxManaBonus = 0,
                 HealAmount = 0,
                 ManaRestoreAmount = 0,
+                Description = DescriptionFor(name),
             }
         );
 
@@ -717,6 +730,7 @@ public static partial class Module
                 MaxManaBonus = 0,
                 HealAmount = heal,
                 ManaRestoreAmount = mana,
+                Description = DescriptionFor(name),
             }
         );
 
@@ -748,8 +762,28 @@ public static partial class Module
                 MaxManaBonus = 0,
                 HealAmount = 0,
                 ManaRestoreAmount = 0,
+                Description = DescriptionFor(name),
             }
         );
+
+    static string DescriptionFor(string name) =>
+        name switch
+        {
+            AmuletNames.AmethystSash => "Focus restores 50 mana.",
+            AmuletNames.GuardiansPendant => "Reduces incoming damage by 7%.",
+            AmuletNames.CountessNecklace =>
+                "Heal 2 HP whenever you deal attack damage. Multi-hits heal multiple times.",
+            AmuletNames.DragonflyCharm => "Double Strength for one turn after an ally dies.",
+            AmuletNames.DragonsFire => "Burn cap is increased to 30.",
+            AmuletNames.EmeraldPendant => "Spells cost 5 less mana.",
+            AmuletNames.HolyGrail => "Heal 5 HP on kill.",
+            AmuletNames.HiddenDreamcatcher =>
+                "Dodge chance is increased by 5%. Can exceed the Archer dodge cap of 50%.",
+            AmuletNames.RootedBlade => "Each hit reduces the target's Speed by 1 next turn.",
+            AmuletNames.RedCocoon => "When you take damage, deal 1 damage back to the attacker.",
+            AmuletNames.RubyScepter => "Burn spells gain +3 base power.",
+            _ => "",
+        };
 
     // -------------------------------------------------------------- loadouts
 

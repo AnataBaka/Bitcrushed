@@ -54,6 +54,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<ItemDef, int> MaxManaBonus { get; }
         public global::SpacetimeDB.Col<ItemDef, int> HealAmount { get; }
         public global::SpacetimeDB.Col<ItemDef, int> ManaRestoreAmount { get; }
+        public global::SpacetimeDB.Col<ItemDef, string> Description { get; }
 
         public ItemDefCols(string tableName)
         {
@@ -72,6 +73,7 @@ namespace SpacetimeDB.Types
             MaxManaBonus = new global::SpacetimeDB.Col<ItemDef, int>(tableName, "max_mana_bonus");
             HealAmount = new global::SpacetimeDB.Col<ItemDef, int>(tableName, "heal_amount");
             ManaRestoreAmount = new global::SpacetimeDB.Col<ItemDef, int>(tableName, "mana_restore_amount");
+            Description = new global::SpacetimeDB.Col<ItemDef, string>(tableName, "description");
         }
     }
 

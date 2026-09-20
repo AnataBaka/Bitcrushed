@@ -53,6 +53,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<GameSession, WorldBiome> NextBiome { get; }
         public global::SpacetimeDB.Col<GameSession, bool> IsBossStage { get; }
         public global::SpacetimeDB.Col<GameSession, bool> BossLootGranted { get; }
+        public global::SpacetimeDB.Col<GameSession, bool> RestAmuletGranted { get; }
         public global::SpacetimeDB.Col<GameSession, string> StageClearNote { get; }
 
         public GameSessionCols(string tableName)
@@ -71,6 +72,7 @@ namespace SpacetimeDB.Types
             NextBiome = new global::SpacetimeDB.Col<GameSession, WorldBiome>(tableName, "next_biome");
             IsBossStage = new global::SpacetimeDB.Col<GameSession, bool>(tableName, "is_boss_stage");
             BossLootGranted = new global::SpacetimeDB.Col<GameSession, bool>(tableName, "boss_loot_granted");
+            RestAmuletGranted = new global::SpacetimeDB.Col<GameSession, bool>(tableName, "rest_amulet_granted");
             StageClearNote = new global::SpacetimeDB.Col<GameSession, string>(tableName, "stage_clear_note");
         }
     }

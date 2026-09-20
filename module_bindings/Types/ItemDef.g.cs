@@ -43,6 +43,8 @@ namespace SpacetimeDB.Types
         public int HealAmount;
         [DataMember(Name = "mana_restore_amount")]
         public int ManaRestoreAmount;
+        [DataMember(Name = "description")]
+        public string Description;
 
         public ItemDef(
             uint Id,
@@ -59,7 +61,8 @@ namespace SpacetimeDB.Types
             int MaxHpBonus,
             int MaxManaBonus,
             int HealAmount,
-            int ManaRestoreAmount
+            int ManaRestoreAmount,
+            string Description
         )
         {
             this.Id = Id;
@@ -77,12 +80,14 @@ namespace SpacetimeDB.Types
             this.MaxManaBonus = MaxManaBonus;
             this.HealAmount = HealAmount;
             this.ManaRestoreAmount = ManaRestoreAmount;
+            this.Description = Description;
         }
 
         public ItemDef()
         {
             this.Name = "";
             this.ShortName = "";
+            this.Description = "";
         }
     }
 }

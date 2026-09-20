@@ -241,14 +241,28 @@ public static partial class Module
             }
         }
 
-        if (missing.Count == 0 || BagCount(ctx, owner) >= BagCapacity)
+        if (missing.Count == 0)
         {
             return;
         }
 
         var pick = missing[ctx.Rng.Next(0, missing.Count)];
-        GiveToBag(ctx, owner, RequireItem(ctx, pick).Id, 1);
-        AddLog(ctx, $"{ownerName} found {pick}.");
+        var item = RequireItem(ctx, pick);
+        if (TryAddItemToInventory(ctx, owner, item.Id))
+        {
+            AddLog(ctx, $"{ownerName} found {pick}.");
+            return;
+        }
+
+        ctx.Db.PendingReward.Insert(
+            new PendingReward
+            {
+                Id = 0,
+                Owner = owner,
+                ItemDefId = item.Id,
+            }
+        );
+        AddLog(ctx, $"{ownerName}'s inventory is full. {pick} waits for a free slot.");
     }
 
     public static void GrantMissingAmulets(ReducerContext ctx, Identity owner)

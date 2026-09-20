@@ -41,6 +41,8 @@ namespace SpacetimeDB.Types
         public bool IsBossStage;
         [DataMember(Name = "boss_loot_granted")]
         public bool BossLootGranted;
+        [DataMember(Name = "rest_amulet_granted")]
+        public bool RestAmuletGranted;
         [DataMember(Name = "stage_clear_note")]
         public string StageClearNote;
 
@@ -59,6 +61,7 @@ namespace SpacetimeDB.Types
             WorldBiome NextBiome,
             bool IsBossStage,
             bool BossLootGranted,
+            bool RestAmuletGranted,
             string StageClearNote
         )
         {
@@ -76,6 +79,7 @@ namespace SpacetimeDB.Types
             this.NextBiome = NextBiome;
             this.IsBossStage = IsBossStage;
             this.BossLootGranted = BossLootGranted;
+            this.RestAmuletGranted = RestAmuletGranted;
             this.StageClearNote = StageClearNote;
         }
 
