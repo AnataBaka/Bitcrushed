@@ -48,8 +48,10 @@ public class BattleHud : MonoBehaviour
     LevelUpBannerView _banner;
     EscapeMenuView _escape;
     BiomeBackdropView _backdrop;
+    ItemTooltipView _itemTooltip;
 
     readonly Dictionary<ulong, EntityView> _views = new Dictionary<ulong, EntityView>();
+    readonly Dictionary<ulong, Vector2> _lastHomes = new Dictionary<ulong, Vector2>();
     readonly List<ulong> _stale = new List<ulong>();
 
     /// Hits waiting to be animated, oldest first.
@@ -82,7 +84,8 @@ public class BattleHud : MonoBehaviour
         TurnOrderListView turnList,
         LevelUpBannerView banner,
         EscapeMenuView escape,
-        BiomeBackdropView backdrop
+        BiomeBackdropView backdrop,
+        ItemTooltipView itemTooltip
     )
     {
         _field = field;
@@ -101,6 +104,15 @@ public class BattleHud : MonoBehaviour
         _banner = banner;
         _escape = escape;
         _backdrop = backdrop;
+        _itemTooltip = itemTooltip;
+
+        bool TooltipBlocked() =>
+            (_popup != null && _popup.IsOpen)
+            || (_escape != null && _escape.IsOpen)
+            || (_inventory != null && _inventory.ContextOpen);
+
+        _equipment?.BindTooltip(_itemTooltip, TooltipBlocked);
+        _inventory?.BindTooltip(_itemTooltip, TooltipBlocked);
 
         _menu.OnJoin = GameManager.JoinGame;
         _menu.OnReady = HandleReadyClicked;
@@ -175,6 +187,10 @@ public class BattleHud : MonoBehaviour
         }
 
         _escape.HandleEscape();
+        if (_escape.IsOpen)
+        {
+            _itemTooltip?.Hide();
+        }
     }
 
     void HandleBagClicked(Vector2 screenPoint)
@@ -191,6 +207,7 @@ public class BattleHud : MonoBehaviour
         }
 
         _popup?.Close();
+        _itemTooltip?.Hide();
         _inventory.Open(screenPoint);
     }
 
@@ -261,6 +278,18 @@ public class BattleHud : MonoBehaviour
         SyncTeam(GameManager.TeamMembers(Team.Players), PlayerSlots, PlayerCardSize, true, me);
         SyncTeam(GameManager.TeamMembers(Team.Enemies), EnemySlots, EnemyCardSize, false, me);
         PruneMissing();
+        if (
+            _itemTooltip != null
+            && (
+                (_popup != null && _popup.IsOpen)
+                || (_escape != null && _escape.IsOpen)
+                || (_inventory != null && _inventory.ContextOpen)
+            )
+        )
+        {
+            _itemTooltip.Hide();
+        }
+
         _popup?.Refresh();
         _inventory?.Refresh();
         _turnList?.Render(session);
@@ -401,6 +430,7 @@ public class BattleHud : MonoBehaviour
             var targetable =
                 _targeting && myTurn && entity.Faction == Team.Enemies && entity.Alive;
             view.Bind(entity, activeId == entity.EntityId, isLocal, targetable, HandleEntityClicked);
+            _lastHomes[entity.EntityId] = view.Home;
 
             var occupant = GameManager.FindPlayer(entity.EntityId);
             view.SetReadyBanner(
@@ -541,6 +571,7 @@ public class BattleHud : MonoBehaviour
         }
 
         _inventory?.Close();
+        _itemTooltip?.Hide();
         _popup?.Open(entityId, screenPoint);
     }
 
@@ -651,13 +682,14 @@ public class BattleHud : MonoBehaviour
             return;
         }
 
-        if (row.ActorEntityId == row.TargetEntityId)
+        var isBurn = IsBurnLog(row);
+        if (row.ActorEntityId == row.TargetEntityId && !isBurn)
         {
             return;
         }
 
         // "CRITICAL HIT!" reuses LogKind.Attack but is not a strike of its own.
-        if (ClassSpriteArt.ActionNameFromLog(row.Message) == null)
+        if (!isBurn && ClassSpriteArt.ActionNameFromLog(row.Message) == null)
         {
             return;
         }
@@ -689,70 +721,83 @@ public class BattleHud : MonoBehaviour
             yield break;
         }
 
-        if (
-            _views.TryGetValue(row.ActorEntityId, out var actor)
-            && _views.TryGetValue(row.TargetEntityId, out var target)
-            && actor != null
-            && target != null
-        )
+        _views.TryGetValue(row.ActorEntityId, out var actor);
+        _views.TryGetValue(row.TargetEntityId, out var target);
+        if (actor == null)
         {
-            var skipLunge = _aoeLungeActor != 0 && row.ActorEntityId == _aoeLungeActor;
-            var actionName = ClassSpriteArt.ActionNameFromLog(row.Message);
-            var actorEntity = GameManager.FindEntity(row.ActorEntityId);
-            var className = actorEntity != null ? actorEntity.ClassName : null;
-
-            void Impact()
-            {
-                if (target != null)
-                {
-                    target.PlayHit();
-                    if (
-                        className != null
-                        && row.Damage > 0
-                        && ClassSpriteArt.TryHitEffect(className, actionName, out var effect)
-                    )
-                    {
-                        CombatVfx.Spawn(_field, target.ShapeRect, effect);
-                    }
-                }
-
-                var victim = GameManager.FindEntity(row.TargetEntityId);
-                if (victim != null && !victim.Alive && target != null)
-                {
-                    target.PlayDeath();
-                }
-            }
-
-            if (skipLunge)
-            {
-                Impact();
-                yield return new WaitForSeconds(0.16f);
-            }
-            else if (actor.UsesClassSprites)
+            _animating = false;
+            if (_pendingHits.Count == 0)
             {
                 _aoeLungeActor = 0;
-                yield return actor.PlayStrike(
-                    target.Home,
-                    Impact,
-                    ClassSpriteArt.AttackClipFor(className, actionName),
-                    ClassSpriteArt.AttackFps
-                );
-            }
-            else
-            {
-                _aoeLungeActor = 0;
-                actor.PlayLunge(target.Home);
-                yield return new WaitForSeconds(0.14f);
-                Impact();
-                yield return new WaitForSeconds(EntityView.LungeSeconds - 0.14f);
+                Refresh();
             }
 
-            var wait = 0f;
-            while (target != null && target.Busy && wait < 2f)
+            yield break;
+        }
+
+        if (!TryLastHome(row.TargetEntityId, out var targetHome))
+        {
+            targetHome = actor.Home;
+        }
+
+        var skipLunge =
+            IsBurnLog(row)
+            || (_aoeLungeActor != 0 && row.ActorEntityId == _aoeLungeActor);
+        var actionName = ClassSpriteArt.ActionNameFromLog(row.Message);
+        var actorEntity = GameManager.FindEntity(row.ActorEntityId);
+        var className = actorEntity != null ? actorEntity.ClassName : null;
+
+        void Impact()
+        {
+            if (target != null)
             {
-                wait += Time.deltaTime;
-                yield return null;
+                target.PlayHit();
+                if (
+                    className != null
+                    && row.Damage > 0
+                    && ClassSpriteArt.TryHitEffect(className, actionName, out var effect)
+                )
+                {
+                    CombatVfx.Spawn(_field, target.ShapeRect, effect);
+                }
             }
+
+            var victim = GameManager.FindEntity(row.TargetEntityId);
+            if (victim != null && !victim.Alive && target != null)
+            {
+                target.PlayDeath();
+            }
+        }
+
+        if (skipLunge)
+        {
+            Impact();
+            yield return new WaitForSeconds(0.16f);
+        }
+        else if (actor.UsesClassSprites)
+        {
+            _aoeLungeActor = 0;
+            yield return actor.PlayStrike(
+                targetHome,
+                Impact,
+                ClassSpriteArt.AttackClipFor(className, actionName),
+                ClassSpriteArt.AttackFps
+            );
+        }
+        else
+        {
+            _aoeLungeActor = 0;
+            actor.PlayLunge(targetHome);
+            yield return new WaitForSeconds(0.14f);
+            Impact();
+            yield return new WaitForSeconds(EntityView.LungeSeconds - 0.14f);
+        }
+
+        var wait = 0f;
+        while (target != null && target.Busy && wait < 2f)
+        {
+            wait += Time.deltaTime;
+            yield return null;
         }
 
         _animating = false;
@@ -764,6 +809,23 @@ public class BattleHud : MonoBehaviour
             Refresh();
         }
     }
+
+    bool TryLastHome(ulong entityId, out Vector2 home)
+    {
+        if (_views.TryGetValue(entityId, out var view) && view != null)
+        {
+            home = view.Home;
+            return true;
+        }
+
+        return _lastHomes.TryGetValue(entityId, out home);
+    }
+
+    static bool IsBurnLog(BattleLog row) =>
+        row.Kind == LogKind.Attack
+        && row.ActorEntityId == row.TargetEntityId
+        && !string.IsNullOrEmpty(row.Message)
+        && row.Message.IndexOf("burn", StringComparison.OrdinalIgnoreCase) >= 0;
 
     Vector2 PartyMidpoint(Vector2 fallback)
     {
