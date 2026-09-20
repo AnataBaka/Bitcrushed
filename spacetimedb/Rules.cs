@@ -15,8 +15,10 @@ public static partial class Module
     /// Weights for pack sizes 1, 2, 3, 4. Uniform 25% each.
     public static readonly int[] PackSizeWeights = { 1, 1, 1, 1 };
     public const uint RestStopEvery = 3;
-    public const uint BiomeLength = 10;
-    public const uint BossInterval = 10;
+    /// Demo cadence: biomes rotate every 3 floors (Plains → Volcano → Swamp → Snowy Tundra).
+    public const uint BiomeLength = 3;
+    /// Demo cadence: a boss appears on every even floor (2, 4, 6, ...).
+    public const uint BossInterval = 2;
     public const uint BiomeCount = 4;
     /// New runs start here. Keep at 1 in committed code.
     public const uint DebugStartStage = 1;
@@ -959,7 +961,7 @@ public static partial class Module
         stage > 0 && stage % BossInterval == 0;
 
     /// Cadence rests and boss clears share this check so a stage that matches
-    /// both (for example stage 30) produces one rest stop, not two.
+    /// both (for example stage 6) produces one rest stop, not two.
     public static bool ShouldEnterRestStop(uint clearedStage) =>
         (RestStopEvery > 0 && clearedStage % RestStopEvery == 0)
         || IsBossStageNumber(clearedStage);

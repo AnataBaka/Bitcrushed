@@ -1,5 +1,11 @@
 ## BITCRUSHED
 A simple rogue-like RPG in the style of an early 90's arcade game. Crawl your way throughout the bits or be crushed!
+
+## Demo cadence
+This branch is the shortened demo loop:
+- **Biomes change every 3 floors** (Plains → Volcano → Swamp → Snowy Tundra, then repeat)
+- **A boss appears every 2 floors** (stages 2, 4, 6, …)
+
 ## TO PLAY: 
 ### Setup the Server (SpacetimeDB)
 Download SpacetimeDB. Go to terminal and enter: 
