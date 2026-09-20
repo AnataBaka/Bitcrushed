@@ -58,6 +58,8 @@ public class BattleHud : MonoBehaviour
     readonly Queue<BattleLog> _pendingHits = new Queue<BattleLog>();
     bool _animating;
     ulong _aoeLungeActor;
+    bool _grandUndertakingHold;
+    bool _grandUndertakingBurstPlayed;
 
     const float EndScreenDelaySeconds = 0.85f;
     BattlePhase _endScreenPhase;
@@ -479,7 +481,7 @@ public class BattleHud : MonoBehaviour
 
     bool AnimationsPending()
     {
-        if (_animating || _pendingHits.Count > 0)
+        if (_animating || _pendingHits.Count > 0 || _grandUndertakingHold)
         {
             return true;
         }
@@ -689,6 +691,17 @@ public class BattleHud : MonoBehaviour
             return;
         }
 
+        if (
+            ClassSpriteArt.IsGrandUndertakingErupt(row.Message)
+            || ClassSpriteArt.IsGrandUndertakingHit(row.Message)
+        )
+        {
+            SetAllBarsFrozen(true);
+            _grandUndertakingHold = true;
+            _pendingHits.Enqueue(row);
+            return;
+        }
+
         if (row.Kind == LogKind.Attack && (row.ActorEntityId == 0 || row.TargetEntityId == 0))
         {
             return;
@@ -739,6 +752,15 @@ public class BattleHud : MonoBehaviour
             yield break;
         }
 
+        if (
+            ClassSpriteArt.IsGrandUndertakingErupt(row.Message)
+            || ClassSpriteArt.IsGrandUndertakingHit(row.Message)
+        )
+        {
+            yield return PlayGrandUndertaking(row);
+            yield break;
+        }
+
         if (row.Kind == LogKind.Aoe)
         {
             if (_views.TryGetValue(row.ActorEntityId, out var aoeActor) && aoeActor != null)
@@ -785,6 +807,7 @@ public class BattleHud : MonoBehaviour
         var actorEntity = GameManager.FindEntity(row.ActorEntityId);
         var className = actorEntity != null ? actorEntity.ClassName : null;
         var targetEntity = GameManager.FindEntity(row.TargetEntityId);
+        var magicBulletStage = actorEntity != null ? actorEntity.MagicBulletStage : 0;
 
         void Impact()
         {
@@ -795,7 +818,12 @@ public class BattleHud : MonoBehaviour
                 {
                     if (
                         className != null
-                        && ClassSpriteArt.TryHitEffect(className, actionName, out var effect)
+                        && ClassSpriteArt.TryHitEffect(
+                            className,
+                            actionName,
+                            out var effect,
+                            magicBulletStage
+                        )
                     )
                     {
                         CombatVfx.Spawn(_field, target.ShapeRect, effect);
@@ -830,11 +858,12 @@ public class BattleHud : MonoBehaviour
             yield return actor.PlayStrike(
                 targetHome,
                 Impact,
-                ClassSpriteArt.AttackClipFor(className, actionName),
+                ClassSpriteArt.AttackClipFor(className, actionName, magicBulletStage),
                 ClassSpriteArt.AttackFpsFor(className),
                 actionName,
                 returnHome: !SameVolleyContinues(row, actionName),
-                target?.ShapeRect
+                target?.ShapeRect,
+                magicBulletStage
             );
         }
         else
@@ -859,7 +888,73 @@ public class BattleHud : MonoBehaviour
         if (_pendingHits.Count == 0)
         {
             _aoeLungeActor = 0;
+            _grandUndertakingBurstPlayed = false;
             Refresh();
+        }
+    }
+
+    IEnumerator PlayGrandUndertaking(BattleLog row)
+    {
+        if (!_grandUndertakingBurstPlayed)
+        {
+            _grandUndertakingBurstPlayed = true;
+            _views.TryGetValue(row.ActorEntityId, out var mage);
+            if (mage != null && mage.UsesClassSprites)
+            {
+                yield return mage.PlayCastHold(1f);
+            }
+            else
+            {
+                yield return new WaitForSeconds(1f);
+            }
+
+            yield return CombatVfx.PlayFullscreen(_field, HitEffectKind.Explosion2);
+            _grandUndertakingHold = false;
+            SetAllBarsFrozen(false);
+            Refresh();
+        }
+
+        if (ClassSpriteArt.IsGrandUndertakingHit(row.Message))
+        {
+            _views.TryGetValue(row.TargetEntityId, out var target);
+            if (target != null)
+            {
+                target.PlayHit();
+                var victim = GameManager.FindEntity(row.TargetEntityId);
+                if (victim != null && !victim.Alive)
+                {
+                    target.PlayDeath();
+                }
+            }
+
+            yield return new WaitForSeconds(0.12f);
+        }
+
+        var wait = 0f;
+        _views.TryGetValue(row.TargetEntityId, out var hurt);
+        while (hurt != null && hurt.Busy && wait < 2f)
+        {
+            wait += Time.deltaTime;
+            yield return null;
+        }
+
+        _animating = false;
+        if (_pendingHits.Count == 0)
+        {
+            _aoeLungeActor = 0;
+            _grandUndertakingBurstPlayed = false;
+            Refresh();
+        }
+    }
+
+    void SetAllBarsFrozen(bool frozen)
+    {
+        foreach (var pair in _views)
+        {
+            if (pair.Value != null)
+            {
+                pair.Value.SetBarsFrozen(frozen);
+            }
         }
     }
 

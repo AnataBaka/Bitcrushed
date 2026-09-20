@@ -80,6 +80,55 @@ public class CombatVfx : MonoBehaviour
         vfx.StartCoroutine(vfx.PlayAndDestroy(flip, frames));
     }
 
+    /// Screen-filling Explosion_2 (or other kind) centered on the battlefield.
+    public static IEnumerator PlayFullscreen(RectTransform field, HitEffectKind kind)
+    {
+        if (field == null)
+        {
+            yield break;
+        }
+
+        var frames = Frames(kind);
+        if (frames == null || frames.Length == 0)
+        {
+            yield break;
+        }
+
+        var size = Mathf.Max(field.rect.width, field.rect.height);
+        if (size < 8f)
+        {
+            size = Mathf.Max(field.sizeDelta.x, field.sizeDelta.y);
+        }
+
+        size = Mathf.Max(size * 1.15f, 1100f);
+
+        var go = new GameObject(
+            kind + "_Fullscreen",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        var rt = go.GetComponent<RectTransform>();
+        rt.SetParent(field, false);
+        rt.anchorMin = new Vector2(0.5f, 0.5f);
+        rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(size, size);
+        rt.position = WorldCenter(field);
+        rt.SetAsLastSibling();
+
+        var image = go.GetComponent<Image>();
+        image.sprite = frames[0];
+        image.color = Color.white;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+        image.type = Image.Type.Simple;
+
+        var flip = go.AddComponent<SpriteFlipbook>();
+        var vfx = go.AddComponent<CombatVfx>();
+        yield return vfx.PlayAndDestroy(flip, frames);
+    }
+
     IEnumerator PlayAndDestroy(SpriteFlipbook flip, Sprite[] frames)
     {
         yield return flip.PlayOnce(frames, Fps);

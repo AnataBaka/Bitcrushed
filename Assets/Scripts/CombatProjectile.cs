@@ -44,6 +44,50 @@ public class CombatProjectile : MonoBehaviour
         }
     }
 
+    /// Flies a looping charge flipbook. Charge_1 is an orb (no spin); Charge_2
+    /// is a bolt that faces its velocity.
+    public static IEnumerator FireCharge(
+        RectTransform field,
+        Vector3 from,
+        Vector3 to,
+        Sprite[] frames,
+        float duration,
+        float size,
+        bool rotate
+    )
+    {
+        if (field == null || frames == null || frames.Length == 0)
+        {
+            yield break;
+        }
+
+        var go = new GameObject("Charge", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        var rt = go.GetComponent<RectTransform>();
+        rt.SetParent(field, false);
+        rt.anchorMin = new Vector2(0.5f, 0.5f);
+        rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(size, size);
+        rt.SetAsLastSibling();
+
+        var image = go.GetComponent<Image>();
+        image.sprite = frames[0];
+        image.color = Color.white;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+        image.type = Image.Type.Simple;
+
+        var flip = go.AddComponent<SpriteFlipbook>();
+        flip.Play(frames, 18f, true);
+
+        var flight = go.AddComponent<CombatProjectile>();
+        yield return flight.FlyRaw(rt, from, to, duration, rotate);
+        if (go != null)
+        {
+            Object.Destroy(go);
+        }
+    }
+
     IEnumerator Fly(RectTransform rt, Vector3 from, Vector3 to, string actionName)
     {
         var duration = Duration(actionName);
@@ -60,6 +104,37 @@ public class CombatProjectile : MonoBehaviour
             var point = PointOnPath(from, to, eased, actionName);
             var delta = point - previous;
             if (delta.sqrMagnitude > 0.0001f)
+            {
+                Aim(rt, delta);
+            }
+
+            rt.position = point;
+            previous = point;
+            yield return null;
+        }
+
+        rt.position = to;
+    }
+
+    IEnumerator FlyRaw(RectTransform rt, Vector3 from, Vector3 to, float duration, bool rotate)
+    {
+        var elapsed = 0f;
+        var previous = from;
+        rt.position = from;
+        if (rotate)
+        {
+            Aim(rt, to - from);
+        }
+
+        duration = Mathf.Max(0.05f, duration);
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            var t = Mathf.Clamp01(elapsed / duration);
+            var eased = t * t * (3f - (2f * t));
+            var point = Vector3.LerpUnclamped(from, to, eased);
+            var delta = point - previous;
+            if (rotate && delta.sqrMagnitude > 0.0001f)
             {
                 Aim(rt, delta);
             }

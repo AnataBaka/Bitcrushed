@@ -42,6 +42,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     SpriteFlipbook _flipbook;
     Coroutine _hit;
     Coroutine _death;
+    bool _barsFrozen;
 
     /// Where the card sits when nothing is animating.
     public Vector2 Home => _home;
@@ -228,9 +229,9 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     /// combatants; Knight and Ninja run all the way in and swing instead.
     public void PlayLunge(Vector2 targetPosition) => StartCoroutine(LungeRoutine(targetPosition));
 
-    /// Run to the enemy, play the chosen attack clip, then run home. Archer
-    /// instead strafes to the target's Y (no X change), looses an arrow, and
-    /// returns once the volley is done.
+    /// Run to the enemy, play the chosen attack clip, then run home. Archer and
+    /// Mage instead strafe to the target's Y (no X change), launch a projectile,
+    /// and return once the volley is done.
     public IEnumerator PlayStrike(
         Vector2 targetPosition,
         Action onImpact,
@@ -238,7 +239,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         float attackFps,
         string actionName = null,
         bool returnHome = true,
-        RectTransform targetShape = null
+        RectTransform targetShape = null,
+        int projectileHint = 0
     )
     {
         if (!_spriteMode || _flipbook == null)
@@ -259,7 +261,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
                 attackFps,
                 actionName,
                 returnHome,
-                targetShape
+                targetShape,
+                projectileHint
             );
             yield break;
         }
@@ -323,7 +326,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         float attackFps,
         string actionName,
         bool returnHome,
-        RectTransform targetShape
+        RectTransform targetShape,
+        int projectileHint
     )
     {
         _striking = true;
@@ -333,7 +337,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         var idle = ClassSpriteArt.Idle(_spriteClass);
         var clip = attackFrames != null && attackFrames.Length > 0
             ? attackFrames
-            : ClassSpriteArt.AttackClipFor(_spriteClass, actionName);
+            : ClassSpriteArt.AttackClipFor(_spriteClass, actionName, projectileHint);
         var fps = attackFps > 0f ? attackFps : ClassSpriteArt.AttackFpsFor(_spriteClass);
 
         var start = _root.anchoredPosition;
@@ -356,19 +360,47 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
 
         _flipbook.Play(clip, fps, false);
         var swing = clip != null && clip.Length > 0 && fps > 0f ? clip.Length / fps : 0.4f;
-        var releaseAt = swing * ClassSpriteArt.AttackReleaseNormalized(_spriteClass);
+        var releaseAt = swing * ClassSpriteArt.AttackReleaseNormalized(
+            _spriteClass,
+            actionName,
+            projectileHint
+        );
         if (releaseAt > 0f)
         {
             yield return new WaitForSeconds(releaseAt);
         }
 
         var field = _root.parent as RectTransform;
-        var from = BowWorld(actionName);
+        var from = ProjectileWorld(actionName, projectileHint);
         var to = targetShape != null ? CombatVfx.WorldCenter(targetShape) : from + new Vector3(400f, 0f, 0f);
-        var arrow = ClassSpriteArt.ArrowSprite(_spriteClass);
-        if (field != null && arrow != null && ClassSpriteArt.FiresProjectile(_spriteClass, actionName))
+        if (field != null && ClassSpriteArt.FiresProjectile(_spriteClass, actionName))
         {
-            yield return CombatProjectile.FireArrow(field, from, to, actionName, arrow);
+            if (ClassSpriteArt.IsMage(_spriteClass))
+            {
+                var charge = MageSpriteLibrary.ChargeClipFor(actionName, projectileHint);
+                var large = MageSpriteLibrary.UsesLargeCharge(actionName, projectileHint);
+                yield return CombatProjectile.FireCharge(
+                    field,
+                    from,
+                    to,
+                    charge,
+                    MageSpriteLibrary.ChargeDuration(actionName, projectileHint),
+                    MageSpriteLibrary.ChargeSize(actionName, projectileHint),
+                    rotate: !large
+                );
+            }
+            else
+            {
+                var arrow = ClassSpriteArt.ArrowSprite(_spriteClass);
+                if (arrow != null)
+                {
+                    yield return CombatProjectile.FireArrow(field, from, to, actionName, arrow);
+                }
+                else
+                {
+                    yield return new WaitForSeconds(0.08f);
+                }
+            }
         }
         else
         {
@@ -409,17 +441,41 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         _striking = false;
     }
 
-    Vector3 BowWorld(string actionName)
+    Vector3 ProjectileWorld(string actionName, int projectileHint)
     {
         var center = CombatVfx.WorldCenter(ShapeRect);
         var corners = new Vector3[4];
         ShapeRect.GetWorldCorners(corners);
         var width = Mathf.Abs(corners[2].x - corners[0].x);
         var height = Mathf.Abs(corners[2].y - corners[0].y);
-        // Attack_2 is a crouch so the nock sits near the sprite center. Attack_1
-        // stands taller; raise the spawn so the arrow leaves from the bow.
-        var y = ArcherSpriteLibrary.UsesCrouchShot(actionName) ? 0.04f : 0.15f;
-        return center + new Vector3(width * 0.12f, height * y, 0f);
+        var muzzle = ClassSpriteArt.MuzzleOffset(_spriteClass, actionName, projectileHint);
+        return center + new Vector3(width * muzzle.x, height * muzzle.y, 0f);
+    }
+
+    /// Freeze HP/mana text so Grand Undertaking can explode before bars tick.
+    public void SetBarsFrozen(bool frozen) => _barsFrozen = frozen;
+
+    public IEnumerator PlayCastHold(float seconds)
+    {
+        _striking = true;
+        transform.SetAsLastSibling();
+        var clip = ClassSpriteArt.AttackClipFor(_spriteClass, "Fireball", 0);
+        if (_flipbook != null && clip != null && clip.Length > 0)
+        {
+            _flipbook.Play(clip, ClassSpriteArt.AttackFpsFor(_spriteClass), false);
+        }
+
+        yield return new WaitForSeconds(Mathf.Max(0.1f, seconds));
+        if (!_deadPose && !_dying && _flipbook != null)
+        {
+            var idle = ClassSpriteArt.Idle(_spriteClass);
+            if (idle != null && idle.Length > 0)
+            {
+                _flipbook.Play(idle, ClassSpriteArt.IdleFps, true);
+            }
+        }
+
+        _striking = false;
     }
 
     /// Holy-white gleam on the body. Does not occupy Busy.
@@ -599,13 +655,16 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         _nameText.text = $"{entity.Name}{suffix}{(isLocal ? " [you]" : "")}";
         _nameText.color = isActive ? UiFactory.ActiveColor : UiFactory.TextColor;
 
-        UiFactory.SetBar(_hpFill, entity.Hp, entity.MaxHp);
-        _hpText.text = $"{entity.Hp}/{entity.MaxHp} hp";
-
-        if (_manaFill != null)
+        if (!_barsFrozen)
         {
-            UiFactory.SetBar(_manaFill, entity.Mana, entity.MaxMana);
-            _manaText.text = $"{entity.Mana}/{entity.MaxMana} mp";
+            UiFactory.SetBar(_hpFill, entity.Hp, entity.MaxHp);
+            _hpText.text = $"{entity.Hp}/{entity.MaxHp} hp";
+
+            if (_manaFill != null)
+            {
+                UiFactory.SetBar(_manaFill, entity.Mana, entity.MaxMana);
+                _manaText.text = $"{entity.Mana}/{entity.MaxMana} mp";
+            }
         }
 
         if (targetable)

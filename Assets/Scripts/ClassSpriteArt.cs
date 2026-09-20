@@ -1,8 +1,8 @@
 using System;
 using UnityEngine;
 
-/// Shared lookup for class sprite packs. Knight, Ninja, and Archer are
-/// animated; Mage still uses a placeholder shape.
+/// Shared lookup for class sprite packs. Knight, Ninja, Archer, and Mage are
+/// animated from their sprite folders.
 public static class ClassSpriteArt
 {
     public const float IdleFps = 8f;
@@ -30,6 +30,7 @@ public static class ClassSpriteArt
         KnightSpriteLibrary.EnsureLoaded();
         NinjaSpriteLibrary.EnsureLoaded();
         ArcherSpriteLibrary.EnsureLoaded();
+        MageSpriteLibrary.EnsureLoaded();
     }
 
     public static string CanonicalClass(string className)
@@ -50,13 +51,21 @@ public static class ClassSpriteArt
         var canonical = CanonicalClass(className);
         return canonical == KnightSpriteLibrary.ClassName && KnightSpriteLibrary.Ready
             || canonical == NinjaSpriteLibrary.ClassName && NinjaSpriteLibrary.Ready
-            || canonical == ArcherSpriteLibrary.ClassName && ArcherSpriteLibrary.Ready;
+            || canonical == ArcherSpriteLibrary.ClassName && ArcherSpriteLibrary.Ready
+            || canonical == MageSpriteLibrary.ClassName && MageSpriteLibrary.Ready;
     }
 
-    public static bool IsRanged(string className) =>
-        CanonicalClass(className) == ArcherSpriteLibrary.ClassName;
+    public static bool IsRanged(string className)
+    {
+        var canonical = CanonicalClass(className);
+        return canonical == ArcherSpriteLibrary.ClassName
+            || canonical == MageSpriteLibrary.ClassName;
+    }
 
-    /// Knight_1, Ninja, and Archer source PNGs all face right. Do not flip.
+    public static bool IsMage(string className) =>
+        CanonicalClass(className) == MageSpriteLibrary.ClassName;
+
+    /// Knight_1, Ninja, Archer, and Mage source PNGs all face right. Do not flip.
     public static bool FlipX(string className) => false;
 
     public static float TravelSpeed(string className)
@@ -67,7 +76,7 @@ public static class ClassSpriteArt
             return 11000f;
         }
 
-        if (canonical == ArcherSpriteLibrary.ClassName)
+        if (canonical == ArcherSpriteLibrary.ClassName || canonical == MageSpriteLibrary.ClassName)
         {
             return 2600f;
         }
@@ -83,7 +92,10 @@ public static class ClassSpriteArt
             return 0.04f;
         }
 
-        if (canonical == ArcherSpriteLibrary.ClassName)
+        if (
+            canonical == ArcherSpriteLibrary.ClassName
+            || canonical == MageSpriteLibrary.ClassName
+        )
         {
             return 0.16f;
         }
@@ -98,7 +110,10 @@ public static class ClassSpriteArt
             return 0.16f;
         }
 
-        if (CanonicalClass(className) == ArcherSpriteLibrary.ClassName)
+        if (
+            CanonicalClass(className) == ArcherSpriteLibrary.ClassName
+            || CanonicalClass(className) == MageSpriteLibrary.ClassName
+        )
         {
             return 0.42f;
         }
@@ -109,13 +124,27 @@ public static class ClassSpriteArt
     public static float RunFpsFor(string className) =>
         CanonicalClass(className) == NinjaSpriteLibrary.ClassName ? 20f : RunFps;
 
-    public static float AttackFpsFor(string className) =>
-        CanonicalClass(className) == ArcherSpriteLibrary.ClassName ? 14f : AttackFps;
+    public static float AttackFpsFor(string className)
+    {
+        var canonical = CanonicalClass(className);
+        if (canonical == ArcherSpriteLibrary.ClassName || canonical == MageSpriteLibrary.ClassName)
+        {
+            return 14f;
+        }
 
-    /// Bow-release point inside the attack clip. Later than a melee swing so
-    /// the draw reads before the arrow leaves.
-    public static float AttackReleaseNormalized(string className) =>
-        IsRanged(className) ? 0.62f : 0.55f;
+        return AttackFps;
+    }
+
+    /// Bow-release / bolt-release point inside the attack clip.
+    public static float AttackReleaseNormalized(string className, string actionName = null, int magicBulletStage = 0)
+    {
+        if (CanonicalClass(className) == MageSpriteLibrary.ClassName)
+        {
+            return MageSpriteLibrary.UsesLargeCharge(actionName, magicBulletStage) ? 0.70f : 0.62f;
+        }
+
+        return IsRanged(className) ? 0.62f : 0.55f;
+    }
 
     public static Sprite[] Idle(string className)
     {
@@ -128,6 +157,11 @@ public static class ClassSpriteArt
         if (canonical == ArcherSpriteLibrary.ClassName)
         {
             return ArcherSpriteLibrary.Idle;
+        }
+
+        if (canonical == MageSpriteLibrary.ClassName)
+        {
+            return MageSpriteLibrary.Idle;
         }
 
         return KnightSpriteLibrary.Idle;
@@ -146,6 +180,11 @@ public static class ClassSpriteArt
             return ArcherSpriteLibrary.Run;
         }
 
+        if (canonical == MageSpriteLibrary.ClassName)
+        {
+            return MageSpriteLibrary.Run;
+        }
+
         return KnightSpriteLibrary.Run;
     }
 
@@ -160,6 +199,11 @@ public static class ClassSpriteArt
         if (canonical == ArcherSpriteLibrary.ClassName)
         {
             return ArcherSpriteLibrary.Hurt;
+        }
+
+        if (canonical == MageSpriteLibrary.ClassName)
+        {
+            return MageSpriteLibrary.Hurt;
         }
 
         return KnightSpriteLibrary.Hurt;
@@ -178,10 +222,15 @@ public static class ClassSpriteArt
             return ArcherSpriteLibrary.Dying;
         }
 
+        if (canonical == MageSpriteLibrary.ClassName)
+        {
+            return MageSpriteLibrary.Dying;
+        }
+
         return KnightSpriteLibrary.Dying;
     }
 
-    public static Sprite[] AttackClipFor(string className, string actionName)
+    public static Sprite[] AttackClipFor(string className, string actionName, int magicBulletStage = 0)
     {
         var canonical = CanonicalClass(className);
         if (canonical == NinjaSpriteLibrary.ClassName)
@@ -194,10 +243,20 @@ public static class ClassSpriteArt
             return ArcherSpriteLibrary.AttackClipFor(actionName);
         }
 
+        if (canonical == MageSpriteLibrary.ClassName)
+        {
+            return MageSpriteLibrary.AttackClipFor(actionName, magicBulletStage);
+        }
+
         return KnightSpriteLibrary.AttackClipFor(actionName);
     }
 
-    public static bool TryHitEffect(string className, string actionName, out HitEffectKind kind)
+    public static bool TryHitEffect(
+        string className,
+        string actionName,
+        out HitEffectKind kind,
+        int magicBulletStage = 0
+    )
     {
         var canonical = CanonicalClass(className);
         if (canonical == NinjaSpriteLibrary.ClassName)
@@ -215,6 +274,11 @@ public static class ClassSpriteArt
             return ArcherSpriteLibrary.TryHitEffect(actionName, out kind);
         }
 
+        if (canonical == MageSpriteLibrary.ClassName)
+        {
+            return MageSpriteLibrary.TryHitEffect(actionName, magicBulletStage, out kind);
+        }
+
         kind = default;
         return false;
     }
@@ -230,8 +294,40 @@ public static class ClassSpriteArt
         return null;
     }
 
-    public static bool FiresProjectile(string className, string actionName) =>
-        IsRanged(className) && ArcherSpriteLibrary.FiresArrow(actionName);
+    public static bool FiresProjectile(string className, string actionName)
+    {
+        var canonical = CanonicalClass(className);
+        if (canonical == ArcherSpriteLibrary.ClassName)
+        {
+            return ArcherSpriteLibrary.FiresArrow(actionName);
+        }
+
+        if (canonical == MageSpriteLibrary.ClassName)
+        {
+            return MageSpriteLibrary.FiresCharge(actionName);
+        }
+
+        return false;
+    }
+
+    public static Vector2 MuzzleOffset(string className, string actionName, int magicBulletStage = 0)
+    {
+        if (CanonicalClass(className) == MageSpriteLibrary.ClassName)
+        {
+            return MageSpriteLibrary.MuzzleOffset(actionName, magicBulletStage);
+        }
+
+        var y = ArcherSpriteLibrary.UsesCrouchShot(actionName) ? 0.04f : 0.15f;
+        return new Vector2(0.12f, y);
+    }
+
+    public static bool IsGrandUndertakingErupt(string message) =>
+        !string.IsNullOrEmpty(message)
+        && message.IndexOf("Grand Undertaking erupts", StringComparison.Ordinal) >= 0;
+
+    public static bool IsGrandUndertakingHit(string message) =>
+        !string.IsNullOrEmpty(message)
+        && message.IndexOf("Grand Undertaking hits", StringComparison.Ordinal) >= 0;
 
     /// Pulls the skill / basic-attack name out of a battle-log strike line.
     public static string ActionNameFromLog(string message)
