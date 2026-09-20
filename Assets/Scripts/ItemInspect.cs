@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Text;
 using SpacetimeDB.Types;
 
 /// Builds inspect text from ItemDef table fields. Effect copy lives on the server.
@@ -7,26 +6,28 @@ public static class ItemInspect
 {
     public readonly struct Info
     {
-        public Info(string title, string slot, string description)
+        public Info(string title, string slot, string stats, string effect)
         {
             Title = title;
             Slot = slot;
-            Description = description;
+            Stats = stats;
+            Effect = effect;
         }
 
         public string Title { get; }
         public string Slot { get; }
-        public string Description { get; }
+        public string Stats { get; }
+        public string Effect { get; }
     }
 
     public static Info For(ItemDef def)
     {
         if (def == null)
         {
-            return new Info("Empty", "", "No item in this slot.");
+            return new Info("Empty", "", "", "No item in this slot.");
         }
 
-        return new Info(def.Name, KindLabel(def), BodyOf(def));
+        return new Info(def.Name, KindLabel(def), StatsOf(def), EffectOf(def));
     }
 
     static string KindLabel(ItemDef def) =>
@@ -48,7 +49,7 @@ public static class ItemInspect
             _ => type.ToString(),
         };
 
-    static string BodyOf(ItemDef def)
+    static string StatsOf(ItemDef def)
     {
         var parts = new List<string>();
         AddBonus(parts, def.AtkBonus, "ATK");
@@ -69,23 +70,17 @@ public static class ItemInspect
             parts.Add($"Restores {def.ManaRestoreAmount} MP");
         }
 
-        var body = new StringBuilder();
-        if (parts.Count > 0)
-        {
-            body.Append(string.Join("\n", parts));
-        }
+        return string.Join("\n", parts);
+    }
 
+    static string EffectOf(ItemDef def)
+    {
         if (!string.IsNullOrEmpty(def.Description))
         {
-            if (body.Length > 0)
-            {
-                body.Append('\n');
-            }
-
-            body.Append(def.Description);
+            return def.Description;
         }
 
-        return body.Length == 0 ? "No special effect." : body.ToString();
+        return StatsOf(def).Length == 0 ? "No special effect." : "";
     }
 
     static void AddBonus(List<string> parts, int value, string label)

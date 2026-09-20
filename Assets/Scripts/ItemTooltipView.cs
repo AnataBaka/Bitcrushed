@@ -7,21 +7,23 @@ using UnityEngine.InputSystem;
 #endif
 using SpacetimeDB.Types;
 
-/// Hover card for equipment slots. Shows the item name, slot, art, and passive.
+/// Hover card for equipment slots and inventory cells. Body is a vertical
+/// layout: name pill, kind, stats, then effect. The box sizes to its content.
 public class ItemTooltipView : MonoBehaviour
 {
     const float Width = 320f;
     const float CursorGap = 18f;
     const float EdgePad = 10f;
+    const int Pad = 12;
+    const float Spacing = 6f;
 
     RectTransform _root;
     RectTransform _canvas;
     Canvas _canvasComponent;
-    Image _icon;
-    GameObject _iconRow;
     Text _title;
     Text _slot;
-    Text _body;
+    Text _stats;
+    Text _effect;
     object _owner;
 
     public bool IsOpen => gameObject.activeSelf;
@@ -38,15 +40,15 @@ public class ItemTooltipView : MonoBehaviour
         view._root.anchorMin = new Vector2(0f, 0f);
         view._root.anchorMax = new Vector2(0f, 0f);
         view._root.pivot = new Vector2(0f, 0f);
-        view._root.sizeDelta = new Vector2(Width, 160f);
+        view._root.sizeDelta = new Vector2(Width, 0f);
 
         var outline = panel.gameObject.AddComponent<Outline>();
         outline.effectColor = new Color(0f, 0f, 0f, 0.55f);
         outline.effectDistance = new Vector2(2f, -2f);
 
         var layout = panel.gameObject.AddComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(12, 12, 12, 12);
-        layout.spacing = 6f;
+        layout.padding = new RectOffset(Pad, Pad, Pad, Pad);
+        layout.spacing = Spacing;
         layout.childAlignment = TextAnchor.UpperLeft;
         layout.childControlHeight = true;
         layout.childControlWidth = true;
@@ -62,6 +64,7 @@ public class ItemTooltipView : MonoBehaviour
         var headerElement = header.gameObject.AddComponent<LayoutElement>();
         headerElement.minHeight = 40f;
         headerElement.preferredHeight = 40f;
+        headerElement.flexibleHeight = 0f;
         headerElement.flexibleWidth = 1f;
 
         view._title = UiFactory.Label(
@@ -76,36 +79,27 @@ public class ItemTooltipView : MonoBehaviour
         view._title.horizontalOverflow = HorizontalWrapMode.Wrap;
         view._title.raycastTarget = false;
         UiFactory.Anchor(view._title.rectTransform, Vector2.zero, Vector2.one);
-        view._title.rectTransform.offsetMin = new Vector2(12f, 0f);
-        view._title.rectTransform.offsetMax = new Vector2(-12f, 0f);
+        view._title.rectTransform.offsetMin = new Vector2(Pad, 0f);
+        view._title.rectTransform.offsetMax = new Vector2(-Pad, 0f);
 
-        var iconRow = UiFactory.NewRect(panel.transform, "IconRow");
-        var iconLayout = iconRow.gameObject.AddComponent<HorizontalLayoutGroup>();
-        iconLayout.childAlignment = TextAnchor.MiddleLeft;
-        iconLayout.childControlHeight = false;
-        iconLayout.childControlWidth = false;
-        var iconRowElement = iconRow.gameObject.AddComponent<LayoutElement>();
-        iconRowElement.minHeight = 72f;
-        iconRowElement.preferredHeight = 72f;
-        view._iconRow = iconRow.gameObject;
-
-        view._icon = UiFactory.Graphic(iconRow, "Icon", PlaceholderArt.Solid(Color.white), Color.white);
-        view._icon.raycastTarget = false;
-        view._icon.preserveAspect = true;
-        view._icon.rectTransform.sizeDelta = new Vector2(64f, 64f);
-
-        view._slot = UiFactory.Label(panel.transform, "Slot", "", 14, TextAnchor.MiddleLeft, UiFactory.MutedColor);
-        view._slot.raycastTarget = false;
-        view._body = UiFactory.Label(panel.transform, "Body", "", 15, TextAnchor.UpperLeft, UiFactory.TextColor);
-        view._body.horizontalOverflow = HorizontalWrapMode.Wrap;
-        view._body.verticalOverflow = VerticalWrapMode.Overflow;
-        view._body.raycastTarget = false;
-        var bodyFitter = view._body.gameObject.AddComponent<ContentSizeFitter>();
-        bodyFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-        bodyFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        view._slot = MakeBodyLabel(panel.transform, "Slot", 14, UiFactory.MutedColor);
+        view._stats = MakeBodyLabel(panel.transform, "Stats", 15, UiFactory.TextColor);
+        view._effect = MakeBodyLabel(panel.transform, "Effect", 15, UiFactory.TextColor);
 
         view.gameObject.SetActive(false);
         return view;
+    }
+
+    static Text MakeBodyLabel(Transform parent, string name, int size, Color color)
+    {
+        var label = UiFactory.Label(parent, name, "", size, TextAnchor.UpperLeft, color);
+        label.horizontalOverflow = HorizontalWrapMode.Wrap;
+        label.verticalOverflow = VerticalWrapMode.Overflow;
+        label.raycastTarget = false;
+        var element = label.gameObject.AddComponent<LayoutElement>();
+        element.flexibleHeight = 0f;
+        element.flexibleWidth = 1f;
+        return label;
     }
 
     public void Show(object owner, ItemInspect.Info info, Sprite icon)
@@ -113,13 +107,10 @@ public class ItemTooltipView : MonoBehaviour
         _owner = owner;
         _title.text = info.Title;
         _slot.text = info.Slot;
-        _body.text = info.Description;
-        var hasIcon = icon != null;
-        _iconRow.SetActive(hasIcon);
-        if (hasIcon)
-        {
-            ItemIconFit.Bind(_icon, icon);
-        }
+        _stats.text = info.Stats ?? "";
+        _effect.text = info.Effect ?? "";
+        _stats.gameObject.SetActive(!string.IsNullOrEmpty(_stats.text));
+        _effect.gameObject.SetActive(!string.IsNullOrEmpty(_effect.text));
 
         gameObject.SetActive(true);
         transform.SetAsLastSibling();
@@ -177,7 +168,7 @@ public class ItemTooltipView : MonoBehaviour
 
         if (size.y < 1f)
         {
-            size.y = 160f;
+            size.y = 80f;
         }
 
         // Equipment sits bottom-left, so grow up and to the right of the cursor.
