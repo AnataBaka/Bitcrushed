@@ -202,7 +202,15 @@ public class TurnOrderListView : MonoBehaviour
         }
 
         row.Enemy = entity.Faction == Team.Enemies;
-        ApplyLabel(row, entity.Name, slot == 0);
+        var label = row.Enemy
+            ? ClassSpriteArt.EnemyDisplayName(
+                entity.ClassName,
+                entity.Name,
+                entity.EntityId,
+                entity.VariantPrefix
+            )
+            : entity.Name;
+        ApplyLabel(row, label, slot == 0);
         MoveTo(row, slot, snap);
     }
 

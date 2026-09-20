@@ -785,9 +785,30 @@ public class BattleHud : MonoBehaviour
             if (_views.TryGetValue(row.ActorEntityId, out var aoeActor) && aoeActor != null)
             {
                 var midpoint = PartyMidpoint(aoeActor.Home);
-                aoeActor.PlayLunge(midpoint);
                 _aoeLungeActor = row.ActorEntityId;
-                yield return new WaitForSeconds(EntityView.LungeSeconds);
+                if (aoeActor.UsesEnemySprites)
+                {
+                    var aoeEntity = GameManager.FindEntity(row.ActorEntityId);
+                    var aoeClass = aoeEntity != null
+                        ? ClassSpriteArt.SpriteClassFor(
+                            aoeEntity.ClassName,
+                            aoeEntity.EntityId,
+                            true
+                        )
+                        : null;
+                    var aoeAction = ClassSpriteArt.ActionNameFromLog(row.Message);
+                    yield return aoeActor.PlayStrike(
+                        midpoint,
+                        null,
+                        ClassSpriteArt.AttackClipFor(aoeClass, aoeAction),
+                        ClassSpriteArt.AttackFpsFor(aoeClass)
+                    );
+                }
+                else
+                {
+                    aoeActor.PlayLunge(midpoint);
+                    yield return new WaitForSeconds(EntityView.LungeSeconds);
+                }
             }
 
             _animating = false;
@@ -825,6 +846,13 @@ public class BattleHud : MonoBehaviour
         var actionName = ClassSpriteArt.ActionNameFromLog(row.Message);
         var actorEntity = GameManager.FindEntity(row.ActorEntityId);
         var className = actorEntity != null ? actorEntity.ClassName : null;
+        var spriteClass = actorEntity != null
+            ? ClassSpriteArt.SpriteClassFor(
+                className,
+                actorEntity.EntityId,
+                actorEntity.Faction == Team.Enemies
+            )
+            : className;
         var targetEntity = GameManager.FindEntity(row.TargetEntityId);
         var magicBulletStage = actorEntity != null ? actorEntity.MagicBulletStage : 0;
         var casterAlive = actorEntity == null || actorEntity.Alive;
@@ -879,8 +907,8 @@ public class BattleHud : MonoBehaviour
             yield return actor.PlayStrike(
                 targetHome,
                 Impact,
-                ClassSpriteArt.AttackClipFor(className, actionName, magicBulletStage, casterAlive),
-                ClassSpriteArt.AttackFpsFor(className),
+                ClassSpriteArt.AttackClipFor(spriteClass, actionName, magicBulletStage, casterAlive),
+                ClassSpriteArt.AttackFpsFor(spriteClass),
                 actionName,
                 returnHome: !SameVolleyContinues(row, actionName),
                 target?.ShapeRect,

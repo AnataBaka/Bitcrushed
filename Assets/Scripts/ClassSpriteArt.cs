@@ -1,8 +1,8 @@
 using System;
 using UnityEngine;
 
-/// Shared lookup for class sprite packs. Knight, Ninja, Archer, and Mage are
-/// animated from their sprite folders.
+/// Shared lookup for class sprite packs. Knight, Ninja, Archer, Mage, and the
+/// four battlefield enemy packs are animated from their sprite folders.
 public static class ClassSpriteArt
 {
     public const float IdleFps = 8f;
@@ -31,6 +31,7 @@ public static class ClassSpriteArt
         NinjaSpriteLibrary.EnsureLoaded();
         ArcherSpriteLibrary.EnsureLoaded();
         MageSpriteLibrary.EnsureLoaded();
+        EnemySpriteLibrary.EnsureLoaded();
     }
 
     public static string CanonicalClass(string className)
@@ -41,6 +42,8 @@ public static class ClassSpriteArt
                 return KnightSpriteLibrary.ClassName;
             case "Rogue":
                 return NinjaSpriteLibrary.ClassName;
+            case "Witch Doctor":
+                return "Witch_Doctor";
             default:
                 return className;
         }
@@ -52,7 +55,8 @@ public static class ClassSpriteArt
         return canonical == KnightSpriteLibrary.ClassName && KnightSpriteLibrary.Ready
             || canonical == NinjaSpriteLibrary.ClassName && NinjaSpriteLibrary.Ready
             || canonical == ArcherSpriteLibrary.ClassName && ArcherSpriteLibrary.Ready
-            || canonical == MageSpriteLibrary.ClassName && MageSpriteLibrary.Ready;
+            || canonical == MageSpriteLibrary.ClassName && MageSpriteLibrary.Ready
+            || EnemySpriteLibrary.IsKind(canonical) && EnemySpriteLibrary.Ready;
     }
 
     public static bool IsRanged(string className)
@@ -65,7 +69,54 @@ public static class ClassSpriteArt
     public static bool IsMage(string className) =>
         CanonicalClass(className) == MageSpriteLibrary.ClassName;
 
-    /// Knight_1, Ninja, Archer, and Mage source PNGs all face right. Do not flip.
+    public static bool IsEnemySprite(string className) =>
+        EnemySpriteLibrary.IsKind(CanonicalClass(className));
+
+    /// Stable visual pack for an enemy. Existing Goblin/Troll/etc. rows hash to
+    /// one of the four ripped kinds so old battles still get sprites.
+    public static string SpriteClassFor(string className, ulong entityId, bool isEnemy)
+    {
+        var canonical = CanonicalClass(className);
+        if (!isEnemy)
+        {
+            return canonical;
+        }
+
+        if (EnemySpriteLibrary.IsKind(canonical))
+        {
+            return EnemySpriteLibrary.CanonicalKind(canonical);
+        }
+
+        return EnemySpriteLibrary.PickKind(entityId);
+    }
+
+    public static string EnemyDisplayName(
+        string className,
+        string entityName,
+        ulong entityId,
+        string variantPrefix = null
+    )
+    {
+        var kind = SpriteClassFor(className, entityId, true);
+        var visual = EnemySpriteLibrary.DisplayName(kind);
+        if (
+            !string.IsNullOrEmpty(entityName)
+            && entityName.IndexOf(visual, StringComparison.OrdinalIgnoreCase) >= 0
+        )
+        {
+            return entityName;
+        }
+
+        if (!string.IsNullOrEmpty(variantPrefix))
+        {
+            return $"{variantPrefix} {visual}";
+        }
+
+        return visual;
+    }
+
+    /// Knight_1, Ninja, Archer, Mage, and enemy packs already face the party.
+    /// Do not flip.
     public static bool FlipX(string className) => false;
 
     public static float TravelSpeed(string className)
@@ -156,6 +207,11 @@ public static class ClassSpriteArt
     public static Sprite[] Idle(string className)
     {
         var canonical = CanonicalClass(className);
+        if (EnemySpriteLibrary.IsKind(canonical))
+        {
+            return EnemySpriteLibrary.IdleFor(canonical);
+        }
+
         if (canonical == NinjaSpriteLibrary.ClassName)
         {
             return NinjaSpriteLibrary.Idle;
@@ -177,6 +233,11 @@ public static class ClassSpriteArt
     public static Sprite[] Run(string className)
     {
         var canonical = CanonicalClass(className);
+        if (EnemySpriteLibrary.IsKind(canonical))
+        {
+            return Array.Empty<Sprite>();
+        }
+
         if (canonical == NinjaSpriteLibrary.ClassName)
         {
             return NinjaSpriteLibrary.Run;
@@ -198,6 +259,11 @@ public static class ClassSpriteArt
     public static Sprite[] Hurt(string className)
     {
         var canonical = CanonicalClass(className);
+        if (EnemySpriteLibrary.IsKind(canonical))
+        {
+            return Array.Empty<Sprite>();
+        }
+
         if (canonical == NinjaSpriteLibrary.ClassName)
         {
             return NinjaSpriteLibrary.Hurt;
@@ -219,6 +285,11 @@ public static class ClassSpriteArt
     public static Sprite[] Dying(string className)
     {
         var canonical = CanonicalClass(className);
+        if (EnemySpriteLibrary.IsKind(canonical))
+        {
+            return Array.Empty<Sprite>();
+        }
+
         if (canonical == NinjaSpriteLibrary.ClassName)
         {
             return NinjaSpriteLibrary.Dying;
@@ -245,6 +316,11 @@ public static class ClassSpriteArt
     )
     {
         var canonical = CanonicalClass(className);
+        if (EnemySpriteLibrary.IsKind(canonical))
+        {
+            return EnemySpriteLibrary.AttackFor(canonical);
+        }
+
         if (canonical == NinjaSpriteLibrary.ClassName)
         {
             return NinjaSpriteLibrary.AttackClipFor(actionName);
