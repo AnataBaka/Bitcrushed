@@ -37,8 +37,45 @@ public static class AmuletArt
         { "Elegant Cane", "Weapons/elegant_cane.png" },
         { "Staff of the Queen", "Weapons/staff_of_the_queen.png" },
         { "Rusted Pommel", "Weapons/rusted_pummel.png" },
+        { "Rusted Pummel", "Weapons/rusted_pummel.png" },
         { "Crimson Dagger", "Weapons/crimson_dagger.png" },
         { "Azure Dagger", "Weapons/azure_dagger.png" },
+        { "Copper Sword", "Weapons/jagged_sword.png" },
+        { "Wooden Bow", "Weapons/golden_bow.png" },
+        { "Crooked Stick", "Weapons/azure_cane.png" },
+        { "Sharpened Katana", "Weapons/crimson_dagger.png" },
+        { "Health Amulet", "Amulets/golden_cross.png" },
+        { "Health Potion", "Amulets/holy_grail.png" },
+        { "Mana Potion", "Amulets/amethyst_sash.png" },
+    };
+
+    /// ShortName fallback so starter + unique rows that share a display name
+    /// still resolve even if the name spelling drifts.
+    static readonly Dictionary<string, string> FileByShortName = new Dictionary<string, string>
+    {
+        { "CSW", "Weapons/chipped_sword.png" },
+        { "CHP", "Weapons/chipped_sword.png" },
+        { "JAG", "Weapons/jagged_sword.png" },
+        { "CPS", "Weapons/jagged_sword.png" },
+        { "CRB", "Weapons/crimson_blade.png" },
+        { "WBW", "Weapons/golden_bow.png" },
+        { "GLB", "Weapons/golden_bow.png" },
+        { "WDB", "Weapons/golden_bow.png" },
+        { "EMB", "Weapons/emerald_bow.png" },
+        { "CRW", "Weapons/crimson_bow.png" },
+        { "WCN", "Weapons/azure_cane.png" },
+        { "AZC", "Weapons/azure_cane.png" },
+        { "CST", "Weapons/azure_cane.png" },
+        { "ELC", "Weapons/elegant_cane.png" },
+        { "SOQ", "Weapons/staff_of_the_queen.png" },
+        { "KTN", "Weapons/rusted_pummel.png" },
+        { "RPM", "Weapons/rusted_pummel.png" },
+        { "SKT", "Weapons/crimson_dagger.png" },
+        { "CRD", "Weapons/crimson_dagger.png" },
+        { "AZD", "Weapons/azure_dagger.png" },
+        { "HPA", "Amulets/golden_cross.png" },
+        { "HPT", "Amulets/holy_grail.png" },
+        { "MPT", "Amulets/amethyst_sash.png" },
     };
 
     static readonly HashSet<string> StarterShortNames = new HashSet<string>
@@ -55,13 +92,27 @@ public static class AmuletArt
         StringComparer.OrdinalIgnoreCase
     );
     static readonly HashSet<uint> MissingWarned = new HashSet<uint>();
-    static readonly HashSet<string> DuplicateFilesWarned = new HashSet<string>(
-        StringComparer.OrdinalIgnoreCase
-    );
     static bool _claimed;
 
     public static bool HasIcon(string itemName) =>
         !string.IsNullOrEmpty(itemName) && FileByName.ContainsKey(itemName);
+
+    static bool TryFileFor(ItemDef def, out string fileName)
+    {
+        fileName = null;
+        if (def == null)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(def.Name) && FileByName.TryGetValue(def.Name, out fileName))
+        {
+            return true;
+        }
+
+        return !string.IsNullOrEmpty(def.ShortName)
+            && FileByShortName.TryGetValue(def.ShortName, out fileName);
+    }
 
     /// Shared loader keyed by item definition id. Duplicate files stay placeholders.
     public static Sprite ForDef(ItemDef def)
@@ -122,7 +173,6 @@ public static class AmuletArt
         CacheById.Clear();
         FileOwner.Clear();
         MissingWarned.Clear();
-        DuplicateFilesWarned.Clear();
         EnsureClaims();
     }
 
@@ -157,7 +207,7 @@ public static class AmuletArt
 
     static void Claim(ItemDef def)
     {
-        if (!FileByName.TryGetValue(def.Name, out var fileName))
+        if (!TryFileFor(def, out var fileName))
         {
             WarnMissing(def, "no matching sprite file");
             CacheById[def.Id] = null;
@@ -166,19 +216,14 @@ public static class AmuletArt
 
         if (FileOwner.TryGetValue(fileName, out var owner) && owner != def.Id)
         {
-            if (DuplicateFilesWarned.Add(fileName))
+            if (CacheById.TryGetValue(owner, out var shared) && shared != null)
             {
-                Debug.LogError(
-                    $"Sprite '{fileName}' already represents item id {owner}; item '{def.Name}' (id {def.Id}) uses a placeholder."
-                );
+                CacheById[def.Id] = shared;
+                return;
             }
-
-            WarnMissing(def, $"would share '{fileName}'");
-            CacheById[def.Id] = null;
-            return;
         }
 
-        var sprite = LoadFile(def.Name, fileName);
+        var sprite = LoadFile(fileName, fileName);
         if (sprite == null)
         {
             WarnMissing(def, $"file '{fileName}' failed to load");
