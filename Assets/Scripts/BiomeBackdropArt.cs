@@ -75,7 +75,7 @@ public static class BiomeBackdropArt
             return null;
         }
 
-        var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        var texture = PixelStyle.Texture(2, 2);
         if (!texture.LoadImage(bytes, markNonReadable: false))
         {
             Object.Destroy(texture);

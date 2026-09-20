@@ -140,12 +140,8 @@ public static class SpriteFrameLoader
                     continue;
                 }
 
-                var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false)
-                {
-                    name = Path.GetFileNameWithoutExtension(file),
-                    filterMode = filter,
-                    wrapMode = TextureWrapMode.Clamp,
-                };
+                var texture = PixelStyle.Texture(2, 2);
+                texture.name = Path.GetFileNameWithoutExtension(file);
                 if (!texture.LoadImage(bytes))
                 {
                     UnityEngine.Object.Destroy(texture);
@@ -239,12 +235,8 @@ public static class SpriteFrameLoader
             return sprite;
         }
 
-        var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
-        {
-            name = sprite.name,
-            filterMode = sprite.texture.filterMode,
-            wrapMode = TextureWrapMode.Clamp,
-        };
+        var texture = PixelStyle.Texture(size, size);
+        texture.name = sprite.name;
         texture.SetPixels32(new Color32[size * size]);
         var x = (size - source.width) / 2;
         var y = (size - source.height) / 2;
@@ -440,11 +432,7 @@ public static class SpriteFrameLoader
 
         try
         {
-            var copy = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false)
-            {
-                filterMode = texture.filterMode,
-                wrapMode = TextureWrapMode.Clamp,
-            };
+            var copy = PixelStyle.Texture(texture.width, texture.height);
             copy.SetPixels(texture.GetPixels());
             copy.Apply(false, false);
             return copy;
@@ -455,11 +443,7 @@ public static class SpriteFrameLoader
             var previous = RenderTexture.active;
             Graphics.Blit(texture, rt);
             RenderTexture.active = rt;
-            var copy = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false)
-            {
-                filterMode = texture.filterMode,
-                wrapMode = TextureWrapMode.Clamp,
-            };
+            var copy = PixelStyle.Texture(texture.width, texture.height);
             copy.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
             copy.Apply(false, false);
             RenderTexture.active = previous;
@@ -483,11 +467,7 @@ public static class SpriteFrameLoader
 
         try
         {
-            var copy = new Texture2D(width, height, TextureFormat.RGBA32, false)
-            {
-                filterMode = texture.filterMode,
-                wrapMode = TextureWrapMode.Clamp,
-            };
+            var copy = PixelStyle.Texture(width, height);
             copy.SetPixels(texture.GetPixels(x, y, width, height));
             copy.Apply(false, false);
             return copy;
@@ -498,17 +478,13 @@ public static class SpriteFrameLoader
             var previous = RenderTexture.active;
             Graphics.Blit(texture, rt);
             RenderTexture.active = rt;
-            var full = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false);
+            var full = PixelStyle.Texture(texture.width, texture.height);
             full.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
             full.Apply(false, false);
             RenderTexture.active = previous;
             RenderTexture.ReleaseTemporary(rt);
 
-            var copy = new Texture2D(width, height, TextureFormat.RGBA32, false)
-            {
-                filterMode = texture.filterMode,
-                wrapMode = TextureWrapMode.Clamp,
-            };
+            var copy = PixelStyle.Texture(width, height);
             copy.SetPixels(full.GetPixels(x, y, width, height));
             copy.Apply(false, false);
             UnityEngine.Object.Destroy(full);

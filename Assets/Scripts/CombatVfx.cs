@@ -142,22 +142,22 @@ public class CombatVfx : MonoBehaviour
             case HitEffectKind.Impact:
                 return _impact ??= SpriteFrameLoader.LoadFolder(
                     "Sprites/Effect_Impact/Frames/Effect_Impact_1",
-                    FilterMode.Bilinear
+                    FilterMode.Point
                 );
             case HitEffectKind.Explosion2:
                 return _explosion2 ??= SpriteFrameLoader.LoadFolder(
                     "Sprites/Effect_Explosion2/Frames/Effect_Explosion2_1",
-                    FilterMode.Bilinear
+                    FilterMode.Point
                 );
             case HitEffectKind.BigHit:
                 return _bigHit ??= SpriteFrameLoader.LoadFolder(
                     "Sprites/Effect_BigHit/Frames/Effect_BigHit_1",
-                    FilterMode.Bilinear
+                    FilterMode.Point
                 );
             case HitEffectKind.BloodImpact:
                 return _bloodImpact ??= SpriteFrameLoader.LoadFolder(
                     "Sprites/Effect_BloodImpact/Frames/Effect_BloodImpact_1",
-                    FilterMode.Bilinear
+                    FilterMode.Point
                 );
             case HitEffectKind.CurvedImpact:
                 return _curvedImpact ??= BuildCurvedImpactFrames();
@@ -176,12 +176,8 @@ public class CombatVfx : MonoBehaviour
         for (var i = 0; i < count; i++)
         {
             var t = i / (float)(count - 1);
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
-            {
-                name = $"CurvedImpact_{i:00}",
-                filterMode = FilterMode.Point,
-                wrapMode = TextureWrapMode.Clamp,
-            };
+            var texture = PixelStyle.Texture(size, size);
+            texture.name = $"CurvedImpact_{i:00}";
             var pixels = new Color32[size * size];
             var fade = 1f - (t * t);
             var radius = Mathf.Lerp(10f, 40f, t);
@@ -190,6 +186,9 @@ public class CombatVfx : MonoBehaviour
             var sweep = Mathf.Lerp(70f, 130f, t);
             var cx = size * 0.50f;
             var cy = size * 0.48f;
+            var coreColor = new Color32(255, 230, 90, 255);
+            var rimColor = new Color32(210, 140, 90, 255);
+            var sparkColor = new Color32(255, 180, 110, 255);
 
             for (var y = 0; y < size; y++)
             {
@@ -222,32 +221,20 @@ public class CombatVfx : MonoBehaviour
                     }
 
                     var along = rel / sweep;
-                    var edge = 1f - (ring / thickness);
-                    var core = edge * edge;
-                    var spark = along > 0.72f ? (along - 0.72f) / 0.28f : 0f;
-                    var alpha = Mathf.Clamp01((0.35f + (0.65f * core) + (0.25f * spark)) * fade);
-                    if (alpha <= 0.02f)
+                    var core = ring <= thickness * 0.5f;
+                    var spark = along > 0.72f;
+                    if (fade < 0.35f && !core)
                     {
                         continue;
                     }
 
-                    var white = (byte)Mathf.Clamp(210 + (core * 45f), 0, 255);
-                    var gold = (byte)Mathf.Clamp(140 + (core * 90f) + (spark * 40f), 0, 255);
-                    var a = (byte)Mathf.Clamp(alpha * 255f, 0, 255);
-                    pixels[(y * size) + x] = new Color32(white, gold, (byte)(90 + (spark * 80f)), a);
+                    pixels[(y * size) + x] = spark ? sparkColor : (core ? coreColor : rimColor);
                 }
             }
 
             texture.SetPixels32(pixels);
             texture.Apply(false, false);
-            frames[i] = Sprite.Create(
-                texture,
-                new Rect(0f, 0f, size, size),
-                new Vector2(0.5f, 0.5f),
-                100f,
-                0,
-                SpriteMeshType.FullRect
-            );
+            frames[i] = PixelStyle.Sprite(texture, new Vector2(0.5f, 0.5f));
             frames[i].name = texture.name;
         }
 
