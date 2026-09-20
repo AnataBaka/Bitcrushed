@@ -49,6 +49,16 @@ public class GameManager : MonoBehaviour
         databaseName = database;
     }
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        Instance = null;
+        Conn = null;
+        LocalIdentity = default;
+        StateChanged = null;
+        LogAppended = null;
+    }
+
     void Awake()
     {
         if (Instance != null && Instance != this)
@@ -646,8 +656,6 @@ public class GameManager : MonoBehaviour
     public static void UnequipItem(ulong playerItemId) => Conn?.Reducers.UnequipItem(playerItemId);
 
     public static void Focus() => Conn?.Reducers.Focus();
-
-    public static void ResetStage() => Conn?.Reducers.ResetStage();
 
     public static void LeaveGame() => Conn?.Reducers.LeaveGame();
 

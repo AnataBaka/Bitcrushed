@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using SpacetimeDB.Types;
@@ -425,7 +426,11 @@ public class BattleHud : MonoBehaviour
             {
                 _stale.Add(pair.Key);
             }
-            else if (!entity.Alive && !AnimationsPending())
+            else if (
+                !entity.Alive
+                && !AnimationsPending()
+                && (pair.Value == null || !pair.Value.Busy)
+            )
             {
                 _stale.Add(pair.Key);
             }
@@ -442,7 +447,23 @@ public class BattleHud : MonoBehaviour
         }
     }
 
-    bool AnimationsPending() => _animating || _pendingHits.Count > 0;
+    bool AnimationsPending()
+    {
+        if (_animating || _pendingHits.Count > 0)
+        {
+            return true;
+        }
+
+        foreach (var pair in _views)
+        {
+            if (pair.Value != null && pair.Value.Busy)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     void HandleReadyClicked()
     {
@@ -635,6 +656,12 @@ public class BattleHud : MonoBehaviour
             return;
         }
 
+        // "CRITICAL HIT!" reuses LogKind.Attack but is not a strike of its own.
+        if (ClassSpriteArt.ActionNameFromLog(row.Message) == null)
+        {
+            return;
+        }
+
         _pendingHits.Enqueue(row);
     }
 
@@ -670,22 +697,62 @@ public class BattleHud : MonoBehaviour
         )
         {
             var skipLunge = _aoeLungeActor != 0 && row.ActorEntityId == _aoeLungeActor;
-            if (!skipLunge)
+            var actionName = ClassSpriteArt.ActionNameFromLog(row.Message);
+            var actorEntity = GameManager.FindEntity(row.ActorEntityId);
+            var className = actorEntity != null ? actorEntity.ClassName : null;
+
+            void Impact()
+            {
+                if (target != null)
+                {
+                    target.PlayHit();
+                    if (
+                        className != null
+                        && row.Damage > 0
+                        && ClassSpriteArt.TryHitEffect(className, actionName, out var effect)
+                    )
+                    {
+                        CombatVfx.Spawn(_field, target.ShapeRect, effect);
+                    }
+                }
+
+                var victim = GameManager.FindEntity(row.TargetEntityId);
+                if (victim != null && !victim.Alive && target != null)
+                {
+                    target.PlayDeath();
+                }
+            }
+
+            if (skipLunge)
+            {
+                Impact();
+                yield return new WaitForSeconds(0.16f);
+            }
+            else if (actor.UsesClassSprites)
+            {
+                _aoeLungeActor = 0;
+                yield return actor.PlayStrike(
+                    target.Home,
+                    Impact,
+                    ClassSpriteArt.AttackClipFor(className, actionName),
+                    ClassSpriteArt.AttackFps
+                );
+            }
+            else
             {
                 _aoeLungeActor = 0;
                 actor.PlayLunge(target.Home);
                 yield return new WaitForSeconds(0.14f);
+                Impact();
+                yield return new WaitForSeconds(EntityView.LungeSeconds - 0.14f);
             }
 
-            var targetEntity = GameManager.FindEntity(row.TargetEntityId);
-            if (targetEntity != null)
+            var wait = 0f;
+            while (target != null && target.Busy && wait < 2f)
             {
-                target.PlayHit();
+                wait += Time.deltaTime;
+                yield return null;
             }
-
-            yield return new WaitForSeconds(
-                skipLunge ? 0.16f : EntityView.LungeSeconds - 0.14f
-            );
         }
 
         _animating = false;

@@ -246,15 +246,7 @@ public class BattleBootstrap : MonoBehaviour
         overlaySubtext.verticalOverflow = VerticalWrapMode.Overflow;
         UiFactory.Anchor(overlaySubtext.rectTransform, new Vector2(0.08f, 0.28f), new Vector2(0.92f, 0.48f));
 
-        var reset = UiFactory.TextButton(panel.transform, "Reset", "Reset Stage (debug)", 22);
-        var resetRect = reset.GetComponent<RectTransform>();
-        resetRect.anchorMin = new Vector2(0.5f, 0.3f);
-        resetRect.anchorMax = new Vector2(0.5f, 0.3f);
-        resetRect.pivot = new Vector2(0.5f, 0.5f);
-        resetRect.sizeDelta = new Vector2(320f, 56f);
-        resetRect.anchoredPosition = Vector2.zero;
-        reset.onClick.AddListener(GameManager.ResetStage);
-        resetButton = reset.gameObject;
+        resetButton = null;
 
         panel.gameObject.SetActive(false);
         return panel.rectTransform;
