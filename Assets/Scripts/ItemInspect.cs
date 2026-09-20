@@ -1,6 +1,8 @@
+using System.Collections.Generic;
+using System.Text;
 using SpacetimeDB.Types;
 
-/// Client-side inspect copy for worn gear, especially amulet passives.
+/// Builds inspect text from ItemDef table fields. Effect copy lives on the server.
 public static class ItemInspect
 {
     public readonly struct Info
@@ -24,137 +26,74 @@ public static class ItemInspect
             return new Info("Empty", "", "No item in this slot.");
         }
 
-        return new Info(def.Name, SlotLabel(def), DescriptionOf(def));
+        return new Info(def.Name, KindLabel(def), BodyOf(def));
     }
 
-    static string SlotLabel(ItemDef def) =>
+    static string KindLabel(ItemDef def) =>
         def.Kind switch
         {
-            ItemKind.Weapon => "Weapon",
+            ItemKind.Weapon => $"Weapon - {WeaponTypeName(def.WeaponType)}",
             ItemKind.Amulet => "Amulet",
-            ItemKind.Consumable => "Consumable",
+            ItemKind.Consumable => "Item",
             _ => def.Kind.ToString(),
         };
 
-    static string DescriptionOf(ItemDef def)
+    static string WeaponTypeName(WeaponType type) =>
+        type switch
+        {
+            WeaponType.Sword => "Sword",
+            WeaponType.Staff => "Staff",
+            WeaponType.Katana => "Katana",
+            WeaponType.Bow => "Bow",
+            _ => type.ToString(),
+        };
+
+    static string BodyOf(ItemDef def)
     {
-        switch (def.Name)
-        {
-            case "Amethyst Sash":
-                return "Focus heals 50 MP.";
-            case "Golden Cross":
-                return "Grants +8 max health.";
-            case "Guardian's Pendant":
-                return "Reduces damage received by 7%.";
-            case "Countess' Necklace":
-                return "Every time you inflict damage with an attack, heal 2 health. Multi-hits heal multiple times.";
-            case "Eye of the Watcher":
-                return "Grants 4 Intelligence.";
-            case "Sigil of the Old":
-                return "Grants -2 Dexterity and +5 Strength.";
-            case "Dragonfly Charm":
-                return "Strength is doubled for one turn after an ally dies.";
-            case "Twin Amethyst Charm":
-                return "Grants 5 Intelligence.";
-            case "Dragons' Fire":
-                return "Burn cap is increased to 30.";
-            case "Emerald Pendant":
-                return "Spells require 5 less MP.";
-            case "Justices' Wings":
-                return "Speed is increased by 3.";
-            case "Holy Grail":
-                return "Heal 5 HP per kill.";
-            case "Hidden Dreamcatcher":
-                return "Dodge chance is increased by 5%. Can exceed the Archer dodge cap of 50%.";
-            case "Rooted Blade":
-                return "Every time you hit an enemy, reduce their Speed by 1 next turn (lasts one turn).";
-            case "Red Cocoon":
-                return "Every time you take damage, deal 1 damage to the enemy who hurt you.";
-            case "Ruby Scepter":
-                return "If a spell applies Burn, it gains +3 base power.";
-            case "Chipped Sword":
-                return "Knight sword. Grants +1 Strength.";
-            case "Jagged Sword":
-                return "Knight sword. Grants +2 Strength.";
-            case "Crimson Blade":
-                return "Knight sword. Grants +3 Strength.";
-            case "Golden Bow":
-                return "Archer bow. Grants +1 Dexterity.";
-            case "Emerald Bow":
-                return "Archer bow. Grants +2 Dexterity.";
-            case "Crimson Bow":
-                return "Archer bow. Grants +3 Dexterity.";
-            case "Azure Cane":
-                return "Mage staff. Grants +1 Intelligence.";
-            case "Elegant Cane":
-                return "Mage staff. Grants +2 Intelligence.";
-            case "Staff of the Queen":
-                return "Mage staff. Grants +3 Intelligence.";
-            case "Rusted Pummel":
-                return "Ninja dagger. Grants +1 Speed.";
-            case "Crimson Dagger":
-                return "Ninja dagger. Grants +2 Speed.";
-            case "Azure Dagger":
-                return "Ninja dagger. Grants +3 Speed.";
-            default:
-                return StatSummary(def);
-        }
-    }
-
-    static string StatSummary(ItemDef def)
-    {
-        var parts = new System.Collections.Generic.List<string>();
-        if (def.AtkBonus != 0)
-        {
-            parts.Add($"ATK {Signed(def.AtkBonus)}");
-        }
-
-        if (def.DefenseBonus != 0)
-        {
-            parts.Add($"DEF {Signed(def.DefenseBonus)}");
-        }
-
-        if (def.StrengthBonus != 0)
-        {
-            parts.Add($"STR {Signed(def.StrengthBonus)}");
-        }
-
-        if (def.DexterityBonus != 0)
-        {
-            parts.Add($"DEX {Signed(def.DexterityBonus)}");
-        }
-
-        if (def.IntelligenceBonus != 0)
-        {
-            parts.Add($"INT {Signed(def.IntelligenceBonus)}");
-        }
-
-        if (def.SpeedBonus != 0)
-        {
-            parts.Add($"SPD {Signed(def.SpeedBonus)}");
-        }
-
-        if (def.MaxHpBonus != 0)
-        {
-            parts.Add($"Max HP {Signed(def.MaxHpBonus)}");
-        }
-
-        if (def.MaxManaBonus != 0)
-        {
-            parts.Add($"Max MP {Signed(def.MaxManaBonus)}");
-        }
-
-        if (def.HealAmount != 0)
+        var parts = new List<string>();
+        AddBonus(parts, def.AtkBonus, "ATK");
+        AddBonus(parts, def.DefenseBonus, "Defense");
+        AddBonus(parts, def.StrengthBonus, "Strength");
+        AddBonus(parts, def.DexterityBonus, "Dexterity");
+        AddBonus(parts, def.IntelligenceBonus, "Intelligence");
+        AddBonus(parts, def.SpeedBonus, "Speed");
+        AddBonus(parts, def.MaxHpBonus, "Max HP");
+        AddBonus(parts, def.MaxManaBonus, "Max MP");
+        if (def.HealAmount > 0)
         {
             parts.Add($"Restores {def.HealAmount} HP");
         }
 
-        if (def.ManaRestoreAmount != 0)
+        if (def.ManaRestoreAmount > 0)
         {
             parts.Add($"Restores {def.ManaRestoreAmount} MP");
         }
 
-        return parts.Count == 0 ? "No special effect." : string.Join(", ", parts) + ".";
+        var body = new StringBuilder();
+        if (parts.Count > 0)
+        {
+            body.Append(string.Join("\n", parts));
+        }
+
+        if (!string.IsNullOrEmpty(def.Description))
+        {
+            if (body.Length > 0)
+            {
+                body.Append('\n');
+            }
+
+            body.Append(def.Description);
+        }
+
+        return body.Length == 0 ? "No special effect." : body.ToString();
+    }
+
+    static void AddBonus(List<string> parts, int value, string label)
+    {
+        if (value != 0)
+        {
+            parts.Add($"{Signed(value)} {label}");
+        }
     }
 
     static string Signed(int value) => value > 0 ? $"+{value}" : value.ToString();

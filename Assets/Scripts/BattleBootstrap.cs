@@ -120,6 +120,7 @@ public class BattleBootstrap : MonoBehaviour
         var inventory = InventoryPopupView.Create(canvas, equipment.BagButtonRect);
         var banner = LevelUpBannerView.Create(canvas);
         var escape = EscapeMenuView.Create(canvas, popup);
+        var itemTooltip = ItemTooltipView.Create(canvas);
 
         var hud = gameObject.AddComponent<BattleHud>();
         hud.Init(
@@ -138,7 +139,8 @@ public class BattleBootstrap : MonoBehaviour
             turnList,
             banner,
             escape,
-            backdrop
+            backdrop,
+            itemTooltip
         );
     }
 

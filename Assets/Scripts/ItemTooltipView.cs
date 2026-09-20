@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -36,7 +37,7 @@ public class ItemTooltipView : MonoBehaviour
         view._canvasComponent = canvas.GetComponent<Canvas>();
         view._root.anchorMin = new Vector2(0f, 0f);
         view._root.anchorMax = new Vector2(0f, 0f);
-        view._root.pivot = new Vector2(0f, 1f);
+        view._root.pivot = new Vector2(0f, 0f);
         view._root.sizeDelta = new Vector2(Width, 160f);
 
         var outline = panel.gameObject.AddComponent<Outline>();
@@ -91,8 +92,7 @@ public class ItemTooltipView : MonoBehaviour
         view._icon = UiFactory.Graphic(iconRow, "Icon", PlaceholderArt.Solid(Color.white), Color.white);
         view._icon.raycastTarget = false;
         view._icon.preserveAspect = true;
-        var iconRt = view._icon.rectTransform;
-        iconRt.sizeDelta = new Vector2(64f, 64f);
+        view._icon.rectTransform.sizeDelta = new Vector2(64f, 64f);
 
         view._slot = UiFactory.Label(panel.transform, "Slot", "", 14, TextAnchor.MiddleLeft, UiFactory.MutedColor);
         view._slot.raycastTarget = false;
@@ -120,6 +120,7 @@ public class ItemTooltipView : MonoBehaviour
         {
             _icon.sprite = icon;
             _icon.color = Color.white;
+            _icon.preserveAspect = true;
         }
 
         gameObject.SetActive(true);
@@ -181,27 +182,30 @@ public class ItemTooltipView : MonoBehaviour
             size.y = 160f;
         }
 
-        // Equipment sits on the left, so prefer the right of the cursor.
+        // Equipment sits bottom-left, so grow up and to the right of the cursor.
         var x = cursor.x + CursorGap;
-        var y = cursor.y + 8f;
+        var y = cursor.y + CursorGap;
         if (x + size.x > parentRect.xMax - EdgePad)
         {
             x = cursor.x - CursorGap - size.x;
         }
 
-        if (y - size.y < parentRect.yMin + EdgePad)
+        if (y + size.y > parentRect.yMax - EdgePad)
         {
-            y = parentRect.yMin + EdgePad + size.y;
+            y = parentRect.yMax - EdgePad - size.y;
         }
 
-        if (y > parentRect.yMax - EdgePad)
+        if (y < parentRect.yMin + EdgePad)
         {
-            y = parentRect.yMax - EdgePad;
+            y = parentRect.yMin + EdgePad;
         }
 
         var minX = parentRect.xMin + EdgePad;
         var maxX = parentRect.xMax - EdgePad - size.x;
         x = Mathf.Clamp(x, minX, Mathf.Max(minX, maxX));
+        var minY = parentRect.yMin + EdgePad;
+        var maxY = parentRect.yMax - EdgePad - size.y;
+        y = Mathf.Clamp(y, minY, Mathf.Max(minY, maxY));
 
         var anchorRef = new Vector2(
             Mathf.Lerp(parentRect.xMin, parentRect.xMax, _root.anchorMin.x),
@@ -222,27 +226,112 @@ public class ItemTooltipView : MonoBehaviour
 
 public class ItemHoverTip : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
-    ItemTooltipView _tooltip;
-    ItemDef _def;
+    public const float ShowDelaySeconds = 0.35f;
 
-    public void Bind(ItemTooltipView tooltip, ItemDef def)
+    ItemTooltipView _tooltip;
+    System.Func<ItemDef> _defOf;
+    System.Func<bool> _blocked;
+    Coroutine _pending;
+    bool _inside;
+
+    public void Bind(ItemTooltipView tooltip, System.Func<ItemDef> defOf, System.Func<bool> blocked = null)
     {
         _tooltip = tooltip;
-        _def = def;
+        _defOf = defOf;
+        _blocked = blocked;
+        if (_inside)
+        {
+            Refresh();
+        }
     }
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        if (_tooltip == null || _def == null)
-        {
-            return;
-        }
-
-        _tooltip.Show(this, ItemInspect.For(_def), AmuletArt.Icon(_def.Name));
+        _inside = true;
+        CancelPending();
+        _pending = StartCoroutine(ShowAfterDelay());
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
+        _inside = false;
+        CancelPending();
+        _tooltip?.HideIfOwner(this);
+    }
+
+    public void Refresh()
+    {
+        if (!_inside)
+        {
+            return;
+        }
+
+        if (_blocked != null && _blocked())
+        {
+            CancelPending();
+            _tooltip?.HideIfOwner(this);
+            return;
+        }
+
+        var def = _defOf?.Invoke();
+        if (def == null)
+        {
+            CancelPending();
+            _tooltip?.HideIfOwner(this);
+            return;
+        }
+
+        if (_tooltip != null && _tooltip.IsOpen)
+        {
+            ShowNow(def);
+        }
+    }
+
+    public void HideIfBlocked()
+    {
+        if (_blocked != null && _blocked())
+        {
+            CancelPending();
+            _tooltip?.HideIfOwner(this);
+        }
+    }
+
+    IEnumerator ShowAfterDelay()
+    {
+        yield return new WaitForSecondsRealtime(ShowDelaySeconds);
+        _pending = null;
+        if (!_inside || (_blocked != null && _blocked()))
+        {
+            yield break;
+        }
+
+        var def = _defOf?.Invoke();
+        if (def == null)
+        {
+            yield break;
+        }
+
+        ShowNow(def);
+    }
+
+    void ShowNow(ItemDef def)
+    {
+        _tooltip?.Show(this, ItemInspect.For(def), GearArt.Sprite(def));
+    }
+
+    void CancelPending()
+    {
+        if (_pending != null)
+        {
+            StopCoroutine(_pending);
+            _pending = null;
+        }
+    }
+
+    void OnDisable()
+    {
+        _inside = false;
+        CancelPending();
         _tooltip?.HideIfOwner(this);
     }
 
