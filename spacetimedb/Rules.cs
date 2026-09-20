@@ -67,6 +67,7 @@ public static partial class Module
     public const int FinishTheJobPowerCap = 40;
     public const int RushNextTurnSpeed = 99999;
     public const int EvadeDamageThreshold = 20;
+    public const int FocusSpiritTempHp = 50;
     public const int FuriosoManaCost = 100;
     public const int FuriosoHitCount = 9;
     public const int FuriosoBaseDamage = 5;

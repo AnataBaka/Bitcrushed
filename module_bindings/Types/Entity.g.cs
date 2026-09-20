@@ -121,6 +121,8 @@ namespace SpacetimeDB.Types
         public bool DoubleStrength;
         [DataMember(Name = "next_turn_double_strength")]
         public bool NextTurnDoubleStrength;
+        [DataMember(Name = "temp_max_hp")]
+        public int TempMaxHp;
 
         public Entity(
             ulong EntityId,
@@ -176,7 +178,8 @@ namespace SpacetimeDB.Types
             bool SkipNextTurn,
             bool GrandUndertakingPending,
             bool DoubleStrength,
-            bool NextTurnDoubleStrength
+            bool NextTurnDoubleStrength,
+            int TempMaxHp
         )
         {
             this.EntityId = EntityId;
@@ -233,6 +236,7 @@ namespace SpacetimeDB.Types
             this.GrandUndertakingPending = GrandUndertakingPending;
             this.DoubleStrength = DoubleStrength;
             this.NextTurnDoubleStrength = NextTurnDoubleStrength;
+            this.TempMaxHp = TempMaxHp;
         }
 
         public Entity()

@@ -327,6 +327,11 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             parts.Add($"Dodges {entity.DodgeCount}");
         }
 
+        if (entity.TempMaxHp > 0)
+        {
+            parts.Add($"+{entity.TempMaxHp} HP");
+        }
+
         if (entity.EvadeThreshold > 0)
         {
             parts.Add($"Evade <{entity.EvadeThreshold}");

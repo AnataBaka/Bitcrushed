@@ -269,6 +269,9 @@ public static partial class Module
         public bool DoubleStrength;
         [Default(false)]
         public bool NextTurnDoubleStrength;
+        /// Focus Spirit: extra max HP until this combatant's next turn.
+        [Default(0)]
+        public int TempMaxHp;
     }
 
     /// Rebuilt at the start of every round by BuildTurnOrder, fastest first.

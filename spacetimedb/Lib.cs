@@ -654,7 +654,7 @@ public static partial class Module
             strength *= 2;
         }
 
-        var maxHp = ClassMaxHp(player.Class, player.CharacterLevel) + hpBonus;
+        var maxHp = ClassMaxHp(player.Class, player.CharacterLevel) + hpBonus + entity.TempMaxHp;
         var intelMana = player.Class == PlayerClass.Mage
             ? MageManaFromIntelligence(intelligence)
             : intelligence;
@@ -1126,6 +1126,7 @@ public static partial class Module
                 GrandUndertakingPending = false,
                 DoubleStrength = false,
                 NextTurnDoubleStrength = false,
+                TempMaxHp = 0,
             };
             ctx.Db.Entity.EntityId.Update(reset);
         }
@@ -1469,6 +1470,7 @@ public static partial class Module
             ? Math.Min(FinishTheJobPowerCap, entity.FinishTheJobPower + 8)
             : entity.FinishTheJobPower;
         var doubleStrength = entity.NextTurnDoubleStrength;
+        var expireTempHp = entity.TempMaxHp != 0;
         var refreshed = entity with
         {
             Mana = Math.Min(entity.MaxMana, entity.Mana + ManaRegenPerTurn),
@@ -1482,9 +1484,13 @@ public static partial class Module
             FinishTheJobPower = stancePower,
             DoubleStrength = doubleStrength,
             NextTurnDoubleStrength = false,
+            TempMaxHp = 0,
         };
         ctx.Db.Entity.EntityId.Update(refreshed);
-        if (doubleStrength != entity.DoubleStrength && TryPlayerIdentity(ctx, refreshed.EntityId, out var owner))
+        if (
+            (doubleStrength != entity.DoubleStrength || expireTempHp)
+            && TryPlayerIdentity(ctx, refreshed.EntityId, out var owner)
+        )
         {
             RecomputeStats(ctx, owner);
             refreshed = ctx.Db.Entity.EntityId.Find(refreshed.EntityId) ?? refreshed;

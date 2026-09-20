@@ -275,9 +275,10 @@ public static partial class Module
                 break;
             case SkillNames.FocusSpirit:
                 ArmEvade(ctx, caster.EntityId, EvadeDamageThreshold, fragileOnDodge: 0, strengthOnDodge: 5);
+                GrantTempMaxHp(ctx, caster.EntityId, FocusSpiritTempHp);
                 AddLog(
                     ctx,
-                    $"{caster.Name} uses {skill.Name} and will negate incoming hits below {EvadeDamageThreshold} damage, gaining 5 Enraged on dodge.",
+                    $"{caster.Name} uses {skill.Name}, gains {FocusSpiritTempHp} HP until next turn, and will negate incoming hits below {EvadeDamageThreshold} damage, gaining 5 Enraged on dodge.",
                     LogKind.Focus,
                     caster.EntityId,
                     caster.EntityId
@@ -758,6 +759,20 @@ public static partial class Module
                     EvadeStrengthOnDodge = strengthOnDodge,
                 }
             );
+        }
+    }
+
+    static void GrantTempMaxHp(ReducerContext ctx, ulong entityId, int amount)
+    {
+        if (amount <= 0 || ctx.Db.Entity.EntityId.Find(entityId) is not Entity entity)
+        {
+            return;
+        }
+
+        ctx.Db.Entity.EntityId.Update(entity with { TempMaxHp = entity.TempMaxHp + amount });
+        if (TryPlayerIdentity(ctx, entityId, out var owner))
+        {
+            RecomputeStats(ctx, owner);
         }
     }
 

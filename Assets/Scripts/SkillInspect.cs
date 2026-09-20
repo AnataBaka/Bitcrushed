@@ -210,7 +210,7 @@ public static class SkillInspect
                 return;
             case "Focus Spirit":
                 damage = "None";
-                description = "This turn, incoming hits below 20 damage are negated. Dodging grants 5 Enraged next turn. Enraged increases damage by 10% per stack.";
+                description = "Gain +50 HP until your next turn. This turn, incoming hits below 20 damage are negated. Dodging grants 5 Enraged next turn. Enraged increases damage by 10% per stack.";
                 return;
             case "Finish the Job":
                 damage = "None";
