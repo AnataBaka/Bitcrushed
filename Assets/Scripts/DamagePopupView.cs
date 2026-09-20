@@ -128,7 +128,8 @@ public class DamagePopupView : MonoBehaviour
             height = 1080f;
         }
 
-        return Mathf.Clamp(Mathf.RoundToInt(height * FontSizeScreenHeight / 8f) * 8, 16, 40);
+        var snapped = Mathf.RoundToInt(height * FontSizeScreenHeight / 8f) * 8;
+        return GameFont.Resolve(Mathf.Clamp(snapped, 16, 40));
     }
 
     Vector2 WorldToLocal(Vector3 worldPoint)

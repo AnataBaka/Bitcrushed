@@ -340,7 +340,7 @@ public class BattleHud : MonoBehaviour
             _overlay.SetAsLastSibling();
             if (transitioning)
             {
-                _overlayText.fontSize = 64;
+                _overlayText.fontSize = GameFont.Resolve(64);
                 _overlayText.text = $"STAGE {session.StageNumber} CLEARED";
                 _overlayText.color = new Color(0.95f, 0.86f, 0.45f);
                 if (_overlaySubtext != null)
@@ -353,7 +353,7 @@ public class BattleHud : MonoBehaviour
             }
             else
             {
-                _overlayText.fontSize = 96;
+                _overlayText.fontSize = GameFont.Resolve(96);
                 _overlayText.text = "DEFEAT";
                 _overlayText.color = new Color(0.92f, 0.45f, 0.45f);
                 if (_overlaySubtext != null)

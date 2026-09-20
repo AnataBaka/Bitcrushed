@@ -76,8 +76,8 @@ public static class ItemIconFit
         name.horizontalOverflow = HorizontalWrapMode.Wrap;
         name.verticalOverflow = VerticalWrapMode.Truncate;
         name.resizeTextForBestFit = true;
-        name.resizeTextMinSize = minSize;
-        name.resizeTextMaxSize = maxSize;
+        name.resizeTextMinSize = GameFont.Resolve(minSize);
+        name.resizeTextMaxSize = Mathf.Max(GameFont.Resolve(minSize), GameFont.Resolve(maxSize));
         name.raycastTarget = false;
     }
 

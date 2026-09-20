@@ -92,8 +92,8 @@ public class StatPopupView : MonoBehaviour
             UiFactory.TextColor
         );
         view._title.resizeTextForBestFit = true;
-        view._title.resizeTextMinSize = 16;
-        view._title.resizeTextMaxSize = 24;
+        view._title.resizeTextMinSize = GameFont.Resolve(16);
+        view._title.resizeTextMaxSize = GameFont.Resolve(24);
         view._title.horizontalOverflow = HorizontalWrapMode.Overflow;
         UiFactory.Anchor(view._title.rectTransform, new Vector2(0f, 0.42f), new Vector2(1f, 1f));
         view._title.rectTransform.offsetMin = new Vector2(12f, 0f);
@@ -217,7 +217,7 @@ public class StatPopupView : MonoBehaviour
         hostElement.preferredHeight = 14f;
         fill = UiFactory.Bar(barHost, "Bar", color, out value);
         value.alignment = TextAnchor.MiddleRight;
-        value.fontSize = 16;
+        value.fontSize = GameFont.Resolve(16);
         value.horizontalOverflow = HorizontalWrapMode.Overflow;
         value.rectTransform.offsetMin = new Vector2(4f, 0f);
         value.rectTransform.offsetMax = new Vector2(-2f, 0f);

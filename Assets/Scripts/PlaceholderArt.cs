@@ -394,7 +394,7 @@ public static class UiFactory
         var label = rt.gameObject.AddComponent<Text>();
         label.font = GameFont.Ui;
         label.text = text;
-        label.fontSize = size;
+        label.fontSize = GameFont.Resolve(size);
         label.alignment = anchor;
         label.color = color;
         label.horizontalOverflow = HorizontalWrapMode.Wrap;

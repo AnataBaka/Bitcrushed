@@ -169,8 +169,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             UiFactory.TextColor
         );
         view._nameText.resizeTextForBestFit = true;
-        view._nameText.resizeTextMinSize = 8;
-        view._nameText.resizeTextMaxSize = 16;
+        view._nameText.resizeTextMinSize = GameFont.Resolve(8);
+        view._nameText.resizeTextMaxSize = GameFont.Resolve(16);
         view._nameText.horizontalOverflow = HorizontalWrapMode.Overflow;
         view._nameText.rectTransform.anchorMin = new Vector2(0f, 1f);
         view._nameText.rectTransform.anchorMax = new Vector2(1f, 1f);
