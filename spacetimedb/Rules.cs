@@ -256,6 +256,68 @@ public static partial class Module
         public const string RubyScepter = "Ruby Scepter";
     }
 
+    public static class UniqueWeaponNames
+    {
+        public const string ChippedSword = "Chipped Sword";
+        public const string JaggedSword = "Jagged Sword";
+        public const string CrimsonBlade = "Crimson Blade";
+        public const string GoldenBow = "Golden Bow";
+        public const string EmeraldBow = "Emerald Bow";
+        public const string CrimsonBow = "Crimson Bow";
+        public const string AzureCane = "Azure Cane";
+        public const string ElegantCane = "Elegant Cane";
+        public const string StaffOfTheQueen = "Staff of the Queen";
+        public const string RustedPummel = "Rusted Pummel";
+        public const string CrimsonDagger = "Crimson Dagger";
+        public const string AzureDagger = "Azure Dagger";
+    }
+
+    public static readonly string[] AllUniqueWeaponNames =
+    {
+        UniqueWeaponNames.ChippedSword,
+        UniqueWeaponNames.JaggedSword,
+        UniqueWeaponNames.CrimsonBlade,
+        UniqueWeaponNames.GoldenBow,
+        UniqueWeaponNames.EmeraldBow,
+        UniqueWeaponNames.CrimsonBow,
+        UniqueWeaponNames.AzureCane,
+        UniqueWeaponNames.ElegantCane,
+        UniqueWeaponNames.StaffOfTheQueen,
+        UniqueWeaponNames.RustedPummel,
+        UniqueWeaponNames.CrimsonDagger,
+        UniqueWeaponNames.AzureDagger,
+    };
+
+    public static string[] UniqueWeaponsFor(PlayerClass playerClass) =>
+        playerClass switch
+        {
+            PlayerClass.Knight => new[]
+            {
+                UniqueWeaponNames.ChippedSword,
+                UniqueWeaponNames.JaggedSword,
+                UniqueWeaponNames.CrimsonBlade,
+            },
+            PlayerClass.Archer => new[]
+            {
+                UniqueWeaponNames.GoldenBow,
+                UniqueWeaponNames.EmeraldBow,
+                UniqueWeaponNames.CrimsonBow,
+            },
+            PlayerClass.Mage => new[]
+            {
+                UniqueWeaponNames.AzureCane,
+                UniqueWeaponNames.ElegantCane,
+                UniqueWeaponNames.StaffOfTheQueen,
+            },
+            PlayerClass.Ninja => new[]
+            {
+                UniqueWeaponNames.RustedPummel,
+                UniqueWeaponNames.CrimsonDagger,
+                UniqueWeaponNames.AzureDagger,
+            },
+            _ => Array.Empty<string>(),
+        };
+
     public static readonly string[] AllAmuletNames =
     {
         AmuletNames.AmethystSash,

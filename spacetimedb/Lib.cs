@@ -1237,6 +1237,7 @@ public static partial class Module
             }
 
             GrantRandomUnownedAmulet(ctx, player.Identity, entity.Name);
+            GrantRandomUnownedWeapon(ctx, player.Identity, player.Class, entity.Name);
         }
     }
 
@@ -2384,12 +2385,13 @@ public static partial class Module
 
         GrantUnlockedSkills(ctx, player.EntityId, player.Class, CheatCharacterLevel);
         GrantMissingAmulets(ctx, ctx.Sender);
+        GrantMissingClassWeapons(ctx, ctx.Sender, player.Class);
         RecomputeStats(ctx, ctx.Sender);
 
         var fresh = ctx.Db.Entity.EntityId.Find(player.EntityId) ?? entity;
         AddLog(
             ctx,
-            $"{fresh.Name} cheats to level {CheatCharacterLevel}. All skills and amulets unlocked.",
+            $"{fresh.Name} cheats to level {CheatCharacterLevel}. All skills, amulets, and class weapons unlocked.",
             LogKind.Focus,
             fresh.EntityId,
             fresh.EntityId

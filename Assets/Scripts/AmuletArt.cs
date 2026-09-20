@@ -2,28 +2,40 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-/// Loads the hand-drawn amulet PNGs at runtime from StreamingAssets so the
+/// Loads the hand-drawn item PNGs at runtime from StreamingAssets so the
 /// project does not depend on Unity sprite import settings.
 public static class AmuletArt
 {
     static readonly Dictionary<string, string> FileByName = new Dictionary<string, string>
     {
-        { "Amethyst Sash", "amethyst_sash.png" },
-        { "Golden Cross", "golden_cross.png" },
-        { "Guardian's Pendant", "guardians_pendant.png" },
-        { "Countess' Necklace", "countess_necklace.png" },
-        { "Eye of the Watcher", "eye_of_the_watcher.png" },
-        { "Sigil of the Old", "sigil_of_the_old.png" },
-        { "Dragonfly Charm", "dragonfly_charm.png" },
-        { "Twin Amethyst Charm", "twin_amethyst_charm.png" },
-        { "Dragons' Fire", "dragons_fire.png" },
-        { "Emerald Pendant", "emerald_pendant.png" },
-        { "Justices' Wings", "justices_wings.png" },
-        { "Holy Grail", "holy_grail.png" },
-        { "Hidden Dreamcatcher", "hidden_dreamcatcher.png" },
-        { "Rooted Blade", "rooted_blade.png" },
-        { "Red Cocoon", "red_cocoon.png" },
-        { "Ruby Scepter", "ruby_scepter.png" },
+        { "Amethyst Sash", "Amulets/amethyst_sash.png" },
+        { "Golden Cross", "Amulets/golden_cross.png" },
+        { "Guardian's Pendant", "Amulets/guardians_pendant.png" },
+        { "Countess' Necklace", "Amulets/countess_necklace.png" },
+        { "Eye of the Watcher", "Amulets/eye_of_the_watcher.png" },
+        { "Sigil of the Old", "Amulets/sigil_of_the_old.png" },
+        { "Dragonfly Charm", "Amulets/dragonfly_charm.png" },
+        { "Twin Amethyst Charm", "Amulets/twin_amethyst_charm.png" },
+        { "Dragons' Fire", "Amulets/dragons_fire.png" },
+        { "Emerald Pendant", "Amulets/emerald_pendant.png" },
+        { "Justices' Wings", "Amulets/justices_wings.png" },
+        { "Holy Grail", "Amulets/holy_grail.png" },
+        { "Hidden Dreamcatcher", "Amulets/hidden_dreamcatcher.png" },
+        { "Rooted Blade", "Amulets/rooted_blade.png" },
+        { "Red Cocoon", "Amulets/red_cocoon.png" },
+        { "Ruby Scepter", "Amulets/ruby_scepter.png" },
+        { "Chipped Sword", "Weapons/chipped_sword.png" },
+        { "Jagged Sword", "Weapons/jagged_sword.png" },
+        { "Crimson Blade", "Weapons/crimson_blade.png" },
+        { "Golden Bow", "Weapons/golden_bow.png" },
+        { "Emerald Bow", "Weapons/emerald_bow.png" },
+        { "Crimson Bow", "Weapons/crimson_bow.png" },
+        { "Azure Cane", "Weapons/azure_cane.png" },
+        { "Elegant Cane", "Weapons/elegant_cane.png" },
+        { "Staff of the Queen", "Weapons/staff_of_the_queen.png" },
+        { "Rusted Pummel", "Weapons/rusted_pummel.png" },
+        { "Crimson Dagger", "Weapons/crimson_dagger.png" },
+        { "Azure Dagger", "Weapons/azure_dagger.png" },
     };
 
     static readonly Dictionary<string, Sprite> Cache = new Dictionary<string, Sprite>();
@@ -76,13 +88,13 @@ public static class AmuletArt
 
     static byte[] ReadPngBytes(string fileName)
     {
-        var streaming = Path.Combine(Application.streamingAssetsPath, "Amulets", fileName);
+        var streaming = Path.Combine(Application.streamingAssetsPath, fileName);
         if (File.Exists(streaming))
         {
             return File.ReadAllBytes(streaming);
         }
 
-        var project = Path.Combine(Application.dataPath, "StreamingAssets", "Amulets", fileName);
+        var project = Path.Combine(Application.dataPath, "StreamingAssets", fileName);
         if (File.Exists(project))
         {
             return File.ReadAllBytes(project);

@@ -268,4 +268,62 @@ public static partial class Module
             GiveToBag(ctx, owner, RequireItem(ctx, name).Id, 1);
         }
     }
+
+    public static void GiveStartingWeapon(ReducerContext ctx, Identity owner, PlayerClass playerClass)
+    {
+        var names = UniqueWeaponsFor(playerClass);
+        if (names.Length == 0)
+        {
+            EquipFresh(ctx, owner, RequireItem(ctx, StarterWeaponName(playerClass)));
+            return;
+        }
+
+        var pick = names[ctx.Rng.Next(0, names.Length)];
+        EquipFresh(ctx, owner, RequireItem(ctx, pick));
+        GiveToBag(ctx, owner, RequireItem(ctx, StarterWeaponName(playerClass)).Id, 1);
+    }
+
+    public static void GrantRandomUnownedWeapon(
+        ReducerContext ctx,
+        Identity owner,
+        PlayerClass playerClass,
+        string ownerName
+    )
+    {
+        var missing = new List<string>();
+        foreach (var name in UniqueWeaponsFor(playerClass))
+        {
+            if (!OwnsItemNamed(ctx, owner, name))
+            {
+                missing.Add(name);
+            }
+        }
+
+        if (missing.Count == 0 || BagCount(ctx, owner) >= BagCapacity)
+        {
+            return;
+        }
+
+        var pick = missing[ctx.Rng.Next(0, missing.Count)];
+        GiveToBag(ctx, owner, RequireItem(ctx, pick).Id, 1);
+        AddLog(ctx, $"{ownerName} found {pick}.");
+    }
+
+    public static void GrantMissingClassWeapons(ReducerContext ctx, Identity owner, PlayerClass playerClass)
+    {
+        foreach (var name in UniqueWeaponsFor(playerClass))
+        {
+            if (OwnsItemNamed(ctx, owner, name))
+            {
+                continue;
+            }
+
+            if (BagCount(ctx, owner) >= BagCapacity)
+            {
+                return;
+            }
+
+            GiveToBag(ctx, owner, RequireItem(ctx, name).Id, 1);
+        }
+    }
 }
