@@ -2,8 +2,8 @@ using SpacetimeDB.Types;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// Full-screen biome backdrop. Colors come from BiomeDef; Unity does not pick a
-/// biome, it only paints the row the session currently points at.
+/// Full-screen biome backdrop. Unity does not pick a biome; it paints the image
+/// (or generated placeholder) for the row the session currently points at.
 public class BiomeBackdropView : MonoBehaviour
 {
     Image _image;
@@ -17,6 +17,8 @@ public class BiomeBackdropView : MonoBehaviour
             Camera.main.clearFlags = CameraClearFlags.SolidColor;
             Camera.main.backgroundColor = new Color(0.04f, 0.05f, 0.08f, 1f);
         }
+
+        BiomeBackdropArt.PreloadAll();
 
         var image = UiFactory.Panel(canvas, "BiomeBackdrop", Color.white);
         image.type = Image.Type.Simple;
@@ -55,13 +57,24 @@ public class BiomeBackdropView : MonoBehaviour
             return;
         }
 
-        var def = GameManager.FindBiomeDef(session.CurrentBiome);
-        var top = def != null ? Rgb(def.BackTopR, def.BackTopG, def.BackTopB) : new Color(0.10f, 0.12f, 0.16f);
-        var bot = def != null ? Rgb(def.BackBotR, def.BackBotG, def.BackBotB) : new Color(0.04f, 0.05f, 0.07f);
-        _image.sprite = PlaceholderArt.VerticalGradient(top, bot);
-        _image.color = Color.white;
+        var biome = session.CurrentBiome;
+        var def = GameManager.FindBiomeDef(biome);
+        var photo = BiomeBackdropArt.SpriteFor(biome);
+        if (photo != null)
+        {
+            _image.sprite = photo;
+            _image.color = Color.white;
+        }
+        else
+        {
+            var top = def != null ? Rgb(def.BackTopR, def.BackTopG, def.BackTopB) : new Color(0.10f, 0.12f, 0.16f);
+            var bot = def != null ? Rgb(def.BackBotR, def.BackBotG, def.BackBotB) : new Color(0.04f, 0.05f, 0.07f);
+            _image.sprite = PlaceholderArt.VerticalGradient(top, bot);
+            _image.color = Color.white;
+        }
+
         _label.text = def != null ? def.Name : "";
-        _applied = session.CurrentBiome;
+        _applied = biome;
     }
 
     static Color Rgb(int r, int g, int b) =>
