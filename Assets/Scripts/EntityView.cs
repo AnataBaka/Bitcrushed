@@ -358,7 +358,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         _striking = false;
     }
 
-    /// Keep the old 62% lunge, idle on the way, Attack at the apex, then home.
+    /// Idle on the way, stop beside the targeted player, Attack, then home.
     IEnumerator PlayEnemyStrike(
         Vector2 targetPosition,
         Action onImpact,
@@ -381,8 +381,10 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
 
         var start = _home;
-        var reach = Vector2.Lerp(start, targetPosition, 0.62f);
-        yield return Slide(start, reach, 0.14f);
+        var reach = targetPosition + new Vector2(90f, 0f);
+        var outbound = MoveSeconds(start, reach, _spriteClass);
+        var inbound = MoveSeconds(reach, start, _spriteClass);
+        yield return Slide(start, reach, outbound);
 
         if (_flipbook != null && clip != null && clip.Length > 0)
         {
@@ -406,7 +408,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             _flipbook.Play(idle, ClassSpriteArt.IdleFps, true);
         }
 
-        yield return Slide(reach, _home, 0.18f);
+        yield return Slide(reach, _home, inbound);
         _root.anchoredPosition = _home;
 
         if (!_deadPose && !_dying && _flipbook != null && idle != null && idle.Length > 0)
@@ -821,7 +823,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
                 entity.ClassName,
                 entity.Name,
                 entity.EntityId,
-                entity.VariantPrefix
+                entity.VariantPrefix,
+                entity.IsBoss
             )
             : entity.Name;
         var suffix = isEnemy ? "" : $" ({entity.ClassName})";
@@ -892,7 +895,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         );
         if (ClassSpriteArt.HasSprites(spriteClass))
         {
-            EnableClassSprite(spriteClass);
+            EnableClassSprite(spriteClass, entity.IsBoss);
             if (!_striking && !_dying && !_deadPose && _hit == null && _flipbook != null)
             {
                 var idle = ClassSpriteArt.Idle(_spriteClass);
@@ -934,35 +937,36 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
     }
 
-    void EnableClassSprite(string className)
+    void EnableClassSprite(string className, bool isBoss = false)
     {
         _spriteClass = ClassSpriteArt.CanonicalClass(className);
         _flipX = ClassSpriteArt.FlipX(className);
         ApplyFacingScale(1f);
 
-        if (_spriteMode)
-        {
-            return;
-        }
-
-        _spriteMode = true;
-        _flipbook = _shape.gameObject.GetComponent<SpriteFlipbook>();
-        if (_flipbook == null)
-        {
-            _flipbook = _shape.gameObject.AddComponent<SpriteFlipbook>();
-        }
-
         var height = _root.sizeDelta.y;
+        var mul = isBoss ? 1.45f : 1.15f;
         var rt = _shape.rectTransform;
-        rt.anchorMin = new Vector2(0.5f, 0.58f);
-        rt.anchorMax = new Vector2(0.5f, 0.58f);
-        rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = Vector2.zero;
-        rt.sizeDelta = new Vector2(height * 1.15f, height * 1.15f);
-        _shape.preserveAspect = true;
-        _shape.type = Image.Type.Simple;
-        _shape.useSpriteMesh = false;
-        _shape.color = Color.white;
+
+        if (!_spriteMode)
+        {
+            _spriteMode = true;
+            _flipbook = _shape.gameObject.GetComponent<SpriteFlipbook>();
+            if (_flipbook == null)
+            {
+                _flipbook = _shape.gameObject.AddComponent<SpriteFlipbook>();
+            }
+
+            rt.anchorMin = new Vector2(0.5f, 0.58f);
+            rt.anchorMax = new Vector2(0.5f, 0.58f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            _shape.preserveAspect = true;
+            _shape.type = Image.Type.Simple;
+            _shape.useSpriteMesh = false;
+            _shape.color = Color.white;
+        }
+
+        rt.sizeDelta = new Vector2(height * mul, height * mul);
         ApplyFacingScale(1f);
     }
 

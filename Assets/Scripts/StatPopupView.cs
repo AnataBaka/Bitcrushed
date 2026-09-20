@@ -353,7 +353,8 @@ public class StatPopupView : MonoBehaviour
                 entity.ClassName,
                 entity.Name,
                 entity.EntityId,
-                entity.VariantPrefix
+                entity.VariantPrefix,
+                entity.IsBoss
             );
             _subtitle.text = EnemySpriteLibrary.DisplayName(kind);
         }

@@ -207,7 +207,8 @@ public class TurnOrderListView : MonoBehaviour
                 entity.ClassName,
                 entity.Name,
                 entity.EntityId,
-                entity.VariantPrefix
+                entity.VariantPrefix,
+                entity.IsBoss
             )
             : entity.Name;
         ApplyLabel(row, label, slot == 0);

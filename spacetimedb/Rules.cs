@@ -32,6 +32,16 @@ public static partial class Module
     public const string BossBasicAttackName = "Magma Smash";
     public const string FlameSweepName = "Flame Sweep";
 
+    /// First word of the boss title, e.g. Magma Colossus → Magma.
+    public static string BossAttributeName
+    {
+        get
+        {
+            var space = BossName.IndexOf(' ');
+            return space < 0 ? BossName : BossName.Substring(0, space);
+        }
+    }
+
     public const int BagCapacity = 12;
     public const int InventoryCapacity = 9;
     public const uint InventoryNone = 255;
@@ -877,6 +887,9 @@ public static partial class Module
 
     public static string EnemyVisualDisplayName(string kind) =>
         kind == "Witch_Doctor" ? "Witch Doctor" : kind;
+
+    public static string BossVisualDisplayName(string visualKind) =>
+        $"{BossAttributeName} {EnemyVisualDisplayName(visualKind)}";
 
     /// Main stat rolls 3-6, every other stat rolls 1-3.
     public static (int Strength, int Dexterity, int Intelligence, int Speed) RollStats(
