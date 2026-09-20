@@ -358,7 +358,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         _striking = false;
     }
 
-    /// Keep the old 62% lunge, idle on the way, Attack at the apex, then home.
+    /// Idle on the way, stop beside the targeted player, Attack, then home.
     IEnumerator PlayEnemyStrike(
         Vector2 targetPosition,
         Action onImpact,
@@ -381,8 +381,10 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
 
         var start = _home;
-        var reach = Vector2.Lerp(start, targetPosition, 0.62f);
-        yield return Slide(start, reach, 0.14f);
+        var reach = targetPosition + new Vector2(90f, 0f);
+        var outbound = MoveSeconds(start, reach, _spriteClass);
+        var inbound = MoveSeconds(reach, start, _spriteClass);
+        yield return Slide(start, reach, outbound);
 
         if (_flipbook != null && clip != null && clip.Length > 0)
         {
@@ -406,7 +408,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             _flipbook.Play(idle, ClassSpriteArt.IdleFps, true);
         }
 
-        yield return Slide(reach, _home, 0.18f);
+        yield return Slide(reach, _home, inbound);
         _root.anchoredPosition = _home;
 
         if (!_deadPose && !_dying && _flipbook != null && idle != null && idle.Length > 0)
