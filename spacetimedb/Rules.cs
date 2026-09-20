@@ -918,7 +918,7 @@ public static partial class Module
     public static string EnemyVisualSkillName(string kind) =>
         EnemyVisualKindKey(kind) switch
         {
-            "Witch_Doctor" => "Hex Bolt",
+            "Witch_Doctor" => "Staff Strike",
             "Canine" => "Pounce",
             "Slime" => "Engulf",
             "Skeleton" => "Bone Slash",
