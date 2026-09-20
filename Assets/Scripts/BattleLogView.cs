@@ -46,10 +46,14 @@ public class BattleLogView : MonoBehaviour
             viewport,
             "Content",
             "",
-            16,
+            GameFont.LogSize,
             TextAnchor.UpperLeft,
             UiFactory.TextColor
         );
+        text.fontSize = GameFont.LogSize;
+        text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        text.verticalOverflow = VerticalWrapMode.Overflow;
+        text.lineSpacing = 1.125f;
         text.rectTransform.anchorMin = new Vector2(0f, 1f);
         text.rectTransform.anchorMax = new Vector2(1f, 1f);
         text.rectTransform.pivot = new Vector2(0.5f, 1f);

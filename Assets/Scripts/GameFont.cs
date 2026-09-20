@@ -22,7 +22,7 @@ using UnityEngine.UI;
 /// READY            16     16
 /// turn sidebar     16     16
 /// log title        16     16
-/// log body         16     16  (LogSize applied separately)
+/// log body         16     24  (LogSize, not Resolve)
 /// BAG              16     16
 /// equipment names  16     16
 /// action/tooltip   16     16
@@ -43,6 +43,10 @@ public static class GameFont
     public const int Pixel = 8;
     public const int SizeBump = 2;
     public const int MinReadableSize = 16;
+    /// Battle-log body. Old 16pt + 8, inside the requested +5 to +10 range
+    /// and on the 8px grid. Kept out of Resolve so a later SizeBump cannot
+    /// stack this to 32.
+    public const int LogSize = 24;
 
     public static int Snap(int size)
     {
