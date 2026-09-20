@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// No inventory math lives here.
 public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
 {
-    public const float CellSize = 52f;
+    public const float CellSize = 68f;
     public const float CellGap = 6f;
     public const float Pad = 10f;
     public const float TitleHeight = 22f;
@@ -29,6 +29,8 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
     Cell[] _cells;
     uint _contextSlot;
     RectTransform _bagButton;
+    ItemTooltipView _tooltip;
+    System.Func<bool> _tooltipBlocked;
 
     public bool IsOpen => gameObject.activeSelf;
     public bool ContextOpen => _context != null && _context.gameObject.activeSelf;
@@ -40,6 +42,7 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
         public Image Icon;
         public Text Caption;
         public InventoryPopupView Host;
+        public ItemHoverTip Hover;
         public bool Occupied;
 
         public void OnPointerClick(PointerEventData eventData)
@@ -125,16 +128,27 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
         return view;
     }
 
+    public void BindTooltip(ItemTooltipView tooltip, System.Func<bool> blocked)
+    {
+        _tooltip = tooltip;
+        _tooltipBlocked = blocked;
+        if (_cells == null)
+        {
+            return;
+        }
+
+        foreach (var cell in _cells)
+        {
+            BindCellHover(cell);
+        }
+    }
+
     static Cell MakeCell(Transform parent, InventoryPopupView host, uint index)
     {
         var frame = UiFactory.Panel(parent, $"Cell_{index}", new Color(0.18f, 0.18f, 0.22f, 0.55f));
         frame.raycastTarget = true;
 
         var icon = UiFactory.Graphic(frame.transform, "Icon", PlaceholderArt.Solid(Color.white), Color.white);
-        icon.rectTransform.anchorMin = new Vector2(0.5f, 0.58f);
-        icon.rectTransform.anchorMax = new Vector2(0.5f, 0.58f);
-        icon.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-        icon.rectTransform.sizeDelta = new Vector2(22f, 22f);
         icon.gameObject.SetActive(false);
 
         var caption = UiFactory.Label(
@@ -142,18 +156,10 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
             "Name",
             "",
             10,
-            TextAnchor.LowerCenter,
+            TextAnchor.UpperCenter,
             UiFactory.TextColor
         );
-        caption.rectTransform.anchorMin = new Vector2(0f, 0f);
-        caption.rectTransform.anchorMax = new Vector2(1f, 0.42f);
-        caption.rectTransform.offsetMin = new Vector2(2f, 2f);
-        caption.rectTransform.offsetMax = new Vector2(-2f, 0f);
-        caption.horizontalOverflow = HorizontalWrapMode.Wrap;
-        caption.verticalOverflow = VerticalWrapMode.Truncate;
-        caption.resizeTextForBestFit = true;
-        caption.resizeTextMinSize = 7;
-        caption.resizeTextMaxSize = 10;
+        ItemIconFit.LayoutInventory(icon.rectTransform, caption);
 
         var cell = frame.gameObject.AddComponent<Cell>();
         cell.Index = index;
@@ -161,6 +167,7 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
         cell.Icon = icon;
         cell.Caption = caption;
         cell.Host = host;
+        cell.Hover = frame.gameObject.AddComponent<ItemHoverTip>();
         return cell;
     }
 
@@ -231,6 +238,7 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
     public void Close()
     {
         CloseContext();
+        _tooltip?.Hide();
         gameObject.SetActive(false);
     }
 
@@ -284,6 +292,12 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
         {
             RefreshContextButtons();
         }
+
+        foreach (var cell in _cells)
+        {
+            BindCellHover(cell);
+            cell.Hover?.Refresh();
+        }
     }
 
     static void FillCell(Cell cell, PlayerItem item)
@@ -300,7 +314,7 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
 
         cell.Frame.color = new Color(0.24f, 0.23f, 0.20f, 1f);
         cell.Icon.gameObject.SetActive(true);
-        cell.Icon.sprite = GearArt.Sprite(def);
+        ItemIconFit.Bind(cell.Icon, GearArt.Sprite(def));
         cell.Caption.text = def.ShortName;
         cell.Caption.color = UiFactory.TextColor;
     }
@@ -335,8 +349,28 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
         }
     }
 
+    void BindCellHover(Cell cell)
+    {
+        if (cell?.Hover == null || _tooltip == null)
+        {
+            return;
+        }
+
+        var index = cell.Index;
+        cell.Hover.Bind(
+            _tooltip,
+            () =>
+            {
+                var item = GameManager.InventoryAt(index);
+                return item == null ? null : GameManager.ItemDefOf(item);
+            },
+            () => ContextOpen || (_tooltipBlocked != null && _tooltipBlocked())
+        );
+    }
+
     void OpenContext(uint slotIndex, Vector2 screenPoint)
     {
+        _tooltip?.Hide();
         _contextSlot = slotIndex;
         _context.gameObject.SetActive(true);
         _context.SetAsLastSibling();

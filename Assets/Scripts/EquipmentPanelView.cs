@@ -16,6 +16,10 @@ public class EquipmentPanelView : MonoBehaviour
     Text _weaponName;
     Image _amuletIcon;
     Text _amuletName;
+    ItemHoverTip _weaponTip;
+    ItemHoverTip _amuletTip;
+    ItemTooltipView _tooltip;
+    Func<bool> _tooltipBlocked;
     RectTransform _bagButton;
 
     public Action<Vector2> OnBagClicked;
@@ -46,8 +50,8 @@ public class EquipmentPanelView : MonoBehaviour
         slots.offsetMin = new Vector2(10f, 4f);
         slots.offsetMax = new Vector2(-10f, -30f);
 
-        view.MakeSlot(slots, "Weapon", 0f, out view._weaponIcon, out view._weaponName);
-        view.MakeSlot(slots, "Amulet", 0.5f, out view._amuletIcon, out view._amuletName);
+        view.MakeSlot(slots, "Weapon", 0f, out view._weaponIcon, out view._weaponName, out view._weaponTip);
+        view.MakeSlot(slots, "Amulet", 0.5f, out view._amuletIcon, out view._amuletName, out view._amuletTip);
 
         var bag = UiFactory.Panel(panel.transform, "Bag", UiFactory.SlotColor);
         bag.raycastTarget = true;
@@ -83,10 +87,25 @@ public class EquipmentPanelView : MonoBehaviour
         return view;
     }
 
-    void MakeSlot(RectTransform parent, string title, float xMin, out Image icon, out Text name)
+    public void BindTooltip(ItemTooltipView tooltip, Func<bool> blocked)
+    {
+        _tooltip = tooltip;
+        _tooltipBlocked = blocked;
+        _weaponTip?.Bind(_tooltip, () => DefIn(EquipSlot.Weapon), _tooltipBlocked);
+        _amuletTip?.Bind(_tooltip, () => DefIn(EquipSlot.Amulet), _tooltipBlocked);
+    }
+
+    void MakeSlot(
+        RectTransform parent,
+        string title,
+        float xMin,
+        out Image icon,
+        out Text name,
+        out ItemHoverTip tip
+    )
     {
         var cell = UiFactory.Panel(parent, title, UiFactory.SlotColor);
-        cell.raycastTarget = false;
+        cell.raycastTarget = true;
         var rt = cell.rectTransform;
         rt.anchorMin = new Vector2(xMin, 0f);
         rt.anchorMax = new Vector2(xMin + 0.5f, 1f);
@@ -106,29 +125,26 @@ public class EquipmentPanelView : MonoBehaviour
         header.rectTransform.pivot = new Vector2(0.5f, 1f);
         header.rectTransform.sizeDelta = new Vector2(-6f, 16f);
         header.rectTransform.anchoredPosition = new Vector2(0f, -4f);
+        header.raycastTarget = false;
 
         icon = UiFactory.Graphic(cell.transform, "Icon", PlaceholderArt.Solid(Color.white), Color.white);
-        icon.rectTransform.anchorMin = new Vector2(0.5f, 0.42f);
-        icon.rectTransform.anchorMax = new Vector2(0.5f, 0.42f);
-        icon.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-        icon.rectTransform.sizeDelta = new Vector2(28f, 28f);
-
         name = UiFactory.Label(cell.transform, "Name", EmptyCaption, 13, TextAnchor.UpperCenter, UiFactory.MutedColor);
-        name.rectTransform.anchorMin = new Vector2(0f, 0f);
-        name.rectTransform.anchorMax = new Vector2(1f, 0.38f);
-        name.rectTransform.offsetMin = new Vector2(4f, 2f);
-        name.rectTransform.offsetMax = new Vector2(-4f, 0f);
-        name.horizontalOverflow = HorizontalWrapMode.Wrap;
-        name.verticalOverflow = VerticalWrapMode.Truncate;
-        name.resizeTextForBestFit = true;
-        name.resizeTextMinSize = 8;
-        name.resizeTextMaxSize = 13;
+        ItemIconFit.LayoutEquipment(icon.rectTransform, name);
+        tip = cell.gameObject.AddComponent<ItemHoverTip>();
     }
 
     public void Render()
     {
         Fill(_weaponIcon, _weaponName, GameManager.EquippedIn(EquipSlot.Weapon));
         Fill(_amuletIcon, _amuletName, GameManager.EquippedIn(EquipSlot.Amulet));
+        _weaponTip?.Refresh();
+        _amuletTip?.Refresh();
+    }
+
+    static ItemDef DefIn(EquipSlot slot)
+    {
+        var worn = GameManager.EquippedIn(slot);
+        return worn == null ? null : GameManager.ItemDefOf(worn);
     }
 
     static void Fill(Image icon, Text name, PlayerItem worn)
@@ -138,15 +154,16 @@ public class EquipmentPanelView : MonoBehaviour
         {
             name.text = EmptyCaption;
             name.color = UiFactory.MutedColor;
-            icon.sprite = PlaceholderArt.Shape(ShapeKind.Rect, new Color(0.35f, 0.35f, 0.40f, 0.35f), 32, 32);
-            icon.color = Color.white;
+            ItemIconFit.Bind(
+                icon,
+                PlaceholderArt.Shape(ShapeKind.Rect, new Color(0.35f, 0.35f, 0.40f, 0.35f), 32, 32)
+            );
             return;
         }
 
         name.text = def.Name;
         name.color = UiFactory.TextColor;
-        icon.sprite = GearArt.Sprite(def);
-        icon.color = Color.white;
+        ItemIconFit.Bind(icon, GearArt.Sprite(def));
     }
 
     static Vector2 PointerScreenPoint()
@@ -169,10 +186,14 @@ public static class GearArt
             return PlaceholderArt.Shape(ShapeKind.Rect, new Color(0.35f, 0.35f, 0.40f, 0.35f), 48, 48);
         }
 
+        if (AmuletArt.HasIcon(def.Name))
+        {
+            return AmuletArt.Icon(def.Name);
+        }
+
         if (def.Kind == ItemKind.Amulet)
         {
-            return AmuletArt.Icon(def.Name)
-                ?? PlaceholderArt.Shape(ShapeKind.Circle, new Color(0.82f, 0.62f, 0.28f), 48, 48);
+            return PlaceholderArt.Shape(ShapeKind.Circle, new Color(0.82f, 0.62f, 0.28f), 48, 48);
         }
 
         return PlaceholderArt.Shape(ShapeKind.Rect, WeaponColor(def.WeaponType), 48, 48);
