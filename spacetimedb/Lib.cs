@@ -1481,7 +1481,7 @@ public static partial class Module
         );
 
         var visualKind = RollEnemyVisualKind(ctx);
-        var visualName = EnemyVisualDisplayName(visualKind);
+        var visualName = BossVisualDisplayName(visualKind);
 
         ctx.Db.Entity.Insert(
             new Entity
