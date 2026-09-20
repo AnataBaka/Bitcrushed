@@ -15,6 +15,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     CanvasGroup _group;
     Image _card;
     Image _shape;
+    ActiveHalo _halo;
     Image _hpFill;
     Image _manaFill;
     Text _nameText;
@@ -89,6 +90,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         view._shape.preserveAspect = true;
         view._shape.useSpriteMesh = false;
         view._shape.raycastTarget = false;
+        view._halo = ActiveHalo.Attach(card.rectTransform, view._shape);
 
         var labelStack = UiFactory.NewRect(card.transform, "LabelStack");
         labelStack.anchorMin = new Vector2(0f, 1f);
@@ -843,18 +845,21 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             _tagText.text = "CLICK TO TARGET";
             _tagText.gameObject.SetActive(true);
             _card.color = new Color(0.95f, 0.82f, 0.30f, 0.20f);
+            _halo?.SetVisible(false);
         }
-        else if (isActive)
+        else if (isActive && CombatHpPresenter.DisplayedAlive(entity))
         {
             _tagText.text = "ACTIVE";
             _tagText.gameObject.SetActive(true);
-            _card.color = new Color(0.95f, 0.82f, 0.30f, 0.10f);
+            _card.color = new Color(0f, 0f, 0f, 0f);
+            _halo?.SetVisible(true);
         }
         else
         {
             _tagText.text = "";
             _tagText.gameObject.SetActive(false);
             _card.color = new Color(0f, 0f, 0f, 0f);
+            _halo?.SetVisible(false);
         }
 
         _button.interactable = CombatHpPresenter.IsTargetable(entity);
