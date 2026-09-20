@@ -363,7 +363,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
 
         var field = _root.parent as RectTransform;
-        var from = BowWorld();
+        var from = BowWorld(actionName);
         var to = targetShape != null ? CombatVfx.WorldCenter(targetShape) : from + new Vector3(400f, 0f, 0f);
         var arrow = ClassSpriteArt.ArrowSprite(_spriteClass);
         if (field != null && arrow != null && ClassSpriteArt.FiresProjectile(_spriteClass, actionName))
@@ -409,17 +409,20 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         _striking = false;
     }
 
-    Vector3 BowWorld()
+    Vector3 BowWorld(string actionName)
     {
         var center = CombatVfx.WorldCenter(ShapeRect);
         var corners = new Vector3[4];
         ShapeRect.GetWorldCorners(corners);
         var width = Mathf.Abs(corners[2].x - corners[0].x);
         var height = Mathf.Abs(corners[2].y - corners[0].y);
-        return center + new Vector3(width * 0.12f, height * 0.04f, 0f);
+        // Attack_2 is a crouch so the nock sits near the sprite center. Attack_1
+        // stands taller; raise the spawn so the arrow leaves from the bow.
+        var y = ArcherSpriteLibrary.UsesCrouchShot(actionName) ? 0.04f : 0.18f;
+        return center + new Vector3(width * 0.12f, height * y, 0f);
     }
 
-    /// Minecraft-like enchant gleam on the body. Does not occupy Busy.
+    /// Holy-white gleam on the body. Does not occupy Busy.
     public void PlayBuffGleam()
     {
         if (_shape == null)

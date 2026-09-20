@@ -1,11 +1,11 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-/// Minecraft-style enchant gleam: a silhouette tint plus a scrolling shine
-/// clipped to the player sprite. Lasts a few seconds and does not block combat.
+/// Holy-white silhouette gleam plus a scrolling shine clipped to the player
+/// sprite. Restarts on every buff and does not block combat.
 public class BuffGleam : MonoBehaviour
 {
-    public const float Duration = 3f;
+    public const float Duration = 1.5f;
 
     Image _source;
     Image _tint;
@@ -39,6 +39,7 @@ public class BuffGleam : MonoBehaviour
         }
 
         EnsureOverlay();
+        ShowOverlay(true);
         _started = Time.unscaledTime;
         _until = _started + Mathf.Max(0.1f, seconds);
         enabled = true;
@@ -96,6 +97,24 @@ public class BuffGleam : MonoBehaviour
         return image;
     }
 
+    void ShowOverlay(bool visible)
+    {
+        if (_tint != null)
+        {
+            _tint.gameObject.SetActive(visible);
+        }
+
+        if (_shine != null)
+        {
+            _shine.gameObject.SetActive(visible);
+        }
+
+        if (_mask != null)
+        {
+            _mask.enabled = visible;
+        }
+    }
+
     void LateUpdate()
     {
         if (_source == null || Time.unscaledTime >= _until)
@@ -105,16 +124,12 @@ public class BuffGleam : MonoBehaviour
         }
 
         var t = Time.unscaledTime - _started;
-        var fade = Mathf.Clamp01((_until - Time.unscaledTime) / 0.45f);
-        var pulse = 0.5f + (0.5f * Mathf.Sin(t * 7.2f));
-        var cycle = 0.5f + (0.5f * Mathf.Sin((t * 2.15f) + 0.4f));
+        var fade = Mathf.Clamp01((_until - Time.unscaledTime) / 0.3f);
+        var pulse = 0.5f + (0.5f * Mathf.Sin(t * 9.5f));
 
-        // Enchant glint leans violet, then cyan, like vanilla Minecraft.
-        var violet = new Color(0.62f, 0.28f, 1f, 1f);
-        var cyan = new Color(0.25f, 1f, 0.92f, 1f);
-        var gold = new Color(0.95f, 0.82f, 0.35f, 1f);
-        var tint = Color.Lerp(Color.Lerp(violet, cyan, pulse), gold, cycle * 0.22f);
-        tint.a = (0.42f + (0.22f * pulse)) * fade;
+        var ivory = new Color(1f, 0.98f, 0.90f, 1f);
+        var tint = Color.Lerp(Color.white, ivory, pulse * 0.45f);
+        tint.a = (0.62f + (0.22f * pulse)) * fade;
 
         if (_tint != null)
         {
@@ -127,7 +142,7 @@ public class BuffGleam : MonoBehaviour
 
         if (_shine != null)
         {
-            var width = Mathf.Max(18f, _source.rectTransform.rect.width * 0.22f);
+            var width = Mathf.Max(18f, _source.rectTransform.rect.width * 0.28f);
             var height = _source.rectTransform.rect.height * 1.6f;
             _shine.rectTransform.sizeDelta = new Vector2(width, height);
             _shine.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
@@ -135,32 +150,17 @@ public class BuffGleam : MonoBehaviour
             _shine.rectTransform.pivot = new Vector2(0.5f, 0.5f);
 
             var span = _source.rectTransform.rect.width + width;
-            var travel = Mathf.Repeat(t * 0.85f, 1f);
+            var travel = Mathf.Repeat(t * 1.35f, 1f);
             var x = Mathf.Lerp(-span * 0.55f, span * 0.55f, travel);
             _shine.rectTransform.anchoredPosition = new Vector2(x, 0f);
             _shine.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 24f);
-            _shine.color = new Color(1f, 1f, 1f, (0.18f + (0.16f * pulse)) * fade);
+            _shine.color = new Color(1f, 1f, 1f, (0.42f + (0.22f * pulse)) * fade);
         }
     }
 
     void Stop()
     {
-        if (_tint != null)
-        {
-            _tint.gameObject.SetActive(false);
-        }
-
-        if (_shine != null)
-        {
-            _shine.gameObject.SetActive(false);
-        }
-
-        if (_mask != null)
-        {
-            Destroy(_mask);
-            _mask = null;
-        }
-
+        ShowOverlay(false);
         enabled = false;
     }
 

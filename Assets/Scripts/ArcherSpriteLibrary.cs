@@ -62,8 +62,8 @@ public static class ArcherSpriteLibrary
 
     static int Len(Sprite[] frames) => frames == null ? 0 : frames.Length;
 
-    /// Shoot / Curved Shot / Snap Shot → Attack_1; Snipe / Rain Down / Grandshot → Attack_2.
-    public static Sprite[] AttackClipFor(string actionName)
+    /// Snipe / Rain Down / Grandshot crouch (Attack_2). Everything else stands (Attack_1).
+    public static bool UsesCrouchShot(string actionName)
     {
         switch (actionName)
         {
@@ -71,11 +71,15 @@ public static class ArcherSpriteLibrary
             case "Rain Down":
             case "Grandshot":
             case "Grand Shot":
-                return Attack2;
+                return true;
             default:
-                return Attack1;
+                return false;
         }
     }
+
+    /// Shoot / Curved Shot / Snap Shot → Attack_1; Snipe / Rain Down / Grandshot → Attack_2.
+    public static Sprite[] AttackClipFor(string actionName) =>
+        UsesCrouchShot(actionName) ? Attack2 : Attack1;
 
     public static bool TryHitEffect(string actionName, out HitEffectKind kind)
     {
