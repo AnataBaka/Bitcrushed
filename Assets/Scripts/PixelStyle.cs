@@ -46,6 +46,16 @@ public static class PixelStyle
         Vector4 border = default
     )
     {
+        return Sprite(texture, pivot, PixelsPerUnit, border);
+    }
+
+    public static Sprite Sprite(
+        Texture2D texture,
+        Vector2 pivot,
+        float pixelsPerUnit,
+        Vector4 border = default
+    )
+    {
         if (texture == null)
         {
             return null;
@@ -57,25 +67,10 @@ public static class PixelStyle
             texture,
             new Rect(0f, 0f, texture.width, texture.height),
             pivot,
-            PixelsPerUnit,
+            Mathf.Max(1f, pixelsPerUnit),
             0,
             SpriteMeshType.FullRect,
             border
-        );
-    }
-
-    public static Color32 Quantize(Color color)
-    {
-        if (color.a <= 0.5f)
-        {
-            return new Color32(0, 0, 0, 0);
-        }
-
-        return new Color32(
-            (byte)Mathf.RoundToInt(Mathf.Clamp01(color.r) * 255f),
-            (byte)Mathf.RoundToInt(Mathf.Clamp01(color.g) * 255f),
-            (byte)Mathf.RoundToInt(Mathf.Clamp01(color.b) * 255f),
-            255
         );
     }
 

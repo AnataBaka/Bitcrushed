@@ -301,16 +301,13 @@ public class ActiveHalo : MonoBehaviour
             }
         }
 
-        var texture = PlaceholderArt.PixelTexture(outW, outH);
+        var texture = PixelStyle.Texture(outW, outH);
         texture.SetPixels32(pixels);
         texture.Apply(false, false);
-        return Sprite.Create(
+        return PixelStyle.Sprite(
             texture,
-            new Rect(0, 0, outW, outH),
             new Vector2(0.5f, 0.5f),
-            Mathf.Max(1f, pixelsPerUnit),
-            0,
-            SpriteMeshType.FullRect
+            Mathf.Max(1f, pixelsPerUnit)
         );
     }
 

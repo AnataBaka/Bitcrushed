@@ -177,16 +177,9 @@ public static class SpriteFrameLoader
 
     static Sprite SpriteFromTexture(Texture2D texture, FilterMode filter)
     {
+        var sprite = PixelStyle.Sprite(texture, new Vector2(0.5f, 0.5f));
         texture.filterMode = filter;
         texture.wrapMode = TextureWrapMode.Clamp;
-        var sprite = Sprite.Create(
-            texture,
-            new Rect(0f, 0f, texture.width, texture.height),
-            new Vector2(0.5f, 0.5f),
-            100f,
-            0,
-            SpriteMeshType.FullRect
-        );
         sprite.name = texture.name;
         return sprite;
     }

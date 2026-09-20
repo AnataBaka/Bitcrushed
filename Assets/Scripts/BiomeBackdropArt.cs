@@ -89,12 +89,7 @@ public static class BiomeBackdropArt
         texture.wrapMode = TextureWrapMode.Clamp;
         texture.name = fileName;
 
-        var sprite = Sprite.Create(
-            texture,
-            new Rect(0f, 0f, texture.width, texture.height),
-            new Vector2(0.5f, 0f),
-            100f
-        );
+        var sprite = PixelStyle.Sprite(texture, new Vector2(0.5f, 0f));
         sprite.name = fileName;
         Cache[biome] = sprite;
         return sprite;
