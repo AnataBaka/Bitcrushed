@@ -169,6 +169,7 @@ public class BattleHud : MonoBehaviour
         HandleInspectDismiss();
         HandleTargetingCancel();
         HandleEscapeMenu();
+        SyncHalos();
     }
 
     void HandleEscapeMenu()
@@ -511,12 +512,20 @@ public class BattleHud : MonoBehaviour
             view.SetPosition(entity.IsBoss ? StageLayout.Boss(_backdrop, _field) : slots[index]);
 
             var isLocal = me != null && me.EntityId == entity.EntityId;
+            var haloId = HaloFollowId(activeId);
             var targetable =
                 _targeting
                 && myTurn
                 && entity.Faction == Team.Enemies
                 && CombatHpPresenter.IsTargetable(entity);
-            view.Bind(entity, activeId == entity.EntityId, isLocal, targetable, HandleEntityClicked);
+            view.Bind(
+                entity,
+                activeId == entity.EntityId,
+                haloId == entity.EntityId,
+                isLocal,
+                targetable,
+                HandleEntityClicked
+            );
             _lastHomes[entity.EntityId] = view.Home;
 
             var occupant = GameManager.FindPlayer(entity.EntityId);
@@ -582,6 +591,68 @@ public class BattleHud : MonoBehaviour
         }
 
         return false;
+    }
+
+    /// Keep the halo on the attacker until their lunge/strike ends, then snap
+    /// to the table's current actor. Hit flashes and death clips do not hold it.
+    ulong HaloFollowId(ulong tableActive)
+    {
+        foreach (var pair in _views)
+        {
+            if (pair.Value != null && pair.Value.AttackBusy)
+            {
+                return pair.Key;
+            }
+        }
+
+        foreach (var row in _pendingHits)
+        {
+            if (HoldsHalo(row))
+            {
+                return row.ActorEntityId;
+            }
+        }
+
+        return tableActive;
+    }
+
+    bool HoldsHalo(BattleLog row)
+    {
+        if (row.ActorEntityId == 0 || IsBurnLog(row))
+        {
+            return false;
+        }
+
+        if (IsMagicBulletViiLog(row))
+        {
+            return true;
+        }
+
+        return row.Kind == LogKind.Attack || row.Kind == LogKind.Aoe;
+    }
+
+    void SyncHalos()
+    {
+        var session = GameManager.Session();
+        var haloId = HaloFollowId(session?.ActiveEntityId ?? 0);
+        var myTurn = GameManager.IsLocalTurn();
+        foreach (var pair in _views)
+        {
+            var view = pair.Value;
+            if (view == null)
+            {
+                continue;
+            }
+
+            var entity = GameManager.FindEntity(pair.Key);
+            var targetable =
+                _targeting
+                && myTurn
+                && entity != null
+                && entity.Faction == Team.Enemies
+                && CombatHpPresenter.IsTargetable(entity);
+            view.SetHaloVisible(!targetable && pair.Key == haloId);
+        }
     }
 
     void HandleReadyClicked()

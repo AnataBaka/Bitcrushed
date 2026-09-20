@@ -62,6 +62,10 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     /// The body graphic, used to center hit VFX on the enemy that was struck.
     public RectTransform ShapeRect => _shape != null ? _shape.rectTransform : _root;
 
+    /// True while a lunge or walk-in strike owns the card. Hit and death clips
+    /// do not count, so the ACTIVE halo can move when the attack itself ends.
+    public bool AttackBusy => _lunging || _striking;
+
     /// True while a lunge, walk-in strike, hurt clip, or death clip owns the card.
     public bool Busy => _lunging || _striking || _dying || _hit != null;
 
@@ -812,6 +816,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     public void Bind(
         Entity entity,
         bool isActive,
+        bool showHalo,
         bool isLocal,
         bool targetable,
         Action<ulong, Vector2> onClick
@@ -853,14 +858,14 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             _tagText.text = "ACTIVE";
             _tagText.gameObject.SetActive(true);
             _card.color = new Color(0f, 0f, 0f, 0f);
-            _halo?.SetVisible(true);
+            SetHaloVisible(showHalo);
         }
         else
         {
             _tagText.text = "";
             _tagText.gameObject.SetActive(false);
             _card.color = new Color(0f, 0f, 0f, 0f);
-            _halo?.SetVisible(false);
+            SetHaloVisible(showHalo && CombatHpPresenter.DisplayedAlive(entity));
         }
 
         _button.interactable = CombatHpPresenter.IsTargetable(entity);
@@ -1042,6 +1047,11 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
 
         _readyBanner.gameObject.SetActive(visible);
         _readyBanner.text = visible ? "READY" : "";
+    }
+
+    public void SetHaloVisible(bool visible)
+    {
+        _halo?.SetVisible(visible && CombatHpPresenter.DisplayedHp(EntityId) > 0);
     }
 
     public void OnPointerClick(PointerEventData eventData)
