@@ -398,9 +398,9 @@ public static class UiFactory
     {
         var rt = NewRect(parent, name);
         var image = rt.gameObject.AddComponent<Image>();
-        image.sprite = PlaceholderArt.Solid(Color.white);
+        image.sprite = PlaceholderArt.FlatWhite();
         image.color = color;
-        image.type = Image.Type.Sliced;
+        image.type = Image.Type.Simple;
         rt.gameObject.AddComponent<RectMask2D>();
         return image;
     }

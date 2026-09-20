@@ -36,6 +36,7 @@ public class PixelNameField : MonoBehaviour,
     float _blink;
     Sprite _idleSlice;
     Sprite _focusSlice;
+    Keyboard _textKeyboard;
 
     public string Value => _value;
 
@@ -134,13 +135,13 @@ public class PixelNameField : MonoBehaviour,
         IsEditing = true;
         _blink = 0f;
         _frame.sprite = _focusSlice;
-        Keyboard.onTextInput += OnTextInput;
+        BindTextInput();
         Refresh();
     }
 
     public void OnDeselect(BaseEventData eventData)
     {
-        Keyboard.onTextInput -= OnTextInput;
+        UnbindTextInput();
         _focused = false;
         IsEditing = false;
         _frame.sprite = _idleSlice;
@@ -182,9 +183,33 @@ public class PixelNameField : MonoBehaviour,
 
     void OnDisable()
     {
-        Keyboard.onTextInput -= OnTextInput;
+        UnbindTextInput();
         IsEditing = false;
         _focused = false;
+    }
+
+    void BindTextInput()
+    {
+        UnbindTextInput();
+        var kb = Keyboard.current;
+        if (kb == null)
+        {
+            return;
+        }
+
+        kb.onTextInput += OnTextInput;
+        _textKeyboard = kb;
+    }
+
+    void UnbindTextInput()
+    {
+        if (_textKeyboard == null)
+        {
+            return;
+        }
+
+        _textKeyboard.onTextInput -= OnTextInput;
+        _textKeyboard = null;
     }
 
     void PollKeys()

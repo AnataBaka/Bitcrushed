@@ -134,7 +134,7 @@ public class ActiveHalo : MonoBehaviour
             return null;
         }
 
-        var halo = BuildHalo(mask, width, height);
+        var halo = BuildHalo(mask, width, height, sprite.pixelsPerUnit);
         Cache[key] = halo;
         return halo;
     }
@@ -143,8 +143,8 @@ public class ActiveHalo : MonoBehaviour
     {
         var tex = sprite.texture;
         var rect = sprite.textureRect;
-        var texId = tex != null ? tex.GetInstanceID() : 0;
-        return $"{texId}:{sprite.GetInstanceID()}:{rect.x:0}:{rect.y:0}:{rect.width:0}:{rect.height:0}";
+        var texId = tex != null ? tex.GetEntityId() : default;
+        return $"{texId}:{sprite.GetEntityId()}:{rect.x:0}:{rect.y:0}:{rect.width:0}:{rect.height:0}";
     }
 
     static bool TryReadMask(Sprite sprite, out bool[] mask, out int width, out int height)
@@ -158,11 +158,17 @@ public class ActiveHalo : MonoBehaviour
         }
 
         var tex = sprite.texture;
-        var rect = sprite.textureRect;
-        width = Mathf.Max(1, Mathf.RoundToInt(rect.width));
-        height = Mathf.Max(1, Mathf.RoundToInt(rect.height));
-        var x0 = Mathf.RoundToInt(rect.x);
-        var y0 = Mathf.RoundToInt(rect.y);
+        var spriteRect = sprite.rect;
+        width = Mathf.Max(1, Mathf.RoundToInt(spriteRect.width));
+        height = Mathf.Max(1, Mathf.RoundToInt(spriteRect.height));
+        var packed = sprite.textureRect;
+        var packW = Mathf.Max(1, Mathf.RoundToInt(packed.width));
+        var packH = Mathf.Max(1, Mathf.RoundToInt(packed.height));
+        var x0 = Mathf.RoundToInt(packed.x);
+        var y0 = Mathf.RoundToInt(packed.y);
+        var offset = sprite.textureRectOffset;
+        var destX = Mathf.RoundToInt(offset.x);
+        var destY = Mathf.RoundToInt(offset.y);
 
         Color32[] pixels;
         int texW;
@@ -179,23 +185,25 @@ public class ActiveHalo : MonoBehaviour
         }
 
         mask = new bool[width * height];
-        for (var y = 0; y < height; y++)
+        for (var y = 0; y < packH; y++)
         {
             var srcY = y0 + y;
-            if (srcY < 0 || srcY >= texH)
+            var canvasY = destY + y;
+            if (srcY < 0 || srcY >= texH || canvasY < 0 || canvasY >= height)
             {
                 continue;
             }
 
-            for (var x = 0; x < width; x++)
+            for (var x = 0; x < packW; x++)
             {
                 var srcX = x0 + x;
-                if (srcX < 0 || srcX >= texW)
+                var canvasX = destX + x;
+                if (srcX < 0 || srcX >= texW || canvasX < 0 || canvasX >= width)
                 {
                     continue;
                 }
 
-                mask[y * width + x] = pixels[srcY * texW + srcX].a > 0;
+                mask[canvasY * width + canvasX] = pixels[srcY * texW + srcX].a >= 128;
             }
         }
 
@@ -240,7 +248,7 @@ public class ActiveHalo : MonoBehaviour
         }
     }
 
-    static Sprite BuildHalo(bool[] mask, int width, int height)
+    static Sprite BuildHalo(bool[] mask, int width, int height, float pixelsPerUnit)
     {
         var pad = HaloWidth;
         var outW = width + pad * 2;
@@ -300,7 +308,7 @@ public class ActiveHalo : MonoBehaviour
             texture,
             new Rect(0, 0, outW, outH),
             new Vector2(0.5f, 0.5f),
-            100f,
+            Mathf.Max(1f, pixelsPerUnit),
             0,
             SpriteMeshType.FullRect
         );
