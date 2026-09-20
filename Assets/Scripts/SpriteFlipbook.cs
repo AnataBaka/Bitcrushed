@@ -107,6 +107,7 @@ public class SpriteFlipbook : MonoBehaviour
     {
         if (_image != null && _frames != null && _index >= 0 && _index < _frames.Length)
         {
+            _image.useSpriteMesh = false;
             _image.sprite = _frames[_index];
         }
     }

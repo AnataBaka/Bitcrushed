@@ -136,11 +136,18 @@ public static class ClassSpriteArt
     }
 
     /// Bow-release / bolt-release point inside the attack clip.
-    public static float AttackReleaseNormalized(string className, string actionName = null, int magicBulletStage = 0)
+    public static float AttackReleaseNormalized(
+        string className,
+        string actionName = null,
+        int magicBulletStage = 0,
+        bool casterAlive = true
+    )
     {
         if (CanonicalClass(className) == MageSpriteLibrary.ClassName)
         {
-            return MageSpriteLibrary.UsesLargeCharge(actionName, magicBulletStage) ? 0.70f : 0.62f;
+            return MageSpriteLibrary.UsesLargeCharge(actionName, magicBulletStage, casterAlive)
+                ? 0.70f
+                : 0.62f;
         }
 
         return IsRanged(className) ? 0.62f : 0.55f;
@@ -230,7 +237,12 @@ public static class ClassSpriteArt
         return KnightSpriteLibrary.Dying;
     }
 
-    public static Sprite[] AttackClipFor(string className, string actionName, int magicBulletStage = 0)
+    public static Sprite[] AttackClipFor(
+        string className,
+        string actionName,
+        int magicBulletStage = 0,
+        bool casterAlive = true
+    )
     {
         var canonical = CanonicalClass(className);
         if (canonical == NinjaSpriteLibrary.ClassName)
@@ -245,7 +257,7 @@ public static class ClassSpriteArt
 
         if (canonical == MageSpriteLibrary.ClassName)
         {
-            return MageSpriteLibrary.AttackClipFor(actionName, magicBulletStage);
+            return MageSpriteLibrary.AttackClipFor(actionName, magicBulletStage, casterAlive);
         }
 
         return KnightSpriteLibrary.AttackClipFor(actionName);
@@ -255,7 +267,8 @@ public static class ClassSpriteArt
         string className,
         string actionName,
         out HitEffectKind kind,
-        int magicBulletStage = 0
+        int magicBulletStage = 0,
+        bool casterAlive = true
     )
     {
         var canonical = CanonicalClass(className);
@@ -276,7 +289,7 @@ public static class ClassSpriteArt
 
         if (canonical == MageSpriteLibrary.ClassName)
         {
-            return MageSpriteLibrary.TryHitEffect(actionName, magicBulletStage, out kind);
+            return MageSpriteLibrary.TryHitEffect(actionName, magicBulletStage, out kind, casterAlive);
         }
 
         kind = default;
@@ -294,7 +307,12 @@ public static class ClassSpriteArt
         return null;
     }
 
-    public static bool FiresProjectile(string className, string actionName)
+    public static bool FiresProjectile(
+        string className,
+        string actionName,
+        int magicBulletStage = 0,
+        bool casterAlive = true
+    )
     {
         var canonical = CanonicalClass(className);
         if (canonical == ArcherSpriteLibrary.ClassName)
@@ -304,30 +322,52 @@ public static class ClassSpriteArt
 
         if (canonical == MageSpriteLibrary.ClassName)
         {
-            return MageSpriteLibrary.FiresCharge(actionName);
+            return MageSpriteLibrary.FiresCharge(actionName, magicBulletStage, casterAlive);
         }
 
         return false;
     }
 
-    public static Vector2 MuzzleOffset(string className, string actionName, int magicBulletStage = 0)
+    public static Vector2 MuzzleOffset(
+        string className,
+        string actionName,
+        int magicBulletStage = 0,
+        bool casterAlive = true
+    )
     {
         if (CanonicalClass(className) == MageSpriteLibrary.ClassName)
         {
-            return MageSpriteLibrary.MuzzleOffset(actionName, magicBulletStage);
+            return MageSpriteLibrary.MuzzleOffset(actionName, magicBulletStage, casterAlive);
         }
 
         var y = ArcherSpriteLibrary.UsesCrouchShot(actionName) ? 0.04f : 0.15f;
         return new Vector2(0.12f, y);
     }
 
-    public static bool IsGrandUndertakingErupt(string message) =>
-        !string.IsNullOrEmpty(message)
-        && message.IndexOf("Grand Undertaking erupts", StringComparison.Ordinal) >= 0;
-
     public static bool IsGrandUndertakingHit(string message) =>
         !string.IsNullOrEmpty(message)
         && message.IndexOf("Grand Undertaking hits", StringComparison.Ordinal) >= 0;
+
+    public static bool IsMagicBulletVii(
+        string message,
+        int damage,
+        bool casterKnown,
+        bool casterAlive,
+        int magicBulletStage
+    )
+    {
+        if (ActionNameFromLog(message) != "Magic Bullet")
+        {
+            return false;
+        }
+
+        if (damage >= 90)
+        {
+            return true;
+        }
+
+        return casterKnown && !casterAlive && magicBulletStage >= 7;
+    }
 
     /// Pulls the skill / basic-attack name out of a battle-log strike line.
     public static string ActionNameFromLog(string message)
@@ -335,6 +375,11 @@ public static class ClassSpriteArt
         if (string.IsNullOrEmpty(message))
         {
             return null;
+        }
+
+        if (IsGrandUndertakingHit(message))
+        {
+            return "Grand Undertaking";
         }
 
         const string uses = " uses ";

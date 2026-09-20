@@ -78,6 +78,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         shapeRect.anchoredPosition = Vector2.zero;
         view._shape = shapeRect.gameObject.AddComponent<Image>();
         view._shape.preserveAspect = true;
+        view._shape.useSpriteMesh = false;
         view._shape.raycastTarget = false;
 
         view._tagText = UiFactory.Label(
@@ -240,7 +241,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         string actionName = null,
         bool returnHome = true,
         RectTransform targetShape = null,
-        int projectileHint = 0
+        int projectileHint = 0,
+        bool casterAlive = true
     )
     {
         if (!_spriteMode || _flipbook == null)
@@ -262,7 +264,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
                 actionName,
                 returnHome,
                 targetShape,
-                projectileHint
+                projectileHint,
+                casterAlive
             );
             yield break;
         }
@@ -327,7 +330,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         string actionName,
         bool returnHome,
         RectTransform targetShape,
-        int projectileHint
+        int projectileHint,
+        bool casterAlive
     )
     {
         _striking = true;
@@ -337,7 +341,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         var idle = ClassSpriteArt.Idle(_spriteClass);
         var clip = attackFrames != null && attackFrames.Length > 0
             ? attackFrames
-            : ClassSpriteArt.AttackClipFor(_spriteClass, actionName, projectileHint);
+            : ClassSpriteArt.AttackClipFor(_spriteClass, actionName, projectileHint, casterAlive);
         var fps = attackFps > 0f ? attackFps : ClassSpriteArt.AttackFpsFor(_spriteClass);
 
         var start = _root.anchoredPosition;
@@ -363,7 +367,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         var releaseAt = swing * ClassSpriteArt.AttackReleaseNormalized(
             _spriteClass,
             actionName,
-            projectileHint
+            projectileHint,
+            casterAlive
         );
         if (releaseAt > 0f)
         {
@@ -371,21 +376,21 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
 
         var field = _root.parent as RectTransform;
-        var from = ProjectileWorld(actionName, projectileHint);
+        var from = ProjectileWorld(actionName, projectileHint, casterAlive);
         var to = targetShape != null ? CombatVfx.WorldCenter(targetShape) : from + new Vector3(400f, 0f, 0f);
-        if (field != null && ClassSpriteArt.FiresProjectile(_spriteClass, actionName))
+        if (field != null && ClassSpriteArt.FiresProjectile(_spriteClass, actionName, projectileHint, casterAlive))
         {
             if (ClassSpriteArt.IsMage(_spriteClass))
             {
-                var charge = MageSpriteLibrary.ChargeClipFor(actionName, projectileHint);
-                var large = MageSpriteLibrary.UsesLargeCharge(actionName, projectileHint);
+                var charge = MageSpriteLibrary.ChargeClipFor(actionName, projectileHint, casterAlive);
+                var large = MageSpriteLibrary.UsesLargeCharge(actionName, projectileHint, casterAlive);
                 yield return CombatProjectile.FireCharge(
                     field,
                     from,
                     to,
                     charge,
-                    MageSpriteLibrary.ChargeDuration(actionName, projectileHint),
-                    MageSpriteLibrary.ChargeSize(actionName, projectileHint),
+                    MageSpriteLibrary.ChargeDuration(actionName, projectileHint, casterAlive),
+                    MageSpriteLibrary.ChargeSize(actionName, projectileHint, casterAlive),
                     rotate: !large
                 );
             }
@@ -441,21 +446,21 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         _striking = false;
     }
 
-    Vector3 ProjectileWorld(string actionName, int projectileHint)
+    Vector3 ProjectileWorld(string actionName, int projectileHint, bool casterAlive)
     {
         var center = CombatVfx.WorldCenter(ShapeRect);
         var corners = new Vector3[4];
         ShapeRect.GetWorldCorners(corners);
         var width = Mathf.Abs(corners[2].x - corners[0].x);
         var height = Mathf.Abs(corners[2].y - corners[0].y);
-        var muzzle = ClassSpriteArt.MuzzleOffset(_spriteClass, actionName, projectileHint);
+        var muzzle = ClassSpriteArt.MuzzleOffset(_spriteClass, actionName, projectileHint, casterAlive);
         return center + new Vector3(width * muzzle.x, height * muzzle.y, 0f);
     }
 
-    /// Freeze HP/mana text so Grand Undertaking can explode before bars tick.
+    /// Freeze HP/mana text so Magic Bullet VII can explode before bars tick.
     public void SetBarsFrozen(bool frozen) => _barsFrozen = frozen;
 
-    public IEnumerator PlayCastHold(float seconds)
+    public IEnumerator PlayCastHold(float seconds, bool restoreIdle = true)
     {
         _striking = true;
         transform.SetAsLastSibling();
@@ -466,7 +471,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
 
         yield return new WaitForSeconds(Mathf.Max(0.1f, seconds));
-        if (!_deadPose && !_dying && _flipbook != null)
+        if (restoreIdle && !_deadPose && !_dying && _flipbook != null)
         {
             var idle = ClassSpriteArt.Idle(_spriteClass);
             if (idle != null && idle.Length > 0)
@@ -475,7 +480,10 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             }
         }
 
-        _striking = false;
+        if (restoreIdle)
+        {
+            _striking = false;
+        }
     }
 
     /// Holy-white gleam on the body. Does not occupy Busy.
@@ -508,6 +516,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     IEnumerator DeathRoutine()
     {
         _dying = true;
+        _striking = false;
         if (_hit != null)
         {
             StopCoroutine(_hit);
@@ -780,6 +789,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         rt.sizeDelta = new Vector2(height * 1.15f, height * 1.15f);
         _shape.preserveAspect = true;
         _shape.type = Image.Type.Simple;
+        _shape.useSpriteMesh = false;
         _shape.color = Color.white;
         ApplyFacingScale(1f);
     }
