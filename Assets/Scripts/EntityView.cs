@@ -820,7 +820,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
 
         var suffix = isEnemy ? "" : $" ({entity.ClassName})";
         _nameText.text = $"{entity.Name}{suffix}{(isLocal ? " [you]" : "")}";
-        _nameText.color = isActive ? UiFactory.ActiveColor : UiFactory.TextColor;
+        var biome = GameManager.Session()?.CurrentBiome ?? WorldBiome.Plains;
+        _nameText.color = NameTagColors.For(biome, isActive);
 
         if (!_barsFrozen)
         {
