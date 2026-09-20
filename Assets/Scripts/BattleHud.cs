@@ -12,38 +12,6 @@ using UnityEngine.InputSystem;
 /// Holds no rules: it never computes damage, legality or turn order.
 public class BattleHud : MonoBehaviour
 {
-    static readonly Vector2[] PlayerSlots =
-    {
-        new Vector2(360f, 50f),
-        new Vector2(530f, 300f),
-        new Vector2(810f, 550f),
-    };
-
-    static readonly Vector2 PlayerCardSize = new Vector2(250f, 190f);
-    static readonly Vector2 EnemyCardSize = new Vector2(220f, 155f);
-    static readonly Vector2 BossCardSize = new Vector2(320f, 250f);
-    static readonly Vector2 BossSlot = new Vector2(1540f, 210f);
-
-    static readonly Vector2[][] EnemyPackSlots =
-    {
-        System.Array.Empty<Vector2>(),
-        new[] { new Vector2(1550f, 300f) },
-        new[] { new Vector2(1550f, 140f), new Vector2(1550f, 470f) },
-        new[]
-        {
-            new Vector2(1680f, 90f),
-            new Vector2(1420f, 300f),
-            new Vector2(1680f, 510f),
-        },
-        new[]
-        {
-            new Vector2(1680f, 40f),
-            new Vector2(1420f, 210f),
-            new Vector2(1680f, 380f),
-            new Vector2(1420f, 550f),
-        },
-    };
-
     RectTransform _field;
     BattleLogView _log;
     ActionMenuView _menu;
@@ -80,6 +48,7 @@ public class BattleHud : MonoBehaviour
     float _endScreenAt;
 
     bool _targeting;
+    int _appliedFit;
 
     /// Which attack the player picked before choosing a target. 0 is the free swing.
     uint _pendingSkillId;
@@ -172,6 +141,13 @@ public class BattleHud : MonoBehaviour
 
     void Update()
     {
+        _backdrop?.EnsureFit();
+        if (_backdrop != null && _backdrop.FitVersion != _appliedFit)
+        {
+            _appliedFit = _backdrop.FitVersion;
+            RepositionViews();
+        }
+
         CombatHpPresenter.Tick();
 
         if (!_animating && _pendingHits.Count > 0)
@@ -314,9 +290,9 @@ public class BattleHud : MonoBehaviour
             ClearTargeting();
         }
 
-        SyncTeam(CombatHpPresenter.VisibleTeam(Team.Players), PlayerSlots, PlayerCardSize, true, me);
+        SyncTeam(CombatHpPresenter.VisibleTeam(Team.Players), PlayerSlots(), StageLayout.PlayerSize, true, me);
         var enemies = CombatHpPresenter.VisibleTeam(Team.Enemies);
-        SyncTeam(enemies, EnemySlotsFor(enemies), EnemyCardSize, false, me);
+        SyncTeam(enemies, EnemySlotsFor(enemies), StageLayout.EnemySize, false, me);
         PruneMissing();
         if (
             _itemTooltip != null
@@ -429,7 +405,9 @@ public class BattleHud : MonoBehaviour
         return $"Next: Stage {session.StageNumber + 1}";
     }
 
-    static Vector2[] EnemySlotsFor(List<Entity> enemies)
+    Vector2[] PlayerSlots() => StageLayout.Players(_backdrop, _field);
+
+    static int EnemyPackSize(List<Entity> enemies)
     {
         var pack = 0;
         foreach (var entity in enemies)
@@ -437,8 +415,47 @@ public class BattleHud : MonoBehaviour
             pack = Mathf.Max(pack, (int)entity.Slot + 1);
         }
 
-        pack = Mathf.Clamp(pack, 1, EnemyPackSlots.Length - 1);
-        return EnemyPackSlots[pack];
+        return Mathf.Max(1, pack);
+    }
+
+    Vector2[] EnemySlotsFor(List<Entity> enemies) =>
+        StageLayout.Enemies(_backdrop, _field, EnemyPackSize(enemies));
+
+    void RepositionViews()
+    {
+        foreach (var pair in _views)
+        {
+            var view = pair.Value;
+            if (view == null)
+            {
+                continue;
+            }
+
+            var entity = GameManager.FindEntity(pair.Key) ?? CombatHpPresenter.Ghost(pair.Key);
+            if (entity == null)
+            {
+                continue;
+            }
+
+            if (entity.IsBoss)
+            {
+                view.SetPosition(StageLayout.Boss(_backdrop, _field));
+            }
+            else if (entity.Faction == Team.Players)
+            {
+                var slots = PlayerSlots();
+                var index = (int)Mathf.Min(entity.Slot, slots.Length - 1);
+                view.SetPosition(slots[index]);
+            }
+            else
+            {
+                var slots = EnemySlotsFor(CombatHpPresenter.VisibleTeam(Team.Enemies));
+                var index = (int)Mathf.Min(entity.Slot, slots.Length - 1);
+                view.SetPosition(slots[index]);
+            }
+
+            _lastHomes[pair.Key] = view.Home;
+        }
     }
 
     void SyncTeam(
@@ -475,7 +492,7 @@ public class BattleHud : MonoBehaviour
                         continue;
                     }
                 }
-                var size = entity.IsBoss ? BossCardSize : cardSize;
+                var size = entity.IsBoss ? StageLayout.BossSize : cardSize;
                 view = EntityView.Create(_field, entity.Name, size, showMana);
                 _views[entity.EntityId] = view;
             }
@@ -486,7 +503,7 @@ public class BattleHud : MonoBehaviour
             }
 
             var index = (int)Mathf.Min(entity.Slot, slots.Length - 1);
-            view.SetPosition(entity.IsBoss ? BossSlot : slots[index]);
+            view.SetPosition(entity.IsBoss ? StageLayout.Boss(_backdrop, _field) : slots[index]);
 
             var isLocal = me != null && me.EntityId == entity.EntityId;
             var targetable =

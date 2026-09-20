@@ -90,7 +90,6 @@ public class BiomeBackdropView : MonoBehaviour
 
         if (_applied == session.CurrentBiome && _photo.sprite != null)
         {
-            Fit();
             return;
         }
 
@@ -141,6 +140,8 @@ public class BiomeBackdropView : MonoBehaviour
         );
         return true;
     }
+
+    public void EnsureFit() => FitIfStale();
 
     void LateUpdate() => FitIfStale();
 
@@ -241,8 +242,8 @@ public class BiomeBackdropView : MonoBehaviour
         photoRt.anchorMin = new Vector2(0.5f, 0f);
         photoRt.anchorMax = new Vector2(0.5f, 0f);
         photoRt.pivot = new Vector2(0.5f, 0f);
-        photoRt.sizeDelta = tex;
-        photoRt.localScale = new Vector3(scale, scale, 1f);
+        photoRt.localScale = Vector3.one;
+        photoRt.sizeDelta = tex * scale;
         photoRt.anchoredPosition = Vector2.zero;
         _photo.preserveAspect = false;
         _photo.type = Image.Type.Simple;
