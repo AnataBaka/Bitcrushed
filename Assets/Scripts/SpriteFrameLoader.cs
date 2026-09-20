@@ -255,6 +255,219 @@ public static class SpriteFrameLoader
         return SpriteFromTexture(texture, texture.filterMode);
     }
 
+    /// Rebuilds frames from the full source texture with a FullRect mesh so UI
+    /// padding does not jump when a cape or trailing FX changes a tight AABB.
+    public static Sprite[] ForceFullRect(Sprite[] frames)
+    {
+        if (frames == null || frames.Length == 0)
+        {
+            return frames;
+        }
+
+        var rebuilt = new Sprite[frames.Length];
+        for (var i = 0; i < frames.Length; i++)
+        {
+            rebuilt[i] = ForceFullRect(frames[i]);
+        }
+
+        return rebuilt;
+    }
+
+    static Sprite ForceFullRect(Sprite sprite)
+    {
+        if (sprite == null || sprite.texture == null)
+        {
+            return sprite;
+        }
+
+        var copy = CopyTexture(sprite.texture);
+        if (copy == null)
+        {
+            return sprite;
+        }
+
+        copy.name = sprite.name;
+        copy.filterMode = sprite.texture.filterMode;
+        copy.wrapMode = TextureWrapMode.Clamp;
+        return SpriteFromTexture(copy, copy.filterMode);
+    }
+
+    /// Shifts each frame so the character body (ignoring a trailing left cape)
+    /// stays on the same X as the first frame.
+    public static Sprite[] AlignBodyX(Sprite[] frames)
+    {
+        if (frames == null || frames.Length < 2)
+        {
+            return frames;
+        }
+
+        var target = BodyX(frames[0]);
+        if (target < 0f)
+        {
+            return frames;
+        }
+
+        var aligned = new Sprite[frames.Length];
+        for (var i = 0; i < frames.Length; i++)
+        {
+            var x = BodyX(frames[i]);
+            var dx = x < 0f ? 0 : Mathf.RoundToInt(target - x);
+            aligned[i] = dx == 0 ? frames[i] : ShiftX(frames[i], dx);
+        }
+
+        return aligned;
+    }
+
+    static float BodyX(Sprite sprite)
+    {
+        var tex = sprite == null ? null : sprite.texture;
+        if (tex == null)
+        {
+            return -1f;
+        }
+
+        var copy = CopyPixels(sprite);
+        if (copy == null)
+        {
+            return -1f;
+        }
+
+        var pixels = copy.GetPixels32();
+        var width = copy.width;
+        var height = copy.height;
+        UnityEngine.Object.Destroy(copy);
+
+        var minX = width;
+        var maxX = 0;
+        var minY = height;
+        var maxY = 0;
+        var any = false;
+        for (var i = 0; i < pixels.Length; i++)
+        {
+            if (pixels[i].a < 16)
+            {
+                continue;
+            }
+
+            any = true;
+            var x = i % width;
+            var y = i / width;
+            if (x < minX)
+            {
+                minX = x;
+            }
+
+            if (x > maxX)
+            {
+                maxX = x;
+            }
+
+            if (y < minY)
+            {
+                minY = y;
+            }
+
+            if (y > maxY)
+            {
+                maxY = y;
+            }
+        }
+
+        if (!any)
+        {
+            return -1f;
+        }
+
+        var capeCut = minX + ((maxX - minX + 1) * 0.32f);
+        var feetCut = minY + ((maxY - minY + 1) * 0.35f);
+        var sum = 0f;
+        var count = 0;
+        for (var i = 0; i < pixels.Length; i++)
+        {
+            if (pixels[i].a < 16)
+            {
+                continue;
+            }
+
+            var x = i % width;
+            var y = i / width;
+            if (x >= capeCut || y <= feetCut)
+            {
+                sum += x;
+                count++;
+            }
+        }
+
+        return count == 0 ? -1f : sum / count;
+    }
+
+    static Sprite ShiftX(Sprite sprite, int dx)
+    {
+        var copy = CopyPixels(sprite);
+        if (copy == null || dx == 0)
+        {
+            return sprite;
+        }
+
+        var width = copy.width;
+        var height = copy.height;
+        var src = copy.GetPixels32();
+        var dst = new Color32[src.Length];
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var nx = x - dx;
+                if (nx >= 0 && nx < width)
+                {
+                    dst[(y * width) + x] = src[(y * width) + nx];
+                }
+            }
+        }
+
+        copy.SetPixels32(dst);
+        copy.Apply(false, false);
+        copy.name = sprite.name;
+        return SpriteFromTexture(copy, copy.filterMode);
+    }
+
+    static Texture2D CopyTexture(Texture2D texture)
+    {
+        if (texture == null || texture.width <= 0 || texture.height <= 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            var copy = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false)
+            {
+                filterMode = texture.filterMode,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+            copy.SetPixels(texture.GetPixels());
+            copy.Apply(false, false);
+            return copy;
+        }
+        catch (UnityException)
+        {
+            var rt = RenderTexture.GetTemporary(texture.width, texture.height, 0, RenderTextureFormat.ARGB32);
+            var previous = RenderTexture.active;
+            Graphics.Blit(texture, rt);
+            RenderTexture.active = rt;
+            var copy = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false)
+            {
+                filterMode = texture.filterMode,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+            copy.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
+            copy.Apply(false, false);
+            RenderTexture.active = previous;
+            RenderTexture.ReleaseTemporary(rt);
+            return copy;
+        }
+    }
+
     static Texture2D CopyPixels(Sprite sprite)
     {
         var texture = sprite.texture;

@@ -58,8 +58,8 @@ public class BattleHud : MonoBehaviour
     readonly Queue<BattleLog> _pendingHits = new Queue<BattleLog>();
     bool _animating;
     ulong _aoeLungeActor;
-    bool _grandUndertakingHold;
-    bool _grandUndertakingBurstPlayed;
+    bool _magicBulletViiHold;
+    bool _magicBulletViiBurstPlayed;
 
     const float EndScreenDelaySeconds = 0.85f;
     BattlePhase _endScreenPhase;
@@ -481,7 +481,7 @@ public class BattleHud : MonoBehaviour
 
     bool AnimationsPending()
     {
-        if (_animating || _pendingHits.Count > 0 || _grandUndertakingHold)
+        if (_animating || _pendingHits.Count > 0 || _magicBulletViiHold)
         {
             return true;
         }
@@ -691,13 +691,10 @@ public class BattleHud : MonoBehaviour
             return;
         }
 
-        if (
-            ClassSpriteArt.IsGrandUndertakingErupt(row.Message)
-            || ClassSpriteArt.IsGrandUndertakingHit(row.Message)
-        )
+        if (IsMagicBulletViiLog(row))
         {
             SetAllBarsFrozen(true);
-            _grandUndertakingHold = true;
+            _magicBulletViiHold = true;
             _pendingHits.Enqueue(row);
             return;
         }
@@ -752,12 +749,9 @@ public class BattleHud : MonoBehaviour
             yield break;
         }
 
-        if (
-            ClassSpriteArt.IsGrandUndertakingErupt(row.Message)
-            || ClassSpriteArt.IsGrandUndertakingHit(row.Message)
-        )
+        if (IsMagicBulletViiLog(row))
         {
-            yield return PlayGrandUndertaking(row);
+            yield return PlayMagicBulletVii(row);
             yield break;
         }
 
@@ -808,6 +802,7 @@ public class BattleHud : MonoBehaviour
         var className = actorEntity != null ? actorEntity.ClassName : null;
         var targetEntity = GameManager.FindEntity(row.TargetEntityId);
         var magicBulletStage = actorEntity != null ? actorEntity.MagicBulletStage : 0;
+        var casterAlive = actorEntity == null || actorEntity.Alive;
 
         void Impact()
         {
@@ -822,7 +817,8 @@ public class BattleHud : MonoBehaviour
                             className,
                             actionName,
                             out var effect,
-                            magicBulletStage
+                            magicBulletStage,
+                            casterAlive
                         )
                     )
                     {
@@ -858,12 +854,13 @@ public class BattleHud : MonoBehaviour
             yield return actor.PlayStrike(
                 targetHome,
                 Impact,
-                ClassSpriteArt.AttackClipFor(className, actionName, magicBulletStage),
+                ClassSpriteArt.AttackClipFor(className, actionName, magicBulletStage, casterAlive),
                 ClassSpriteArt.AttackFpsFor(className),
                 actionName,
                 returnHome: !SameVolleyContinues(row, actionName),
                 target?.ShapeRect,
-                magicBulletStage
+                magicBulletStage,
+                casterAlive
             );
         }
         else
@@ -888,20 +885,22 @@ public class BattleHud : MonoBehaviour
         if (_pendingHits.Count == 0)
         {
             _aoeLungeActor = 0;
-            _grandUndertakingBurstPlayed = false;
+            _magicBulletViiBurstPlayed = false;
             Refresh();
         }
     }
 
-    IEnumerator PlayGrandUndertaking(BattleLog row)
+    IEnumerator PlayMagicBulletVii(BattleLog row)
     {
-        if (!_grandUndertakingBurstPlayed)
+        SetAllBarsFrozen(true);
+        _magicBulletViiHold = true;
+        if (!_magicBulletViiBurstPlayed)
         {
-            _grandUndertakingBurstPlayed = true;
+            _magicBulletViiBurstPlayed = true;
             _views.TryGetValue(row.ActorEntityId, out var mage);
             if (mage != null && mage.UsesClassSprites)
             {
-                yield return mage.PlayCastHold(1f);
+                yield return mage.PlayCastHold(1f, restoreIdle: false);
             }
             else
             {
@@ -909,30 +908,31 @@ public class BattleHud : MonoBehaviour
             }
 
             yield return CombatVfx.PlayFullscreen(_field, HitEffectKind.Explosion2);
-            _grandUndertakingHold = false;
+            _magicBulletViiHold = false;
             SetAllBarsFrozen(false);
             Refresh();
-        }
-
-        if (ClassSpriteArt.IsGrandUndertakingHit(row.Message))
-        {
-            _views.TryGetValue(row.TargetEntityId, out var target);
-            if (target != null)
+            var caster = GameManager.FindEntity(row.ActorEntityId);
+            if (mage != null && caster != null && !caster.Alive)
             {
-                target.PlayHit();
-                var victim = GameManager.FindEntity(row.TargetEntityId);
-                if (victim != null && !victim.Alive)
-                {
-                    target.PlayDeath();
-                }
+                mage.PlayDeath();
             }
-
-            yield return new WaitForSeconds(0.12f);
         }
+
+        _views.TryGetValue(row.TargetEntityId, out var target);
+        if (target != null)
+        {
+            target.PlayHit();
+            var victim = GameManager.FindEntity(row.TargetEntityId);
+            if (victim != null && !victim.Alive)
+            {
+                target.PlayDeath();
+            }
+        }
+
+        yield return new WaitForSeconds(0.12f);
 
         var wait = 0f;
-        _views.TryGetValue(row.TargetEntityId, out var hurt);
-        while (hurt != null && hurt.Busy && wait < 2f)
+        while (target != null && target.Busy && wait < 2f)
         {
             wait += Time.deltaTime;
             yield return null;
@@ -942,7 +942,7 @@ public class BattleHud : MonoBehaviour
         if (_pendingHits.Count == 0)
         {
             _aoeLungeActor = 0;
-            _grandUndertakingBurstPlayed = false;
+            _magicBulletViiBurstPlayed = false;
             Refresh();
         }
     }
@@ -972,6 +972,18 @@ public class BattleHud : MonoBehaviour
         }
 
         return ClassSpriteArt.ActionNameFromLog(next.Message) == actionName;
+    }
+
+    bool IsMagicBulletViiLog(BattleLog row)
+    {
+        var caster = row.ActorEntityId != 0 ? GameManager.FindEntity(row.ActorEntityId) : null;
+        return ClassSpriteArt.IsMagicBulletVii(
+            row.Message,
+            row.Damage,
+            caster != null,
+            caster == null || caster.Alive,
+            caster != null ? caster.MagicBulletStage : 0
+        );
     }
 
     bool TryLastHome(ulong entityId, out Vector2 home)

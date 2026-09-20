@@ -42,6 +42,7 @@ public class GameManager : MonoBehaviour
     public string DatabaseName => databaseName;
 
     SpacetimeDBNetworkManager _networkManager;
+    bool _stateDirty;
 
     public void Configure(string url, string database)
     {
@@ -87,6 +88,19 @@ public class GameManager : MonoBehaviour
         {
             Conn.FrameTick();
         }
+    }
+
+    void LateUpdate()
+    {
+        // Flush after row callbacks in this frame so battle-log handlers can
+        // freeze HP bars before Bind redraws them (Magic Bullet VII blast).
+        if (!_stateDirty)
+        {
+            return;
+        }
+
+        _stateDirty = false;
+        StateChanged?.Invoke();
     }
 
     void OnDestroy()
@@ -228,7 +242,16 @@ public class GameManager : MonoBehaviour
         Changed();
     }
 
-    static void Changed() => StateChanged?.Invoke();
+    static void Changed()
+    {
+        if (Instance != null)
+        {
+            Instance._stateDirty = true;
+            return;
+        }
+
+        StateChanged?.Invoke();
+    }
 
     // ------------------------------------------------------------- read helpers
 
