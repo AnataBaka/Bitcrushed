@@ -1367,12 +1367,9 @@ public static partial class Module
         var players = PartyEncounterSize(ctx);
         var partyLevel = PartyCombatLevel(ctx);
         var pool = EnemyPool;
-        var count = RollEnemyPackSize(ctx, players, floor);
+        var count = RollNonBossPackSize(ctx.Rng);
         var maxHp = EnemyHpForEncounter(floor, partyLevel, players, count);
-        var atk = Math.Max(
-            1,
-            ScaleByBps(EnemyAtkForEncounter(floor, partyLevel, players), PackPowerBps(count))
-        );
+        var atk = Math.Max(1, EnemyAtkForEncounter(floor, partyLevel, players));
         var defense = EnemyDefenseBaseline(EncounterScaleLevel(floor, partyLevel));
 
         var picks = new List<EnemyArchetype>(count);
@@ -1460,7 +1457,7 @@ public static partial class Module
         var players = PartyEncounterSize(ctx);
         var playerLevel = PartyCombatLevel(ctx);
         var maxHp = ClampStat(
-            (double)EnemyHpForEncounter(floor, playerLevel, players, (int)MaxEnemySlots)
+            (double)EnemyHpForEncounter(floor, playerLevel, players, ReferencePackSize)
                 * BossHpMultiplier,
             1
         );
@@ -1570,35 +1567,18 @@ public static partial class Module
         return Math.Max(1, LivingMembers(ctx, Team.Players).Count);
     }
 
-    /// Full party (MaxPartySize = 3) can face 1-4 enemies. Smaller parties cap
-    /// the pack at party size so a duo never walks into a four-pack. Later floors
-    /// raise the minimum pack size.
-    static int RollEnemyPackSize(ReducerContext ctx, int playerCount, uint floor)
+    static int CurrentEnemyPackSize(ReducerContext ctx)
     {
-        var maxPack =
-            playerCount >= (int)MaxPartySize
-                ? (int)MaxEnemySlots
-                : Math.Clamp(playerCount, 1, (int)MaxEnemySlots);
-        var minPack = 1;
-        if (floor >= 30 && playerCount >= 2)
+        var count = 0;
+        foreach (var entity in ctx.Db.Entity.Iter())
         {
-            minPack = Math.Min(maxPack, Math.Max(2, playerCount));
-        }
-        else if (floor >= 20 && playerCount >= 2)
-        {
-            minPack = 2;
-        }
-        else if (floor >= 15 && playerCount >= 3)
-        {
-            minPack = 2;
+            if (entity.Faction == Team.Enemies)
+            {
+                count++;
+            }
         }
 
-        if (minPack >= maxPack)
-        {
-            return maxPack;
-        }
-
-        return ctx.Rng.Next(minPack, maxPack + 1);
+        return Math.Max(1, count);
     }
 
     /// Fastest combatant first. Rush / Grand Undertaking jump the queue for one round.
@@ -2310,6 +2290,11 @@ public static partial class Module
         if (bossKill)
         {
             xp = SaturatingMul(xp, BossExpMultiplier);
+        }
+        else
+        {
+            var pack = CurrentEnemyPackSize(ctx);
+            xp = (uint)Math.Max(1L, ((long)xp * ReferencePackSize) / pack);
         }
         foreach (var player in ctx.Db.Player.Iter().ToList())
         {

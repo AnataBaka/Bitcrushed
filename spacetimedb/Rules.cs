@@ -8,6 +8,10 @@ public static partial class Module
     public const uint SessionId = 1;
     public const uint MaxPartySize = 3;
     public const uint MaxEnemySlots = 4;
+    /// Old default pack; HP and EXP are scaled so a stage's totals stay near this size.
+    public const int ReferencePackSize = 3;
+    /// Weights for pack sizes 1, 2, 3, 4. Uniform 25% each.
+    public static readonly int[] PackSizeWeights = { 1, 1, 1, 1 };
     public const uint RestStopEvery = 3;
     public const uint BiomeLength = 10;
     public const uint BossInterval = 10;
@@ -700,7 +704,7 @@ public static partial class Module
         return Math.Max(0, (n - 10) / 5);
     }
 
-    /// EnemyHP = baseline(L) * (P / 3) * packVitality.
+    /// EnemyHP = baseline(L) * (P / 3) * (ReferencePackSize / packSize).
     public static int EnemyHpForEncounter(
         uint floor,
         uint partyLevel,
@@ -711,8 +715,8 @@ public static partial class Module
         var baseline = EnemyHpBaseline(EncounterScaleLevel(floor, partyLevel));
         var p = Math.Max(1, playerCount);
         var fromParty = baseline * (p / 3.0);
-        var vitalityBps = PackVitalityBps(Math.Max(1, enemyCount));
-        return ClampStat(fromParty * vitalityBps / 10000.0, 1);
+        var pack = Math.Clamp(enemyCount, 1, (int)MaxEnemySlots);
+        return ClampStat(fromParty * ReferencePackSize / (double)pack, 1);
     }
 
     /// EnemyATK = baseline(L) * (P / 3).
@@ -780,24 +784,33 @@ public static partial class Module
         return scaled < 1 ? 1 : (int)scaled;
     }
 
-    /// 4-pack member is 1.0x. A solo spawn is beefier, not a raid boss.
-    public static int PackVitalityBps(int count) =>
-        count switch
+    /// Weighted 1-4. Weights are relative; zeros are skipped.
+    public static int RollNonBossPackSize(Random rng)
+    {
+        var total = 0;
+        for (var i = 0; i < PackSizeWeights.Length; i++)
         {
-            1 => 18500,
-            2 => 13000,
-            3 => 11000,
-            _ => 10000,
-        };
+            total += Math.Max(0, PackSizeWeights[i]);
+        }
 
-    public static int PackPowerBps(int count) =>
-        count switch
+        if (total <= 0 || rng == null)
         {
-            1 => 14500,
-            2 => 12000,
-            3 => 10800,
-            _ => 10000,
-        };
+            return Math.Clamp(ReferencePackSize, 1, (int)MaxEnemySlots);
+        }
+
+        var pick = rng.Next(0, total);
+        var acc = 0;
+        for (var size = 1; size <= PackSizeWeights.Length; size++)
+        {
+            acc += Math.Max(0, PackSizeWeights[size - 1]);
+            if (pick < acc)
+            {
+                return size;
+            }
+        }
+
+        return PackSizeWeights.Length;
+    }
 
     public readonly struct EnemyArchetype
     {
