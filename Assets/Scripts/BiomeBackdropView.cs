@@ -25,6 +25,7 @@ public class BiomeBackdropView : MonoBehaviour
     public int FitVersion => _fitVersion;
     public bool HasPhoto => _usingPhoto && _photo != null && _photo.sprite != null;
     public RectTransform PhotoRect => _photo != null ? _photo.rectTransform : null;
+    public WorldBiome Biome => _applied;
 
     public static BiomeBackdropView Create(Transform canvas)
     {
