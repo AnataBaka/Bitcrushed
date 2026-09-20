@@ -15,7 +15,7 @@ public static partial class Module
     public const uint RestStopEvery = 3;
     public const uint BiomeLength = 10;
     public const uint BossInterval = 10;
-    public const uint BiomeCount = 5;
+    public const uint BiomeCount = 4;
     /// New runs start here. Keep at 1 in committed code.
     public const uint DebugStartStage = 1;
     public const int StageScalePercent = 8;

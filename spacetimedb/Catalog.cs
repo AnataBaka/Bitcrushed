@@ -56,11 +56,6 @@ public static partial class Module
 
     public static void EnsureBiomeDefs(ReducerContext ctx)
     {
-        if (ctx.Db.BiomeDef.Count > 0)
-        {
-            return;
-        }
-
         SeedBiomeDefs(ctx);
     }
 
@@ -80,16 +75,6 @@ public static partial class Module
             42, 68, 32,
             "",
             255, 255, 255
-        );
-        AddBiomeDef(
-            ctx,
-            WorldBiome.Caves,
-            "Caves",
-            "the Caves",
-            48, 42, 62,
-            14, 12, 20,
-            "Shadow",
-            88, 70, 140
         );
         AddBiomeDef(
             ctx,

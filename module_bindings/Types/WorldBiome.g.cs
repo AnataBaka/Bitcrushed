@@ -11,7 +11,6 @@ namespace SpacetimeDB.Types
     public enum WorldBiome
     {
         Plains,
-        Caves,
         Volcano,
         Swamp,
         SnowyTundra,

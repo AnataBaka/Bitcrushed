@@ -80,7 +80,6 @@ public static partial class Module
     public enum WorldBiome
     {
         Plains,
-        Caves,
         Volcano,
         Swamp,
         SnowyTundra,
@@ -146,7 +145,7 @@ public static partial class Module
         public uint Id;
         public WorldBiome Kind;
         public string Name;
-        /// Used in "Entering the Caves" / "Next: the Caves".
+        /// Used in "Entering the Plains" / "Next: the Volcano".
         public string TheName;
         public int BackTopR;
         public int BackTopG;

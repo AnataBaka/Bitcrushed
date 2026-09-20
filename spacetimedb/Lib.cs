@@ -44,6 +44,7 @@ public static partial class Module
     {
         EnsureSkillCatalog(ctx);
         EnsureItemCatalog(ctx);
+        EnsureBiomeDefs(ctx);
         if (ctx.Db.Player.Identity.Find(ctx.Sender) is Player player)
         {
             ctx.Db.Player.Identity.Update(player with { Online = true });
@@ -1127,7 +1128,6 @@ public static partial class Module
 
         return biome switch
         {
-            WorldBiome.Caves => "the Caves",
             WorldBiome.Volcano => "the Volcano",
             WorldBiome.Swamp => "the Swamp",
             WorldBiome.SnowyTundra => "the Snowy Tundra",

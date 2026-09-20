@@ -302,7 +302,6 @@ public class GameManager : MonoBehaviour
 
         return biome switch
         {
-            WorldBiome.Caves => "the Caves",
             WorldBiome.Volcano => "the Volcano",
             WorldBiome.Swamp => "the Swamp",
             WorldBiome.SnowyTundra => "the Snowy Tundra",
