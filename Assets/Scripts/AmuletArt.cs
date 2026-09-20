@@ -8,7 +8,8 @@ using UnityEngine;
 /// project does not depend on Unity sprite import settings.
 public static class AmuletArt
 {
-    /// Final item name -> StreamingAssets relative path. One file per item.
+    /// Display name -> StreamingAssets relative path. Starter and unique rows
+    /// may share a name and therefore the same file.
     static readonly Dictionary<string, string> FileByName = new Dictionary<string, string>
     {
         { "Amethyst Sash", "Amulets/amethyst_sash.png" },
@@ -114,7 +115,7 @@ public static class AmuletArt
             && FileByShortName.TryGetValue(def.ShortName, out fileName);
     }
 
-    /// Shared loader keyed by item definition id. Duplicate files stay placeholders.
+    /// Shared loader keyed by item definition id. Same-named catalog rows reuse one PNG.
     public static Sprite ForDef(ItemDef def)
     {
         if (def == null)
