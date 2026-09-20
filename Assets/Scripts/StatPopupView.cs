@@ -91,6 +91,7 @@ public class StatPopupView : MonoBehaviour
             TextAnchor.MiddleLeft,
             UiFactory.TextColor
         );
+        view._title.supportRichText = false;
         view._title.resizeTextForBestFit = true;
         view._title.resizeTextMinSize = GameFont.Resolve(16);
         view._title.resizeTextMaxSize = GameFont.Resolve(24);

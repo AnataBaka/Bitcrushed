@@ -104,7 +104,7 @@ public class BattleHud : MonoBehaviour
         _equipment?.BindTooltip(_itemTooltip, TooltipBlocked);
         _inventory?.BindTooltip(_itemTooltip, TooltipBlocked);
 
-        _menu.OnJoin = GameManager.JoinGame;
+        _menu.OnJoin = () => GameManager.JoinGame(_menu.NameText);
         _menu.OnReady = HandleReadyClicked;
         _menu.OnFocus = () =>
         {
@@ -215,6 +215,11 @@ public class BattleHud : MonoBehaviour
 
     void HandleTargetingCancel()
     {
+        if (PixelNameField.IsEditing)
+        {
+            return;
+        }
+
         if (!_targeting || (_escape != null && _escape.IsOpen))
         {
             return;
@@ -661,6 +666,11 @@ public class BattleHud : MonoBehaviour
 
     void HandleInspectDismiss()
     {
+        if (PixelNameField.IsEditing)
+        {
+            return;
+        }
+
         if (_escape != null && _escape.IsOpen)
         {
             return;

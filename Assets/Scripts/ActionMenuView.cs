@@ -42,6 +42,8 @@ public class ActionMenuView : MonoBehaviour
 
     Button _joinButton;
     Button _readyButton;
+    PixelNameField _nameField;
+    Text _joinError;
 
     Page _page = Page.Root;
     ulong _pageOwner;
@@ -81,6 +83,21 @@ public class ActionMenuView : MonoBehaviour
         var canvas = panel.GetComponentInParent<Canvas>();
         view._skillTooltip = SkillTooltipView.Create(canvas != null ? canvas.transform : parent);
 
+        view._nameField = PixelNameField.Create(view._lobby);
+        view._joinError = UiFactory.Label(
+            view._lobby,
+            "JoinError",
+            "",
+            16,
+            TextAnchor.MiddleCenter,
+            UiFactory.HpColor
+        );
+        view._joinError.rectTransform.sizeDelta = new Vector2(0f, 0f);
+        var errorLayout = view._joinError.gameObject.AddComponent<LayoutElement>();
+        errorLayout.minHeight = 0f;
+        errorLayout.preferredHeight = 0f;
+        errorLayout.flexibleHeight = 0f;
+
         view._joinButton = UiFactory.TextButton(view._lobby, "Join", "Join Party");
         view._readyButton = UiFactory.TextButton(view._lobby, "Ready", "Ready Up");
 
@@ -90,6 +107,7 @@ public class ActionMenuView : MonoBehaviour
 
         view._joinButton.onClick.AddListener(() => view.OnJoin?.Invoke());
         view._readyButton.onClick.AddListener(() => view.OnReady?.Invoke());
+        view._nameField.OnSubmit = () => view.OnJoin?.Invoke();
 
         attack.onClick.AddListener(() => view.Go(Page.Skills));
         items.onClick.AddListener(() => view.Go(Page.Items));
@@ -220,6 +238,8 @@ public class ActionMenuView : MonoBehaviour
             _joinButton.interactable = false;
             _readyButton.interactable = false;
             SetReadyCaption(false);
+            ShowNameField(false);
+            SetJoinError("");
             return;
         }
 
@@ -246,6 +266,8 @@ public class ActionMenuView : MonoBehaviour
                 session.Phase == BattlePhase.Waiting
                 && me == null
                 && session.PlayerCount < session.MaxPlayers;
+            ShowNameField(session.Phase == BattlePhase.Waiting && me == null);
+            SetJoinError(me == null ? GameManager.JoinError : "");
             var localPlayer = GameManager.LocalPlayer();
             var canReady =
                 localPlayer != null
@@ -321,6 +343,34 @@ public class ActionMenuView : MonoBehaviour
         if (label != null)
         {
             label.text = ready ? "Cancel Ready" : "Ready Up";
+        }
+    }
+
+    public string NameText => _nameField != null ? _nameField.Value : "";
+
+    void ShowNameField(bool visible)
+    {
+        if (_nameField != null)
+        {
+            _nameField.gameObject.SetActive(visible);
+        }
+    }
+
+    void SetJoinError(string message)
+    {
+        if (_joinError == null)
+        {
+            return;
+        }
+
+        _joinError.text = message ?? "";
+        var show = !string.IsNullOrEmpty(message);
+        _joinError.gameObject.SetActive(show);
+        var layout = _joinError.GetComponent<LayoutElement>();
+        if (layout != null)
+        {
+            layout.minHeight = show ? 22f : 0f;
+            layout.preferredHeight = show ? 22f : 0f;
         }
     }
 

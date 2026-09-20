@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Text;
 using SpacetimeDB;
 
 /// Pure combat math and character templates. Nothing here touches the database,
@@ -159,6 +161,14 @@ public static partial class Module
 
     static readonly string[] PartyNames = { "Aria", "Bran", "Cael" };
 
+    /// Fits the name plate, turn sidebar, and stat popup at EntityScale 1.25.
+    public const int PlayerNameMaxLength = 12;
+
+    /// Letters, digits, space, apostrophe, hyphen. Subset of boldpixels glyphs.
+    /// No &lt; &gt; or other markup.
+    public const string PlayerNameAllowedChars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 '-";
+
     // ------------------------------------------------------------- characters
 
     public static string ClassName(PlayerClass playerClass) =>
@@ -260,6 +270,139 @@ public static partial class Module
         playerClass == PlayerClass.Knight ? 0 : 1;
 
     public static string PartyName(uint slot) => PartyNames[slot % (uint)PartyNames.Length];
+
+    public static string ResolveJoinName(ReducerContext ctx, string requested)
+    {
+        var raw = requested ?? "";
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return AssignRandomPartyName(ctx);
+        }
+
+        var name = NormalizePlayerName(raw);
+        if (name == null)
+        {
+            throw new Exception("That name is not allowed.");
+        }
+
+        if (name.Length < 1 || name.Length > PlayerNameMaxLength)
+        {
+            throw new Exception($"Name must be 1 to {PlayerNameMaxLength} characters.");
+        }
+
+        if (PlayerNameTaken(ctx, name, 0))
+        {
+            throw new Exception("That name is taken.");
+        }
+
+        return name;
+    }
+
+    /// Returns null when the trimmed name contains disallowed characters.
+    public static string? NormalizePlayerName(string requested)
+    {
+        if (requested == null)
+        {
+            return "";
+        }
+
+        var collapsed = new StringBuilder(requested.Length);
+        var pendingSpace = false;
+        foreach (var c in requested)
+        {
+            if (c == '<' || c == '>' || char.IsControl(c))
+            {
+                return null;
+            }
+
+            if (c == ' ')
+            {
+                pendingSpace = collapsed.Length > 0;
+                continue;
+            }
+
+            if (PlayerNameAllowedChars.IndexOf(c) < 0)
+            {
+                return null;
+            }
+
+            if (pendingSpace)
+            {
+                collapsed.Append(' ');
+                pendingSpace = false;
+            }
+
+            collapsed.Append(c);
+        }
+
+        return collapsed.ToString();
+    }
+
+    public static bool PlayerNameTaken(ReducerContext ctx, string name, ulong exceptEntityId)
+    {
+        var needle = name.ToLowerInvariant();
+        foreach (var player in ctx.Db.Player.Iter())
+        {
+            if (player.EntityId == exceptEntityId)
+            {
+                continue;
+            }
+
+            if (ctx.Db.Entity.EntityId.Find(player.EntityId) is not Entity entity)
+            {
+                continue;
+            }
+
+            if (entity.Name.ToLowerInvariant() == needle)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static string AssignRandomPartyName(ReducerContext ctx)
+    {
+        var used = new HashSet<string>();
+        foreach (var player in ctx.Db.Player.Iter())
+        {
+            if (ctx.Db.Entity.EntityId.Find(player.EntityId) is Entity entity
+                && !string.IsNullOrEmpty(entity.Name))
+            {
+                used.Add(entity.Name.ToLowerInvariant());
+            }
+        }
+
+        var free = new List<string>();
+        foreach (var n in PartyNames)
+        {
+            if (!used.Contains(n.ToLowerInvariant()))
+            {
+                free.Add(n);
+            }
+        }
+
+        if (free.Count > 0)
+        {
+            return free[ctx.Rng.Next(free.Count)];
+        }
+
+        for (var suffix = 2; suffix < 1000; suffix++)
+        {
+            foreach (var n in PartyNames)
+            {
+                var candidate = n + suffix;
+                if (candidate.Length <= PlayerNameMaxLength
+                    && !used.Contains(candidate.ToLowerInvariant()))
+                {
+                    return candidate;
+                }
+            }
+        }
+
+        return PartyNames[0] + ctx.Rng.Next(10, 100);
+    }
 
     public static class AmuletNames
     {

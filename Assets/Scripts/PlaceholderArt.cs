@@ -132,6 +132,44 @@ public static class PlaceholderArt
         return Mathf.Sqrt((dx * dx) + (dy * dy)) - radius;
     }
 
+    /// 1-logical-pixel outlined panel, Point-filtered 9-slice.
+    public static Sprite PixelSlice(Color fill, Color border, int size = 12)
+    {
+        size = Mathf.Max(4, size);
+        var key = $"pxslice:{ColorUtility.ToHtmlStringRGBA(fill)}:{ColorUtility.ToHtmlStringRGBA(border)}:{size}";
+        if (Cache.TryGetValue(key, out var cached))
+        {
+            return cached;
+        }
+
+        var texture = PixelTexture(size, size);
+        var pixels = new Color32[size * size];
+        var fill32 = (Color32)fill;
+        var border32 = (Color32)border;
+        for (var y = 0; y < size; y++)
+        {
+            for (var x = 0; x < size; x++)
+            {
+                var edge = x == 0 || y == 0 || x == size - 1 || y == size - 1;
+                pixels[y * size + x] = edge ? border32 : fill32;
+            }
+        }
+
+        texture.SetPixels32(pixels);
+        texture.Apply(false, false);
+        var sprite = Sprite.Create(
+            texture,
+            new Rect(0, 0, size, size),
+            new Vector2(0.5f, 0.5f),
+            100f,
+            0,
+            SpriteMeshType.FullRect,
+            new Vector4(1f, 1f, 1f, 1f)
+        );
+        Cache[key] = sprite;
+        return sprite;
+    }
+
     /// Full-screen backdrop tint. Generated so the project still needs no art files.
     public static Sprite VerticalGradient(Color top, Color bottom, int height = 256)
     {

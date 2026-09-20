@@ -37,6 +37,7 @@ public class GameManager : MonoBehaviour
     public static event Action<BattleLog> LogAppended;
 
     public string Status { get; private set; } = "Connecting to SpacetimeDB...";
+    public static string JoinError { get; private set; } = "";
     public bool SubscriptionReady { get; private set; }
     public string ServerUrl => serverUrl;
     public string DatabaseName => databaseName;
@@ -224,7 +225,7 @@ public class GameManager : MonoBehaviour
     }
 
     /// Server-rejected actions surface here ("It is not your turn." etc).
-    void HandleReducerError(ReducerEventContext _, Exception ex)
+    void HandleReducerError(ReducerEventContext ctx, Exception ex)
     {
         if (IsQuietSpendRejection(ex.Message))
         {
@@ -232,6 +233,11 @@ public class GameManager : MonoBehaviour
         }
 
         Status = ex.Message;
+        if (ctx.Event.Reducer is Reducer.JoinGame)
+        {
+            JoinError = ex.Message;
+        }
+
         Debug.LogWarning($"Reducer rejected: {ex.Message}");
         Changed();
     }
@@ -656,7 +662,7 @@ public class GameManager : MonoBehaviour
 
     // ---------------------------------------------------------- reducer calls
 
-    public static void JoinGame()
+    public static void JoinGame(string requestedName)
     {
         if (!IsConnected())
         {
@@ -664,7 +670,8 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        Conn.Reducers.JoinGame();
+        JoinError = "";
+        Conn.Reducers.JoinGame(requestedName ?? "");
     }
 
     public static void SetReady(bool ready)

@@ -80,7 +80,7 @@ public static partial class Module
     // ------------------------------------------------------------------ lobby
 
     [SpacetimeDB.Reducer]
-    public static void JoinGame(ReducerContext ctx)
+    public static void JoinGame(ReducerContext ctx, string requestedName)
     {
         var session = RequireSession(ctx);
 
@@ -100,12 +100,12 @@ public static partial class Module
             throw new Exception("The battle has already started.");
         }
 
+        var name = ResolveJoinName(ctx, requestedName);
         var slot = FindFreeSlot(ctx);
         var rng = PerSenderRng(ctx);
         var playerClass = (PlayerClass)rng.Next(0, 4);
         var stats = RollStats(rng, playerClass);
         var className = ClassName(playerClass);
-        var name = PartyName(slot);
         var maxHp = ClassMaxHp(playerClass, 1);
         var maxMana = ClassMaxMana(playerClass);
 

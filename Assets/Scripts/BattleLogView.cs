@@ -51,6 +51,7 @@ public class BattleLogView : MonoBehaviour
             UiFactory.TextColor
         );
         text.fontSize = GameFont.LogSize;
+        text.supportRichText = false;
         text.horizontalOverflow = HorizontalWrapMode.Wrap;
         text.verticalOverflow = VerticalWrapMode.Overflow;
         text.lineSpacing = 1.125f;

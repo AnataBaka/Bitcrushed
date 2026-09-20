@@ -170,6 +170,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             TextAnchor.MiddleCenter,
             UiFactory.TextColor
         );
+        view._nameText.supportRichText = false;
         view._nameText.resizeTextForBestFit = true;
         view._nameText.resizeTextMinSize = StageLayout.ScaledFont(16);
         view._nameText.resizeTextMaxSize = StageLayout.ScaledFont(16);

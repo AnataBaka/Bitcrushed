@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void JoinGameHandler(ReducerEventContext ctx);
+        public delegate void JoinGameHandler(ReducerEventContext ctx, string requestedName);
         public event JoinGameHandler? OnJoinGame;
 
-        public void JoinGame()
+        public void JoinGame(string requestedName)
         {
-            conn.InternalCallReducer(new Reducer.JoinGame());
+            conn.InternalCallReducer(new Reducer.JoinGame(requestedName));
         }
 
         public bool InvokeJoinGame(ReducerEventContext ctx, Reducer.JoinGame args)
@@ -35,7 +35,8 @@ namespace SpacetimeDB.Types
                 return false;
             }
             OnJoinGame(
-                ctx
+                ctx,
+                args.RequestedName
             );
             return true;
         }
@@ -47,6 +48,19 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class JoinGame : Reducer, IReducerArgs
         {
+            [DataMember(Name = "requested_name")]
+            public string RequestedName;
+
+            public JoinGame(string RequestedName)
+            {
+                this.RequestedName = RequestedName;
+            }
+
+            public JoinGame()
+            {
+                this.RequestedName = "";
+            }
+
             string IReducerArgs.ReducerName => "join_game";
         }
     }

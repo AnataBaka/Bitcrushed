@@ -371,6 +371,7 @@ public class TurnOrderListView : MonoBehaviour
         label.horizontalOverflow = HorizontalWrapMode.Overflow;
         label.verticalOverflow = VerticalWrapMode.Overflow;
         label.resizeTextForBestFit = false;
+        label.supportRichText = false;
         UiFactory.Anchor(label.rectTransform, Vector2.zero, Vector2.one);
         label.rectTransform.offsetMin = new Vector2(6f, 0f);
         label.rectTransform.offsetMax = new Vector2(-4f, 0f);
