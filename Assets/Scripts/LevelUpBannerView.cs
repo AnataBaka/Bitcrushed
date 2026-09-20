@@ -62,7 +62,6 @@ public class LevelUpBannerView : MonoBehaviour
             TextAnchor.LowerCenter,
             TitleColor
         );
-        title.fontStyle = FontStyle.Bold;
         title.horizontalOverflow = HorizontalWrapMode.Overflow;
         UiFactory.Anchor(title.rectTransform, new Vector2(0f, 0.42f), Vector2.one);
         var outline = title.gameObject.AddComponent<Outline>();
@@ -70,7 +69,7 @@ public class LevelUpBannerView : MonoBehaviour
         outline.effectDistance = new Vector2(2.5f, -2.5f);
         outline.useGraphicAlpha = true;
 
-        var sub = UiFactory.Label(root, "Sub", "", 22, TextAnchor.UpperCenter, SubColor);
+        var sub = UiFactory.Label(root, "Sub", "", 24, TextAnchor.UpperCenter, SubColor);
         sub.horizontalOverflow = HorizontalWrapMode.Overflow;
         sub.verticalOverflow = VerticalWrapMode.Overflow;
         UiFactory.Anchor(sub.rectTransform, Vector2.zero, new Vector2(1f, 0.48f));

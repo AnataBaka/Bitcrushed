@@ -74,7 +74,7 @@ public class DamagePopupView : MonoBehaviour
             TextAnchor.MiddleCenter,
             new Color(0.92f, 0.18f, 0.16f, 1f)
         );
-        label.fontStyle = FontStyle.Bold;
+        label.fontStyle = FontStyle.Normal;
         label.horizontalOverflow = HorizontalWrapMode.Overflow;
         label.verticalOverflow = VerticalWrapMode.Overflow;
         label.raycastTarget = false;
@@ -128,7 +128,7 @@ public class DamagePopupView : MonoBehaviour
             height = 1080f;
         }
 
-        return Mathf.Clamp(Mathf.RoundToInt(height * FontSizeScreenHeight), 18, 42);
+        return Mathf.Clamp(Mathf.RoundToInt(height * FontSizeScreenHeight / 8f) * 8, 16, 40);
     }
 
     Vector2 WorldToLocal(Vector3 worldPoint)

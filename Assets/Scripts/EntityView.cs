@@ -112,7 +112,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             labelStack,
             "BurnTag",
             "BURN",
-            14,
+            16,
             18f,
             new Color(1f, 0.42f, 0.12f, 1f),
             true
@@ -145,7 +145,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             labelStack,
             "ReadyBanner",
             "",
-            18,
+            16,
             24f,
             new Color(0.35f, 0.88f, 0.42f, 1f),
             true
@@ -164,13 +164,13 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             footer,
             "Name",
             name,
-            20,
+            16,
             TextAnchor.MiddleCenter,
             UiFactory.TextColor
         );
         view._nameText.resizeTextForBestFit = true;
-        view._nameText.resizeTextMinSize = 10;
-        view._nameText.resizeTextMaxSize = 20;
+        view._nameText.resizeTextMinSize = 8;
+        view._nameText.resizeTextMaxSize = 16;
         view._nameText.horizontalOverflow = HorizontalWrapMode.Overflow;
         view._nameText.rectTransform.anchorMin = new Vector2(0f, 1f);
         view._nameText.rectTransform.anchorMax = new Vector2(1f, 1f);
@@ -206,7 +206,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             footer,
             "Status",
             "",
-            12,
+            8,
             TextAnchor.MiddleCenter,
             UiFactory.MutedColor
         );
@@ -230,7 +230,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     )
     {
         var label = UiFactory.Label(parent, name, text, fontSize, TextAnchor.MiddleCenter, color);
-        label.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
+        label.fontStyle = FontStyle.Normal;
         label.raycastTarget = false;
         var element = label.gameObject.AddComponent<LayoutElement>();
         element.minHeight = height;

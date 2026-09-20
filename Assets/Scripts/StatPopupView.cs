@@ -87,14 +87,13 @@ public class StatPopupView : MonoBehaviour
             header.transform,
             "Title",
             "",
-            20,
+            16,
             TextAnchor.MiddleLeft,
             UiFactory.TextColor
         );
-        view._title.fontStyle = FontStyle.Bold;
         view._title.resizeTextForBestFit = true;
-        view._title.resizeTextMinSize = 14;
-        view._title.resizeTextMaxSize = 22;
+        view._title.resizeTextMinSize = 16;
+        view._title.resizeTextMaxSize = 24;
         view._title.horizontalOverflow = HorizontalWrapMode.Overflow;
         UiFactory.Anchor(view._title.rectTransform, new Vector2(0f, 0.42f), new Vector2(1f, 1f));
         view._title.rectTransform.offsetMin = new Vector2(12f, 0f);
@@ -104,7 +103,7 @@ public class StatPopupView : MonoBehaviour
             header.transform,
             "Subtitle",
             "",
-            14,
+            16,
             TextAnchor.UpperLeft,
             new Color(0.88f, 0.88f, 0.84f, 0.9f)
         );
@@ -178,8 +177,7 @@ public class StatPopupView : MonoBehaviour
 
     static Text MakeLabel(Transform row, string caption)
     {
-        var label = UiFactory.Label(row, "Label", caption, 15, TextAnchor.MiddleLeft, UiFactory.MutedColor);
-        label.fontStyle = FontStyle.Bold;
+        var label = UiFactory.Label(row, "Label", caption, 16, TextAnchor.MiddleLeft, UiFactory.MutedColor);
         label.horizontalOverflow = HorizontalWrapMode.Overflow;
         var element = label.gameObject.AddComponent<LayoutElement>();
         element.minWidth = LabelWidth;
@@ -190,7 +188,7 @@ public class StatPopupView : MonoBehaviour
 
     static Text MakeValue(Transform row)
     {
-        var value = UiFactory.Label(row, "Value", "", 15, TextAnchor.MiddleRight, UiFactory.TextColor);
+        var value = UiFactory.Label(row, "Value", "", 16, TextAnchor.MiddleRight, UiFactory.TextColor);
         value.horizontalOverflow = HorizontalWrapMode.Overflow;
         var element = value.gameObject.AddComponent<LayoutElement>();
         element.minWidth = ValueWidth;
@@ -219,7 +217,7 @@ public class StatPopupView : MonoBehaviour
         hostElement.preferredHeight = 14f;
         fill = UiFactory.Bar(barHost, "Bar", color, out value);
         value.alignment = TextAnchor.MiddleRight;
-        value.fontSize = 15;
+        value.fontSize = 16;
         value.horizontalOverflow = HorizontalWrapMode.Overflow;
         value.rectTransform.offsetMin = new Vector2(4f, 0f);
         value.rectTransform.offsetMax = new Vector2(-2f, 0f);

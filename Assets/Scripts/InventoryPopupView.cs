@@ -93,7 +93,7 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
             panel.transform,
             "Title",
             "INVENTORY",
-            14,
+            16,
             TextAnchor.UpperLeft,
             UiFactory.MutedColor
         );
@@ -155,7 +155,7 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
             frame.transform,
             "Name",
             "",
-            10,
+            8,
             TextAnchor.UpperCenter,
             UiFactory.TextColor
         );
@@ -192,7 +192,7 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
         outline.effectColor = new Color(0f, 0f, 0f, 0.55f);
         outline.effectDistance = new Vector2(1.5f, -1.5f);
 
-        equip = UiFactory.TextButton(panel.transform, "Equip", "Equip", 15, 30f);
+        equip = UiFactory.TextButton(panel.transform, "Equip", "Equip", 16, 30f);
         var equipRt = equip.GetComponent<RectTransform>();
         equipRt.anchorMin = new Vector2(0.5f, 1f);
         equipRt.anchorMax = new Vector2(0.5f, 1f);
@@ -202,7 +202,7 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
         equipLabel = equip.GetComponentInChildren<Text>();
         equip.onClick.AddListener(host.HandleEquipClicked);
 
-        drop = UiFactory.TextButton(panel.transform, "Drop", "Drop", 15, 30f);
+        drop = UiFactory.TextButton(panel.transform, "Drop", "Drop", 16, 30f);
         var dropRt = drop.GetComponent<RectTransform>();
         dropRt.anchorMin = new Vector2(0.5f, 0f);
         dropRt.anchorMax = new Vector2(0.5f, 0f);

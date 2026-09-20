@@ -71,20 +71,19 @@ public class ItemTooltipView : MonoBehaviour
             header.transform,
             "Title",
             "",
-            18,
+            16,
             TextAnchor.MiddleLeft,
             UiFactory.TextColor
         );
-        view._title.fontStyle = FontStyle.Bold;
         view._title.horizontalOverflow = HorizontalWrapMode.Wrap;
         view._title.raycastTarget = false;
         UiFactory.Anchor(view._title.rectTransform, Vector2.zero, Vector2.one);
         view._title.rectTransform.offsetMin = new Vector2(Pad, 0f);
         view._title.rectTransform.offsetMax = new Vector2(-Pad, 0f);
 
-        view._slot = MakeBodyLabel(panel.transform, "Slot", 14, UiFactory.MutedColor);
-        view._stats = MakeBodyLabel(panel.transform, "Stats", 15, UiFactory.TextColor);
-        view._effect = MakeBodyLabel(panel.transform, "Effect", 15, UiFactory.TextColor);
+        view._slot = MakeBodyLabel(panel.transform, "Slot", 16, UiFactory.MutedColor);
+        view._stats = MakeBodyLabel(panel.transform, "Stats", 16, UiFactory.TextColor);
+        view._effect = MakeBodyLabel(panel.transform, "Effect", 16, UiFactory.TextColor);
 
         view.gameObject.SetActive(false);
         return view;

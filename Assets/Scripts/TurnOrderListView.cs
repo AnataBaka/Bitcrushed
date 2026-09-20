@@ -69,11 +69,10 @@ public class TurnOrderListView : MonoBehaviour
             root,
             "Header",
             "TURN ORDER",
-            12,
+            16,
             TextAnchor.MiddleCenter,
             UiFactory.MutedColor
         );
-        header.fontStyle = FontStyle.Bold;
         header.raycastTarget = false;
         header.rectTransform.anchorMin = new Vector2(0f, 1f);
         header.rectTransform.anchorMax = new Vector2(1f, 1f);
@@ -365,7 +364,7 @@ public class TurnOrderListView : MonoBehaviour
             rt,
             "Name",
             "",
-            14,
+            16,
             TextAnchor.MiddleLeft,
             PlayerColor
         );
@@ -391,7 +390,7 @@ public class TurnOrderListView : MonoBehaviour
     {
         var clipped = ClipName(name);
         row.Label.text = current ? $"> {clipped}" : $"  {clipped}";
-        row.Label.fontStyle = current ? FontStyle.Bold : FontStyle.Normal;
+        row.Label.fontStyle = FontStyle.Normal;
         row.Label.color = current
             ? UiFactory.ActiveColor
             : (row.Enemy ? EnemyColor : PlayerColor);

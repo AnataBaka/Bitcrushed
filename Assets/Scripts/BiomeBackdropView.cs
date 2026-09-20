@@ -59,11 +59,10 @@ public class BiomeBackdropView : MonoBehaviour
             maskRt,
             "BiomeName",
             "",
-            18,
+            16,
             TextAnchor.UpperCenter,
             new Color(0.92f, 0.93f, 0.88f, 0.72f)
         );
-        label.fontStyle = FontStyle.Bold;
         UiFactory.Anchor(label.rectTransform, new Vector2(0.3f, 0.86f), new Vector2(0.7f, 0.94f));
 
         var view = fill.gameObject.AddComponent<BiomeBackdropView>();

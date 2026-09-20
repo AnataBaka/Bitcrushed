@@ -78,11 +78,10 @@ public class BattleBootstrap : MonoBehaviour
             canvas,
             "StageLabel",
             "",
-            22,
+            24,
             TextAnchor.UpperCenter,
             UiFactory.ActiveColor
         );
-        stageLabel.fontStyle = FontStyle.Bold;
         stageLabel.rectTransform.anchorMin = new Vector2(0f, 1f);
         stageLabel.rectTransform.anchorMax = new Vector2(1f, 1f);
         stageLabel.rectTransform.pivot = new Vector2(0.5f, 1f);
@@ -241,7 +240,7 @@ public class BattleBootstrap : MonoBehaviour
             panel.transform,
             "Next",
             "",
-            28,
+            24,
             TextAnchor.MiddleCenter,
             UiFactory.ActiveColor
         );

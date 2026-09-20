@@ -14,13 +14,13 @@ public static class ItemIconFit
     public static void LayoutEquipment(RectTransform icon, Text name)
     {
         PlaceIconBand(icon, EquipmentHeaderBand, EquipmentNameBand);
-        PlaceNameStrip(name, EquipmentNameBand, 8, 13);
+        PlaceNameStrip(name, EquipmentNameBand, 8, 16);
     }
 
     public static void LayoutInventory(RectTransform icon, Text name)
     {
         PlaceIconBand(icon, 0f, InventoryNameBand);
-        PlaceNameStrip(name, InventoryNameBand, 7, 10);
+        PlaceNameStrip(name, InventoryNameBand, 8, 8);
     }
 
     /// Backpack icon stays left. BAG is centered on the full button rectangle.
@@ -35,7 +35,6 @@ public static class ItemIconFit
         icon.sizeDelta = Vector2.zero;
 
         label.alignment = TextAnchor.MiddleCenter;
-        label.fontStyle = FontStyle.Bold;
         label.raycastTarget = false;
         label.rectTransform.anchorMin = Vector2.zero;
         label.rectTransform.anchorMax = Vector2.one;

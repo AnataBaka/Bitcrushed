@@ -46,7 +46,7 @@ public class BattleLogView : MonoBehaviour
             viewport,
             "Content",
             "",
-            20,
+            16,
             TextAnchor.UpperLeft,
             UiFactory.TextColor
         );

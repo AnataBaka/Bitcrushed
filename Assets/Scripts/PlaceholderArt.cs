@@ -464,7 +464,7 @@ public static class UiFactory
         fill.fillAmount = 1f;
         fill.raycastTarget = false;
 
-        valueText = Label(track, "Value", "", 12, TextAnchor.MiddleCenter, TextColor);
+        valueText = Label(track, "Value", "", 8, TextAnchor.MiddleCenter, TextColor);
         Anchor(valueText.rectTransform, Vector2.zero, Vector2.one);
         return fill;
     }

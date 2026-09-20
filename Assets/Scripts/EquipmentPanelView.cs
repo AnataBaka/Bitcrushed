@@ -108,7 +108,7 @@ public class EquipmentPanelView : MonoBehaviour
             cell.transform,
             "SlotTitle",
             title,
-            12,
+            8,
             TextAnchor.UpperCenter,
             UiFactory.MutedColor
         );
@@ -120,7 +120,7 @@ public class EquipmentPanelView : MonoBehaviour
         header.raycastTarget = false;
 
         icon = UiFactory.Graphic(cell.transform, "Icon", PlaceholderArt.Solid(Color.white), Color.white);
-        name = UiFactory.Label(cell.transform, "Name", EmptyCaption, 13, TextAnchor.UpperCenter, UiFactory.MutedColor);
+        name = UiFactory.Label(cell.transform, "Name", EmptyCaption, 16, TextAnchor.UpperCenter, UiFactory.MutedColor);
         ItemIconFit.LayoutEquipment(icon.rectTransform, name);
         tip = cell.gameObject.AddComponent<ItemHoverTip>();
     }

@@ -70,11 +70,10 @@ public class SkillTooltipView : MonoBehaviour
             header.transform,
             "Title",
             "",
-            18,
+            16,
             TextAnchor.MiddleLeft,
             UiFactory.TextColor
         );
-        view._title.fontStyle = FontStyle.Bold;
         view._title.horizontalOverflow = HorizontalWrapMode.Wrap;
         view._title.raycastTarget = false;
         UiFactory.Anchor(view._title.rectTransform, Vector2.zero, Vector2.one);
@@ -83,8 +82,8 @@ public class SkillTooltipView : MonoBehaviour
 
         view._mana = MakeStatLine(panel.transform, "MP cost");
         view._damage = MakeStatLine(panel.transform, "Damage");
-        view._body = MakeWrapped(panel.transform, "Body", 15, UiFactory.TextColor);
-        view._note = MakeWrapped(panel.transform, "Note", 14, UiFactory.ActiveColor);
+        view._body = MakeWrapped(panel.transform, "Body", 16, UiFactory.TextColor);
+        view._note = MakeWrapped(panel.transform, "Note", 16, UiFactory.ActiveColor);
         view._noteRow = view._note.gameObject;
 
         view.gameObject.SetActive(false);
@@ -106,15 +105,14 @@ public class SkillTooltipView : MonoBehaviour
         rowElement.preferredHeight = 20f;
         rowElement.flexibleWidth = 1f;
 
-        var caption = UiFactory.Label(row, "Label", label, 15, TextAnchor.MiddleLeft, UiFactory.MutedColor);
-        caption.fontStyle = FontStyle.Bold;
+        var caption = UiFactory.Label(row, "Label", label, 16, TextAnchor.MiddleLeft, UiFactory.MutedColor);
         caption.raycastTarget = false;
         var captionElement = caption.gameObject.AddComponent<LayoutElement>();
         captionElement.minWidth = 78f;
         captionElement.preferredWidth = 78f;
         captionElement.flexibleWidth = 0f;
 
-        var value = UiFactory.Label(row, "Value", "", 15, TextAnchor.MiddleLeft, UiFactory.TextColor);
+        var value = UiFactory.Label(row, "Value", "", 16, TextAnchor.MiddleLeft, UiFactory.TextColor);
         value.horizontalOverflow = HorizontalWrapMode.Wrap;
         value.raycastTarget = false;
         var valueElement = value.gameObject.AddComponent<LayoutElement>();

@@ -51,17 +51,16 @@ public class EscapeMenuView : MonoBehaviour, IPointerClickHandler
             panel.transform,
             "Title",
             "Menu",
-            22,
+            24,
             TextAnchor.MiddleCenter,
             UiFactory.TextColor
         );
-        title.fontStyle = FontStyle.Bold;
         title.rectTransform.anchorMin = new Vector2(0f, 0.62f);
         title.rectTransform.anchorMax = new Vector2(1f, 1f);
         title.rectTransform.offsetMin = Vector2.zero;
         title.rectTransform.offsetMax = Vector2.zero;
 
-        var leave = UiFactory.TextButton(panel.transform, "Leave", "Leave Game", 20, 48f);
+        var leave = UiFactory.TextButton(panel.transform, "Leave", "Leave Game", 24, 48f);
         var leaveRt = leave.GetComponent<RectTransform>();
         leaveRt.anchorMin = new Vector2(0.5f, 0.18f);
         leaveRt.anchorMax = new Vector2(0.5f, 0.18f);

@@ -369,7 +369,7 @@ public class ActionMenuView : MonoBehaviour
                 _skills,
                 "Basic",
                 $"{me.BasicAttackName}  (free)",
-                18,
+                16,
                 SubButtonHeight
             );
             basic.onClick.AddListener(() => Select(0u));
@@ -387,7 +387,7 @@ public class ActionMenuView : MonoBehaviour
                 _skills,
                 skill.Name,
                 caption,
-                18,
+                16,
                 SubButtonHeight
             );
             button.onClick.AddListener(() => Select(id));
@@ -399,7 +399,7 @@ public class ActionMenuView : MonoBehaviour
             _skillButtons.Add(button);
         }
 
-        var back = UiFactory.TextButton(_skills, "Back", "Back", 18, SubButtonHeight);
+        var back = UiFactory.TextButton(_skills, "Back", "Back", 16, SubButtonHeight);
         back.onClick.AddListener(() => Go(Page.Root));
 
         if (_skillsScroll != null)
@@ -440,7 +440,7 @@ public class ActionMenuView : MonoBehaviour
                 _items,
                 def.Name,
                 $"{def.Name}  x{potion.Quantity}",
-                18,
+                16,
                 SubButtonHeight
             );
             button.onClick.AddListener(
@@ -455,11 +455,11 @@ public class ActionMenuView : MonoBehaviour
 
         if (potions.Count == 0)
         {
-            var empty = UiFactory.TextButton(_items, "Empty", "No potions left", 18, SubButtonHeight);
+            var empty = UiFactory.TextButton(_items, "Empty", "No potions left", 16, SubButtonHeight);
             empty.interactable = false;
         }
 
-        var back = UiFactory.TextButton(_items, "Back", "Back", 18, SubButtonHeight);
+        var back = UiFactory.TextButton(_items, "Back", "Back", 16, SubButtonHeight);
         back.onClick.AddListener(() => Go(Page.Root));
     }
 
