@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// Lobby name box. Pixel 9-slice frame, boldpixels text, block caret.
@@ -8,8 +9,7 @@ using UnityEngine.UI;
 public class PixelNameField : MonoBehaviour,
     IPointerClickHandler,
     ISelectHandler,
-    IDeselectHandler,
-    IUpdateSelectedHandler
+    IDeselectHandler
 {
     /// Must match Module.PlayerNameMaxLength / PlayerNameAllowedChars.
     public const int MaxLength = 12;
@@ -134,11 +134,13 @@ public class PixelNameField : MonoBehaviour,
         IsEditing = true;
         _blink = 0f;
         _frame.sprite = _focusSlice;
+        Keyboard.onTextInput += OnTextInput;
         Refresh();
     }
 
     public void OnDeselect(BaseEventData eventData)
     {
+        Keyboard.onTextInput -= OnTextInput;
         _focused = false;
         IsEditing = false;
         _frame.sprite = _idleSlice;
@@ -147,39 +149,20 @@ public class PixelNameField : MonoBehaviour,
         _anchor = -1;
     }
 
-    public void OnUpdateSelected(BaseEventData eventData)
+    void OnTextInput(char c)
     {
-        if (!_focused)
+        if (!_focused || char.IsControl(c))
         {
             return;
         }
 
-        var e = new Event();
-        while (Event.PopEvent(e))
+        var kb = Keyboard.current;
+        if (kb != null && (kb.ctrlKey.isPressed || kb.leftCommandKey.isPressed || kb.rightCommandKey.isPressed))
         {
-            if (e.rawType != EventType.KeyDown)
-            {
-                continue;
-            }
-
-            if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)
-            {
-                OnSubmit?.Invoke();
-                eventData.Use();
-                return;
-            }
-
-            if (e.keyCode == KeyCode.Escape)
-            {
-                continue;
-            }
-
-            if (HandleKey(e))
-            {
-                eventData.Use();
-            }
+            return;
         }
 
+        Insert(c.ToString());
         Refresh();
     }
 
@@ -194,97 +177,113 @@ public class PixelNameField : MonoBehaviour,
         var on = (_blink % (CaretBlink * 2f)) < CaretBlink;
         _caret.gameObject.SetActive(on);
         LayoutCaret();
+        PollKeys();
     }
 
     void OnDisable()
     {
-        if (IsEditing && EventSystem.current != null
-            && EventSystem.current.currentSelectedGameObject == gameObject)
-        {
-            IsEditing = false;
-        }
-        else if (_focused)
-        {
-            IsEditing = false;
-        }
+        Keyboard.onTextInput -= OnTextInput;
+        IsEditing = false;
+        _focused = false;
     }
 
-    bool HandleKey(Event e)
+    void PollKeys()
     {
-        if (e.control || e.command)
+        var kb = Keyboard.current;
+        if (kb == null)
         {
-            if (e.keyCode == KeyCode.V)
-            {
-                Insert(GUIUtility.systemCopyBuffer ?? "");
-                return true;
-            }
-
-            if (e.keyCode == KeyCode.A)
-            {
-                _anchor = 0;
-                _caretIndex = _value.Length;
-                return true;
-            }
-
-            if (e.keyCode == KeyCode.C && HasSelection())
-            {
-                GUIUtility.systemCopyBuffer = SelectedText();
-                return true;
-            }
-
-            return false;
+            return;
         }
 
-        switch (e.keyCode)
+        if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame)
         {
-            case KeyCode.Backspace:
-                if (HasSelection())
-                {
-                    DeleteSelection();
-                }
-                else if (_caretIndex > 0)
-                {
-                    _value = _value.Remove(_caretIndex - 1, 1);
-                    _caretIndex--;
-                }
-
-                return true;
-            case KeyCode.Delete:
-                if (HasSelection())
-                {
-                    DeleteSelection();
-                }
-                else if (_caretIndex < _value.Length)
-                {
-                    _value = _value.Remove(_caretIndex, 1);
-                }
-
-                return true;
-            case KeyCode.LeftArrow:
-                _caretIndex = Mathf.Max(0, _caretIndex - 1);
-                _anchor = -1;
-                return true;
-            case KeyCode.RightArrow:
-                _caretIndex = Mathf.Min(_value.Length, _caretIndex + 1);
-                _anchor = -1;
-                return true;
-            case KeyCode.Home:
-                _caretIndex = 0;
-                _anchor = -1;
-                return true;
-            case KeyCode.End:
-                _caretIndex = _value.Length;
-                _anchor = -1;
-                return true;
+            OnSubmit?.Invoke();
+            return;
         }
 
-        if (e.character != 0)
+        var ctrl = kb.ctrlKey.isPressed || kb.leftCommandKey.isPressed || kb.rightCommandKey.isPressed;
+        if (ctrl && kb.vKey.wasPressedThisFrame)
         {
-            Insert(e.character.ToString());
-            return true;
+            Insert(GUIUtility.systemCopyBuffer ?? "");
+            Refresh();
+            return;
         }
 
-        return false;
+        if (ctrl && kb.aKey.wasPressedThisFrame)
+        {
+            _anchor = 0;
+            _caretIndex = _value.Length;
+            Refresh();
+            return;
+        }
+
+        if (ctrl && kb.cKey.wasPressedThisFrame && HasSelection())
+        {
+            GUIUtility.systemCopyBuffer = SelectedText();
+            return;
+        }
+
+        if (kb.backspaceKey.wasPressedThisFrame)
+        {
+            if (HasSelection())
+            {
+                DeleteSelection();
+            }
+            else if (_caretIndex > 0)
+            {
+                _value = _value.Remove(_caretIndex - 1, 1);
+                _caretIndex--;
+            }
+
+            Refresh();
+            return;
+        }
+
+        if (kb.deleteKey.wasPressedThisFrame)
+        {
+            if (HasSelection())
+            {
+                DeleteSelection();
+            }
+            else if (_caretIndex < _value.Length)
+            {
+                _value = _value.Remove(_caretIndex, 1);
+            }
+
+            Refresh();
+            return;
+        }
+
+        if (kb.leftArrowKey.wasPressedThisFrame)
+        {
+            _caretIndex = Mathf.Max(0, _caretIndex - 1);
+            _anchor = -1;
+            Refresh();
+            return;
+        }
+
+        if (kb.rightArrowKey.wasPressedThisFrame)
+        {
+            _caretIndex = Mathf.Min(_value.Length, _caretIndex + 1);
+            _anchor = -1;
+            Refresh();
+            return;
+        }
+
+        if (kb.homeKey.wasPressedThisFrame)
+        {
+            _caretIndex = 0;
+            _anchor = -1;
+            Refresh();
+            return;
+        }
+
+        if (kb.endKey.wasPressedThisFrame)
+        {
+            _caretIndex = _value.Length;
+            _anchor = -1;
+            Refresh();
+        }
     }
 
     void Insert(string raw)
