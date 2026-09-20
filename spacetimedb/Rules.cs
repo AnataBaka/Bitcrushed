@@ -754,6 +754,12 @@ public static partial class Module
     public static bool IsBossStageNumber(uint stage) =>
         stage > 0 && stage % BossInterval == 0;
 
+    /// Cadence rests and boss clears share this check so a stage that matches
+    /// both (for example stage 30) produces one rest stop, not two.
+    public static bool ShouldEnterRestStop(uint clearedStage) =>
+        (RestStopEvery > 0 && clearedStage % RestStopEvery == 0)
+        || IsBossStageNumber(clearedStage);
+
     /// Each kill grants `25 * stage` EXP to every living party member.
     public static uint KillXp(uint stage) =>
         SaturatingMul(KillExpPerStage, stage == 0 ? 1u : stage);

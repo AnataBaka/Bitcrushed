@@ -1086,10 +1086,6 @@ public static partial class Module
         EnterStageTransition(ctx, ShouldEnterRestStop(cleared));
     }
 
-    static bool ShouldEnterRestStop(uint clearedStage) =>
-        (RestStopEvery > 0 && clearedStage % RestStopEvery == 0)
-        || IsBossStageNumber(clearedStage);
-
     static void ApplyStageFields(ReducerContext ctx, GameSession session, uint stage)
     {
         var biome = BiomeOf(stage);
