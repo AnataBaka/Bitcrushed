@@ -1604,7 +1604,10 @@ public static partial class Module
         return Math.Max(1, count);
     }
 
-    /// Fastest combatant first. Rush / Grand Undertaking jump the queue for one round.
+    /// Alternate sides so a round cannot end on the same faction it starts with
+    /// (the old speed sort put the knight first and a slow ally last, which
+    /// made enemies act twice then players act twice across the wrap).
+    /// Rush / ninja first-action still jump the queue for one round.
     static void BuildTurnOrder(ReducerContext ctx)
     {
         foreach (var entry in ctx.Db.TurnOrder.Iter().ToList())
@@ -1620,27 +1623,29 @@ public static partial class Module
 
         RefreshRoundStatuses(ctx);
 
-        var ordered = ctx
-            .Db.Entity.Iter()
-            .Where(e => e.Alive)
-            .OrderByDescending(e => HasForcedFirstSpeed(e))
-            .ThenByDescending(e => HasKnightHighPriority(ctx, e))
-            .ThenByDescending(e => EffectiveSpeed(e))
-            .ThenBy(e => e.Faction == Team.Players ? ClassTurnPriority(ClassOf(ctx, e)) : 2)
-            .ThenBy(e => e.Faction == Team.Players ? 0 : 1)
-            .ThenBy(e => e.Slot)
-            .ToList();
+        Team? previousFaction = null;
+        var session = RequireSession(ctx);
+        if (
+            session.ActiveEntityId != 0
+            && ctx.Db.Entity.EntityId.Find(session.ActiveEntityId) is Entity previous
+        )
+        {
+            previousFaction = previous.Faction;
+        }
+
+        var ordered = OrderCombatantsForRound(ctx, previousFaction);
 
         for (var i = 0; i < ordered.Count; i++)
         {
+            var combatant = ordered[i];
             ctx.Db.TurnOrder.Insert(
                 new TurnOrder
                 {
                     Idx = (uint)i,
-                    EntityId = ordered[i].EntityId,
-                    Speed = EffectiveSpeed(ordered[i]),
+                    EntityId = combatant.EntityId,
+                    Speed = EffectiveSpeed(combatant),
                     HasActed = false,
-                    IsRush = ordered[i].GoFirstNextRound || ordered[i].NextTurnSpeedSet >= RushNextTurnSpeed,
+                    IsRush = HasForcedFirstSpeed(combatant),
                     DisplayPos = (uint)i,
                 }
             );
@@ -1648,29 +1653,203 @@ public static partial class Module
 
         foreach (var entity in ordered)
         {
+            if (ctx.Db.Entity.EntityId.Find(entity.EntityId) is not Entity fresh)
+            {
+                continue;
+            }
+
             if (
-                entity.GoFirstNextRound
-                || entity.NextTurnSpeedSet != 0
-                || entity.NextTurnSpeedDelta != 0
+                !fresh.GoFirstNextRound
+                && fresh.NextTurnSpeedSet == 0
+                && fresh.NextTurnSpeedDelta == 0
             )
             {
-                ctx.Db.Entity.EntityId.Update(
-                    entity with
-                    {
-                        GoFirstNextRound = false,
-                        NextTurnSpeedSet = 0,
-                        NextTurnSpeedDelta = 0,
-                    }
-                );
+                continue;
+            }
+
+            ctx.Db.Entity.EntityId.Update(
+                fresh with
+                {
+                    GoFirstNextRound = false,
+                    NextTurnSpeedSet = 0,
+                    NextTurnSpeedDelta = 0,
+                }
+            );
+        }
+    }
+
+    static List<Entity> OrderCombatantsForRound(ReducerContext ctx, Team? previousFaction)
+    {
+        var living = ctx.Db.Entity.Iter().Where(e => e.Alive).ToList();
+        var forced = new List<Entity>();
+        var players = new List<Entity>();
+        var enemies = new List<Entity>();
+        foreach (var entity in living)
+        {
+            if (HasForcedFirstSpeed(entity))
+            {
+                forced.Add(entity);
+            }
+            else if (entity.Faction == Team.Players)
+            {
+                players.Add(entity);
+            }
+            else
+            {
+                enemies.Add(entity);
             }
         }
+
+        forced.Sort((a, b) => CompareCombatants(ctx, a, b));
+        players.Sort((a, b) => CompareCombatants(ctx, a, b));
+        enemies.Sort((a, b) => CompareCombatants(ctx, a, b));
+
+        var ordered = new List<Entity>(living.Count);
+        ordered.AddRange(forced);
+
+        var lastFaction = ordered.Count > 0
+            ? ordered[ordered.Count - 1].Faction
+            : previousFaction;
+        var startWithPlayers = ShouldStartRoundWithPlayers(
+            players.Count,
+            enemies.Count,
+            lastFaction,
+            ctx,
+            players.Count > 0 ? players[0] : default,
+            enemies.Count > 0 ? enemies[0] : default
+        );
+
+        ordered.AddRange(WeaveFactions(players, enemies, startWithPlayers));
+        return ordered;
+    }
+
+    /// Negative means `a` acts before `b`. Knights still beat other players;
+    /// they no longer jump every enemy regardless of speed.
+    static int CompareCombatants(ReducerContext ctx, Entity a, Entity b)
+    {
+        var forced = HasForcedFirstSpeed(b).CompareTo(HasForcedFirstSpeed(a));
+        if (forced != 0)
+        {
+            return forced;
+        }
+
+        var knight = HasKnightHighPriority(ctx, b).CompareTo(HasKnightHighPriority(ctx, a));
+        if (knight != 0)
+        {
+            return knight;
+        }
+
+        var speed = EffectiveSpeed(b).CompareTo(EffectiveSpeed(a));
+        if (speed != 0)
+        {
+            return speed;
+        }
+
+        var priorityA = a.Faction == Team.Players ? ClassTurnPriority(ClassOf(ctx, a)) : 2;
+        var priorityB = b.Faction == Team.Players ? ClassTurnPriority(ClassOf(ctx, b)) : 2;
+        var priority = priorityA.CompareTo(priorityB);
+        if (priority != 0)
+        {
+            return priority;
+        }
+
+        var faction = (a.Faction == Team.Players ? 0 : 1).CompareTo(b.Faction == Team.Players ? 0 : 1);
+        if (faction != 0)
+        {
+            return faction;
+        }
+
+        return a.Slot.CompareTo(b.Slot);
+    }
+
+    static bool ShouldStartRoundWithPlayers(
+        int playerCount,
+        int enemyCount,
+        Team? lastFaction,
+        ReducerContext ctx,
+        Entity bestPlayer,
+        Entity bestEnemy
+    )
+    {
+        if (playerCount <= 0)
+        {
+            return false;
+        }
+
+        if (enemyCount <= 0)
+        {
+            return true;
+        }
+
+        if (lastFaction == Team.Players)
+        {
+            return false;
+        }
+
+        if (lastFaction == Team.Enemies)
+        {
+            return true;
+        }
+
+        if (playerCount != enemyCount)
+        {
+            return playerCount < enemyCount;
+        }
+
+        return CompareCombatants(ctx, bestPlayer, bestEnemy) <= 0;
+    }
+
+    static List<Entity> WeaveFactions(List<Entity> players, List<Entity> enemies, bool startWithPlayers)
+    {
+        var woven = new List<Entity>(players.Count + enemies.Count);
+        var playerIndex = 0;
+        var enemyIndex = 0;
+        var takePlayer = startWithPlayers;
+        while (playerIndex < players.Count || enemyIndex < enemies.Count)
+        {
+            var playerLeft = playerIndex < players.Count;
+            var enemyLeft = enemyIndex < enemies.Count;
+            if (takePlayer && playerLeft)
+            {
+                woven.Add(players[playerIndex++]);
+            }
+            else if (!takePlayer && enemyLeft)
+            {
+                woven.Add(enemies[enemyIndex++]);
+            }
+            else if (playerLeft)
+            {
+                woven.Add(players[playerIndex++]);
+            }
+            else
+            {
+                woven.Add(enemies[enemyIndex++]);
+            }
+
+            takePlayer = woven[woven.Count - 1].Faction != Team.Players;
+        }
+
+        if (
+            woven.Count >= 2
+            && players.Count > 0
+            && enemies.Count > 0
+            && woven[0].Faction == woven[woven.Count - 1].Faction
+            && woven[woven.Count - 1].Faction != woven[woven.Count - 2].Faction
+        )
+        {
+            var last = woven[woven.Count - 1];
+            woven[woven.Count - 1] = woven[woven.Count - 2];
+            woven[woven.Count - 2] = last;
+        }
+
+        return woven;
     }
 
     static int PendingCombatSpeed(Entity entity) =>
         entity.NextTurnSpeedSet != 0 ? entity.NextTurnSpeedSet : entity.Speed + entity.NextTurnSpeedDelta;
 
-    /// Knights act first unless Rush / Ninja first-action jumped the queue, or
-    /// Gallant Pride set their Speed to 1.
+    /// Knights beat other players in the player queue. Rush / Ninja first-action
+    /// still jump the whole round; Gallant Pride (Speed 1) drops this bonus.
     static bool HasKnightHighPriority(ReducerContext ctx, Entity entity) =>
         entity.Faction == Team.Players
         && ClassOf(ctx, entity) == PlayerClass.Knight
@@ -1891,8 +2070,7 @@ public static partial class Module
     }
 
     /// Puts the current actor at DisplayPos 0, then the rest of this round,
-    /// then combatants who already acted (their Idx order, which is next-round
-    /// speed order). Dead rows are hidden.
+    /// then combatants who already acted (their Idx order). Dead rows are hidden.
     static void RefreshTurnDisplay(ReducerContext ctx)
     {
         var session = RequireSession(ctx);

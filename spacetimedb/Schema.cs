@@ -317,7 +317,7 @@ public static partial class Module
         public int TempHp;
     }
 
-    /// Rebuilt at the start of every round by BuildTurnOrder, fastest first.
+    /// Rebuilt at the start of every round by BuildTurnOrder, sides alternating.
     [SpacetimeDB.Table(Accessor = "TurnOrder", Public = true)]
     public partial struct TurnOrder
     {
