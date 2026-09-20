@@ -732,7 +732,7 @@ public static partial class Module
             strength *= 2;
         }
 
-        var maxHp = ClassMaxHp(player.Class, player.CharacterLevel) + hpBonus;
+        var maxHp = ClassMaxHp(player.Class, player.CharacterLevel) + hpBonus + Math.Max(0, entity.TempHp);
         var intelMana = player.Class == PlayerClass.Mage
             ? MageManaFromIntelligence(intelligence)
             : intelligence;
@@ -1358,6 +1358,7 @@ public static partial class Module
                 GrandUndertakingPending = false,
                 DoubleStrength = false,
                 NextTurnDoubleStrength = false,
+                TempHp = 0,
             };
             ctx.Db.Entity.EntityId.Update(reset);
         }
@@ -1803,6 +1804,8 @@ public static partial class Module
 
     static void SetActive(ReducerContext ctx, uint round, uint idx, Entity entity)
     {
+        ExpireTempHp(ctx, entity);
+        entity = ctx.Db.Entity.EntityId.Find(entity.EntityId) ?? entity;
         var stancePower = entity.FinishTheJobStance
             ? Math.Min(FinishTheJobPowerCap, entity.FinishTheJobPower + 8)
             : entity.FinishTheJobPower;
@@ -2004,7 +2007,7 @@ public static partial class Module
         }
 
         var attackerClass = ClassOf(ctx, attacker);
-        var power = skillBaseDamage + attacker.StrengthBuff + attacker.NextAttackBonus;
+        var power = skillBaseDamage + attacker.NextAttackBonus;
         if (isSkill && attacker.Faction == Team.Players && attackerClass == PlayerClass.Ninja)
         {
             power += NinjaSpeedPowerBonus(attacker.Speed, target.Speed);
@@ -2022,11 +2025,12 @@ public static partial class Module
                 attacker.Dexterity,
                 attacker.Intelligence,
                 attacker.BaseSpeed,
-                isSpell: attackerClass == PlayerClass.Mage && isSkill
+                isSpell: attackerClass == PlayerClass.Mage
             );
         }
 
         var raw = DealtDamage(power, attacker.Atk);
+        raw = ApplyEnraged(raw, attacker.StrengthBuff);
         raw = ApplyWeak(raw, attacker.WeakStacks);
         var afterArmor = AfterDefense(raw, target.Defense);
         if (attacker.Faction == Team.Enemies && raw > 0)

@@ -148,13 +148,13 @@ public static partial class Module
 
     static void SeedSkills(ReducerContext ctx)
     {
-        AddPlayerSkill(ctx, SkillNames.Bash, PlayerClass.Knight, 0, 5, 1, DamageType.Physical, 1);
-        AddPlayerSkill(ctx, SkillNames.Rush, PlayerClass.Knight, 5, 3, 1, DamageType.Physical, 2);
-        AddBuffSkill(ctx, SkillNames.Embolden, PlayerClass.Knight, 10, 3);
-        AddBuffSkill(ctx, SkillNames.GallantPride, PlayerClass.Knight, 20, 4);
-        AddPlayerSkill(ctx, SkillNames.Cleave, PlayerClass.Knight, 10, 7, 4, DamageType.Physical, 7);
-        AddPlayerSkill(ctx, SkillNames.Bludgeon, PlayerClass.Knight, 50, 30, 1, DamageType.Physical, 15);
-        AddBuffSkill(ctx, SkillNames.Terrify, PlayerClass.Knight, 20, 20);
+        AddPlayerSkill(ctx, SkillNames.Bash, PlayerClass.Knight, 0, 5, 1, DamageType.Physical, SkillUnlockLevel(SkillNames.Bash));
+        AddPlayerSkill(ctx, SkillNames.Rush, PlayerClass.Knight, 5, 3, 1, DamageType.Physical, SkillUnlockLevel(SkillNames.Rush));
+        AddBuffSkill(ctx, SkillNames.Embolden, PlayerClass.Knight, 10, SkillUnlockLevel(SkillNames.Embolden));
+        AddBuffSkill(ctx, SkillNames.GallantPride, PlayerClass.Knight, 20, SkillUnlockLevel(SkillNames.GallantPride));
+        AddPlayerSkill(ctx, SkillNames.Cleave, PlayerClass.Knight, 10, 7, 4, DamageType.Physical, SkillUnlockLevel(SkillNames.Cleave));
+        AddPlayerSkill(ctx, SkillNames.Bludgeon, PlayerClass.Knight, 50, 30, 1, DamageType.Physical, SkillUnlockLevel(SkillNames.Bludgeon));
+        AddBuffSkill(ctx, SkillNames.Terrify, PlayerClass.Knight, 20, SkillUnlockLevel(SkillNames.Terrify));
         AddPlayerSkill(
             ctx,
             SkillNames.TripleSlash,
@@ -163,7 +163,7 @@ public static partial class Module
             12,
             1,
             DamageType.Physical,
-            25,
+            SkillUnlockLevel(SkillNames.TripleSlash),
             hitCount: 3
         );
         AddPlayerSkill(
@@ -174,14 +174,14 @@ public static partial class Module
             FuriosoBaseDamage,
             1,
             DamageType.Physical,
-            30,
+            SkillUnlockLevel(SkillNames.Furioso),
             hitCount: FuriosoHitCount
         );
 
-        AddPlayerSkill(ctx, SkillNames.Shoot, PlayerClass.Archer, 0, 4, 1, DamageType.Physical, 1);
-        AddBuffSkill(ctx, SkillNames.Restring, PlayerClass.Archer, 10, 2);
-        AddBuffSkill(ctx, SkillNames.Scheme, PlayerClass.Archer, 15, 5);
-        AddBuffSkill(ctx, SkillNames.Evade, PlayerClass.Archer, 10, 5);
+        AddPlayerSkill(ctx, SkillNames.Shoot, PlayerClass.Archer, 0, 4, 1, DamageType.Physical, SkillUnlockLevel(SkillNames.Shoot));
+        AddBuffSkill(ctx, SkillNames.Restring, PlayerClass.Archer, 10, SkillUnlockLevel(SkillNames.Restring));
+        AddBuffSkill(ctx, SkillNames.Scheme, PlayerClass.Archer, 15, SkillUnlockLevel(SkillNames.Scheme));
+        AddBuffSkill(ctx, SkillNames.Evade, PlayerClass.Archer, 10, SkillUnlockLevel(SkillNames.Evade));
         AddPlayerSkill(
             ctx,
             SkillNames.RainDown,
@@ -190,7 +190,7 @@ public static partial class Module
             4,
             4,
             DamageType.Physical,
-            7,
+            SkillUnlockLevel(SkillNames.RainDown),
             hitCount: 3
         );
         AddPlayerSkill(
@@ -201,7 +201,7 @@ public static partial class Module
             SnipeDamage,
             1,
             DamageType.Physical,
-            SnipeLevelRequired
+            SkillUnlockLevel(SkillNames.Snipe)
         );
         AddPlayerSkill(
             ctx,
@@ -211,7 +211,7 @@ public static partial class Module
             17,
             4,
             DamageType.Physical,
-            18,
+            SkillUnlockLevel(SkillNames.CurvedShot),
             hitCount: 2
         );
         AddPlayerSkill(
@@ -222,7 +222,7 @@ public static partial class Module
             GrandshotBaseDamage,
             1,
             DamageType.Physical,
-            GrandshotLevelRequired
+            SkillUnlockLevel(SkillNames.Grandshot)
         );
 
         AddPlayerSkill(
@@ -233,11 +233,11 @@ public static partial class Module
             10,
             1,
             DamageType.Magical,
-            1
+            SkillUnlockLevel(SkillNames.MagicMissile)
         );
-        AddPlayerSkill(ctx, SkillNames.Fireball, PlayerClass.Mage, 10, 2, 1, DamageType.Magical, 3);
-        AddBuffSkill(ctx, SkillNames.Concentrate, PlayerClass.Mage, 15, 5);
-        AddBuffSkill(ctx, SkillNames.Pray, PlayerClass.Mage, 30, 10);
+        AddPlayerSkill(ctx, SkillNames.Fireball, PlayerClass.Mage, 10, 2, 1, DamageType.Magical, SkillUnlockLevel(SkillNames.Fireball));
+        AddBuffSkill(ctx, SkillNames.Concentrate, PlayerClass.Mage, 15, SkillUnlockLevel(SkillNames.Concentrate));
+        AddBuffSkill(ctx, SkillNames.Pray, PlayerClass.Mage, 30, SkillUnlockLevel(SkillNames.Pray));
         AddPlayerSkill(
             ctx,
             SkillNames.MagicBullet,
@@ -246,11 +246,11 @@ public static partial class Module
             5,
             1,
             DamageType.Magical,
-            15
+            SkillUnlockLevel(SkillNames.MagicBullet)
         );
-        AddBuffSkill(ctx, SkillNames.GrandUndertaking, PlayerClass.Mage, 100, 30);
+        AddBuffSkill(ctx, SkillNames.GrandUndertaking, PlayerClass.Mage, 100, SkillUnlockLevel(SkillNames.GrandUndertaking));
 
-        AddPlayerSkill(ctx, SkillNames.Spear, PlayerClass.Ninja, 45, 12, 1, DamageType.Physical, 1);
+        AddPlayerSkill(ctx, SkillNames.Spear, PlayerClass.Ninja, 45, 12, 1, DamageType.Physical, SkillUnlockLevel(SkillNames.Spear));
         AddPlayerSkill(
             ctx,
             SkillNames.VerticalCut,
@@ -259,10 +259,10 @@ public static partial class Module
             27,
             1,
             DamageType.Physical,
-            5
+            SkillUnlockLevel(SkillNames.VerticalCut)
         );
-        AddBuffSkill(ctx, SkillNames.FocusSpirit, PlayerClass.Ninja, 50, 10);
-        AddBuffSkill(ctx, SkillNames.FinishTheJob, PlayerClass.Ninja, 100, 30);
+        AddBuffSkill(ctx, SkillNames.FocusSpirit, PlayerClass.Ninja, 50, SkillUnlockLevel(SkillNames.FocusSpirit));
+        AddBuffSkill(ctx, SkillNames.FinishTheJob, PlayerClass.Ninja, 100, SkillUnlockLevel(SkillNames.FinishTheJob));
         AddPlayerSkill(
             ctx,
             SkillNames.Overthrow,
@@ -271,7 +271,7 @@ public static partial class Module
             OverthrowDamage,
             4,
             DamageType.Physical,
-            30
+            SkillUnlockLevel(SkillNames.Overthrow)
         );
 
         AddEnemySkill(ctx, "Rusty Slash", 6, 8, 1, DamageType.Physical);
@@ -287,50 +287,47 @@ public static partial class Module
     {
         foreach (var skill in ctx.Db.SkillDef.Iter().ToList())
         {
-            if (skill.Name == SkillNames.Furioso && skill.ManaCost != FuriosoManaCost)
+            if (skill.IsEnemySkill)
             {
-                ctx.Db.SkillDef.Id.Update(skill with { ManaCost = FuriosoManaCost });
+                continue;
+            }
+
+            var level = SkillUnlockLevel(skill.Name);
+            var mana = skill.ManaCost;
+            var damage = skill.BaseDamage;
+            if (skill.Name == SkillNames.Furioso)
+            {
+                mana = FuriosoManaCost;
+                damage = FuriosoBaseDamage;
+            }
+            else if (skill.Name == SkillNames.Grandshot)
+            {
+                mana = GrandshotManaCost;
+                damage = GrandshotBaseDamage;
+            }
+            else if (skill.Name == SkillNames.Overthrow)
+            {
+                mana = OverthrowManaCost;
+                damage = OverthrowDamage;
+            }
+            else if (skill.Name == SkillNames.Snipe)
+            {
+                mana = SnipeManaCost;
+                damage = SnipeDamage;
             }
 
             if (
-                skill.Name == SkillNames.Grandshot
-                && (
-                    skill.ManaCost != GrandshotManaCost
-                    || skill.LevelRequired != GrandshotLevelRequired
-                    || skill.BaseDamage != GrandshotBaseDamage
-                )
+                skill.LevelRequired != level
+                || skill.ManaCost != mana
+                || skill.BaseDamage != damage
             )
             {
                 ctx.Db.SkillDef.Id.Update(
                     skill with
                     {
-                        ManaCost = GrandshotManaCost,
-                        LevelRequired = GrandshotLevelRequired,
-                        BaseDamage = GrandshotBaseDamage,
-                    }
-                );
-            }
-
-            if (skill.Name == SkillNames.Overthrow && skill.ManaCost != OverthrowManaCost)
-            {
-                ctx.Db.SkillDef.Id.Update(skill with { ManaCost = OverthrowManaCost });
-            }
-
-            if (
-                skill.Name == SkillNames.Snipe
-                && (
-                    skill.LevelRequired != SnipeLevelRequired
-                    || skill.BaseDamage != SnipeDamage
-                    || skill.ManaCost != SnipeManaCost
-                )
-            )
-            {
-                ctx.Db.SkillDef.Id.Update(
-                    skill with
-                    {
-                        LevelRequired = SnipeLevelRequired,
-                        BaseDamage = SnipeDamage,
-                        ManaCost = SnipeManaCost,
+                        LevelRequired = level,
+                        ManaCost = mana,
+                        BaseDamage = damage,
                     }
                 );
             }

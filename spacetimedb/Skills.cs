@@ -249,7 +249,7 @@ public static partial class Module
                 );
                 break;
             case SkillNames.Pray:
-                HealParty(ctx, caster, 20, 20);
+                HealParty(ctx, caster, 20 + Math.Max(0, caster.Intelligence), 20);
                 break;
             case SkillNames.MagicBullet:
                 ExecuteMagicBullet(ctx, caster, targetEntityId);
@@ -267,9 +267,10 @@ public static partial class Module
                 break;
             case SkillNames.FocusSpirit:
                 ArmEvade(ctx, caster.EntityId, EvadeDamageThreshold, fragileOnDodge: 0, strengthOnDodge: 5);
+                GrantTempHp(ctx, caster.EntityId, FocusSpiritTempHp);
                 AddLog(
                     ctx,
-                    $"{caster.Name} uses {skill.Name} and will negate incoming hits below {EvadeDamageThreshold} damage, gaining 5 Enraged on dodge.",
+                    $"{caster.Name} uses {skill.Name}, gains {FocusSpiritTempHp} HP until their next turn, and will negate incoming hits below {EvadeDamageThreshold} damage, gaining 5 Enraged on dodge.",
                     LogKind.Focus,
                     caster.EntityId,
                     caster.EntityId
@@ -279,9 +280,10 @@ public static partial class Module
                 EnterFinishTheJob(ctx, caster);
                 break;
             case SkillNames.Overthrow:
+                GainStrengthNow(ctx, caster.EntityId, OverthrowEnragedStacks);
                 AddLog(
                     ctx,
-                    $"{caster.Name} uses {skill.Name} and applies {OverthrowEnragedStacks} Enraged to this attack.",
+                    $"{caster.Name} uses {skill.Name} and applies {OverthrowEnragedStacks} Enraged to this attack (+{OverthrowEnragedStacks * 10}% damage).",
                     LogKind.Focus,
                     caster.EntityId,
                     caster.EntityId
@@ -293,7 +295,7 @@ public static partial class Module
                         caster,
                         enemy.EntityId,
                         skill.Name,
-                        OverthrowDamage + OverthrowEnragedStacks,
+                        OverthrowDamage,
                         isSkill: true
                     );
                     QueueWeak(ctx, enemy.EntityId, OverthrowWeakStacks);
@@ -691,6 +693,67 @@ public static partial class Module
                 entity with { NextAttackBonus = entity.NextAttackBonus + bonus }
             );
         }
+    }
+
+    static void GrantTempHp(ReducerContext ctx, ulong entityId, int amount)
+    {
+        if (amount <= 0 || ctx.Db.Entity.EntityId.Find(entityId) is not Entity entity)
+        {
+            return;
+        }
+
+        ctx.Db.Entity.EntityId.Update(entity with { TempHp = entity.TempHp + amount });
+        if (TryPlayerIdentity(ctx, entityId, out var owner))
+        {
+            RecomputeStats(ctx, owner);
+            return;
+        }
+
+        if (ctx.Db.Entity.EntityId.Find(entityId) is Entity fresh)
+        {
+            var maxHp = fresh.MaxHp + amount;
+            ctx.Db.Entity.EntityId.Update(
+                fresh with
+                {
+                    MaxHp = maxHp,
+                    Hp = Math.Min(maxHp, fresh.Hp + amount),
+                }
+            );
+        }
+    }
+
+    static void ExpireTempHp(ReducerContext ctx, Entity entity)
+    {
+        if (entity.TempHp <= 0)
+        {
+            return;
+        }
+
+        ctx.Db.Entity.EntityId.Update(entity with { TempHp = 0 });
+        if (TryPlayerIdentity(ctx, entity.EntityId, out var owner))
+        {
+            RecomputeStats(ctx, owner);
+        }
+        else if (ctx.Db.Entity.EntityId.Find(entity.EntityId) is Entity fresh)
+        {
+            var maxHp = Math.Max(1, fresh.MaxHp - entity.TempHp);
+            ctx.Db.Entity.EntityId.Update(
+                fresh with
+                {
+                    MaxHp = maxHp,
+                    Hp = Math.Clamp(fresh.Hp, fresh.Alive ? 1 : 0, maxHp),
+                }
+            );
+        }
+
+        var after = ctx.Db.Entity.EntityId.Find(entity.EntityId) ?? entity;
+        AddLog(
+            ctx,
+            $"{after.Name}'s extra HP fades.",
+            LogKind.Focus,
+            after.EntityId,
+            after.EntityId
+        );
     }
 
     static void ArmEvade(

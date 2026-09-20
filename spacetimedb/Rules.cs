@@ -71,16 +71,13 @@ public static partial class Module
     public const int ArcherDodgeBpsPerDex = 200;
     /// Archer DEX dodge is capped at 50% before skill bonuses such as Restring.
     public const int ArcherMaxDodgeBps = 5000;
-    /// Archer passive: +0.5 damage per Dexterity, stored as tenths.
-    public const int ArcherDamageTenthsPerDex = 5;
-    /// Knight STR stat passive: +0.2 damage per Strength, stored as tenths.
-    public const int KnightDamageTenthsPerStrength = 2;
-    /// Mage passive: +0.2 spell damage per Intelligence, stored as tenths.
-    public const int MageSpellDamageTenthsPerInt = 2;
+    /// Knight / Archer / Mage / Ninja attacks add this much damage per main stat.
+    public const int KnightDamagePerStrength = 1;
+    public const int ArcherDamagePerDex = 1;
+    public const int MageDamagePerInt = 1;
+    public const int NinjaDamagePerSpeed = 1;
     /// Mage passive: +0.4 max mana per Intelligence, stored as tenths.
     public const int MageManaTenthsPerInt = 4;
-    /// Ninja Speed stat passive: +0.5 damage per Speed on all attacks, stored as tenths.
-    public const int NinjaDamageTenthsPerSpeed = 5;
     /// Ninja crit: 0.1% per Speed stat (10 basis points). Uses Speed, not CombatSpeed.
     public const int NinjaCritBpsPerSpeed = 10;
     public const int NinjaSpeedLeadForFirstAction = 5;
@@ -91,6 +88,9 @@ public static partial class Module
     public const int MaxDodgeBps = 9500;
     public const int FragileDamageBpsPerStack = 1000;
     public const int WeakDamageBpsPerStack = 1000;
+    /// Enraged: outgoing damage is multiplied by (1 + stacks * 10%).
+    public const int EnragedDamageBpsPerStack = 1000;
+    public const int FocusSpiritTempHp = 50;
     public const int BludgeonFragileBps = 15000;
     public const int GrandUndertakingEnemyHpBps = 5000;
     public const int GrandUndertakingAllyHpBps = 1000;
@@ -105,11 +105,11 @@ public static partial class Module
     public const int FuriosoBaseDamage = 5;
     public const int FuriosoBonusPerHit = 3;
     public const int GrandshotManaCost = 100;
-    public const uint GrandshotLevelRequired = 30;
+    public const uint GrandshotLevelRequired = 10;
     public const int GrandshotBaseDamage = 50;
     public const int GrandshotDamagePerDodge = 50;
     public const int GrandshotDodgeCap = 4;
-    public const int SnipeDamage = 10;
+    public const int SnipeDamage = 40;
     public const int SnipeManaCost = 50;
     public const uint SnipeLevelRequired = 1;
     public const int OverthrowEnragedStacks = 12;
@@ -588,8 +588,8 @@ public static partial class Module
 
     // ------------------------------------------------------------------- math
 
-    /// Flat class passives: Knight +0.2/STR, Archer +0.5/DEX, Ninja +0.5/BaseSpeed,
-    /// Mage +0.2/INT on spells. Ninja must be given BaseSpeed, never CombatSpeed.
+    /// Every player attack and skill adds 1 damage per class main stat.
+    /// Knight STR, Archer DEX, Mage INT, Ninja BaseSpeed (never CombatSpeed).
     public static int ClassPassiveDamage(
         PlayerClass playerClass,
         int strength,
@@ -599,29 +599,55 @@ public static partial class Module
         bool isSpell
     )
     {
-        var tenths = 0;
-        if (playerClass == PlayerClass.Knight)
+        _ = isSpell;
+        return playerClass switch
         {
-            tenths += KnightDamageTenthsPerStrength * Math.Max(0, strength);
-        }
-
-        if (playerClass == PlayerClass.Archer)
-        {
-            tenths += ArcherDamageTenthsPerDex * Math.Max(0, dexterity);
-        }
-
-        if (playerClass == PlayerClass.Ninja)
-        {
-            tenths += NinjaDamageTenthsPerSpeed * NinjaPassiveBaseSpeed(baseSpeed);
-        }
-
-        if (playerClass == PlayerClass.Mage && isSpell)
-        {
-            tenths += MageSpellDamageTenthsPerInt * Math.Max(0, intelligence);
-        }
-
-        return tenths <= 0 ? 0 : (tenths + 5) / 10;
+            PlayerClass.Knight => KnightDamagePerStrength * Math.Max(0, strength),
+            PlayerClass.Archer => ArcherDamagePerDex * Math.Max(0, dexterity),
+            PlayerClass.Mage => MageDamagePerInt * Math.Max(0, intelligence),
+            PlayerClass.Ninja => NinjaDamagePerSpeed * NinjaPassiveBaseSpeed(baseSpeed),
+            _ => 0,
+        };
     }
+
+    /// Class skill trees now finish at level 10. Early skills stay early.
+    public static uint SkillUnlockLevel(string name) =>
+        name switch
+        {
+            SkillNames.Bash => 1,
+            SkillNames.Rush => 1,
+            SkillNames.Embolden => 2,
+            SkillNames.GallantPride => 2,
+            SkillNames.Cleave => 3,
+            SkillNames.Bludgeon => 5,
+            SkillNames.Terrify => 6,
+            SkillNames.TripleSlash => 8,
+            SkillNames.Furioso => 10,
+
+            SkillNames.Shoot => 1,
+            SkillNames.Restring => 1,
+            SkillNames.Scheme => 2,
+            SkillNames.Evade => 2,
+            SkillNames.RainDown => 3,
+            SkillNames.Snipe => SnipeLevelRequired,
+            SkillNames.CurvedShot => 6,
+            SkillNames.Grandshot => GrandshotLevelRequired,
+
+            SkillNames.MagicMissile => 1,
+            SkillNames.Fireball => 2,
+            SkillNames.Concentrate => 2,
+            SkillNames.Pray => 3,
+            SkillNames.MagicBullet => 5,
+            SkillNames.GrandUndertaking => 10,
+
+            SkillNames.Spear => 1,
+            SkillNames.VerticalCut => 2,
+            SkillNames.FocusSpirit => 3,
+            SkillNames.FinishTheJob => 8,
+            SkillNames.Overthrow => 10,
+
+            _ => 1,
+        };
 
     /// Passive 3 uses rolled/spent BaseSpeed only. CombatSpeed first-action
     /// (999999999) and temporary Speed sets must never feed this bonus.
@@ -676,6 +702,17 @@ public static partial class Module
         }
 
         return Math.Max(0, ScaleByBps(damage, 10000 - (WeakDamageBpsPerStack * weakStacks)));
+    }
+
+    /// Enraged multiplies outgoing damage: 1 stack = +10%, 5 stacks = +50%.
+    public static int ApplyEnraged(int damage, int enragedStacks)
+    {
+        if (damage <= 0 || enragedStacks <= 0)
+        {
+            return damage;
+        }
+
+        return Math.Max(0, ScaleByBps(damage, 10000 + (EnragedDamageBpsPerStack * enragedStacks)));
     }
 
     public static int ApplyBludgeonFragile(int damage) =>
@@ -749,7 +786,7 @@ public static partial class Module
     public static int GrandshotDamageOf(int dodgeCount) =>
         GrandshotBaseDamage + (GrandshotCountedDodges(dodgeCount) * GrandshotDamagePerDodge);
 
-    /// Weapon/skill core. Class passives and Enraged stacks are added separately.
+    /// Weapon/skill core. Class main-stat scaling and Enraged are applied separately.
     public static int DealtDamage(int characterDamage, int atk) =>
         Math.Max(0, characterDamage + atk);
 
@@ -845,9 +882,8 @@ public static partial class Module
         return Math.Max(stage, Math.Clamp(level, 1, 35));
     }
 
-    /// Early HP eased now that Snipe is 10, not 30. Late HP stays high for L30 nukes
-    /// (Furioso ~153, Grandshot 100–250, Overthrow 54, Grand Undertaking 50% max HP).
-    /// L1 ~52; L30 ~693 before party/pack.
+    /// Early HP eased for low-level kits. Late HP stays high for capstone nukes
+    /// (Furioso, Grandshot, Overthrow, Grand Undertaking). L1 ~52; L30 ~693 before party/pack.
     public static int EnemyHpBaseline(int level)
     {
         var n = Math.Max(1, level);
