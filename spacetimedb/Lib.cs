@@ -1616,7 +1616,7 @@ public static partial class Module
         }
 
         var attackerClass = ClassOf(ctx, attacker);
-        var power = skillBaseDamage + attacker.StrengthBuff + attacker.NextAttackBonus;
+        var power = skillBaseDamage + attacker.NextAttackBonus;
         if (isSkill && attacker.Faction == Team.Players && attackerClass == PlayerClass.Ninja)
         {
             power += NinjaSpeedPowerBonus(attacker.Speed, target.Speed);
@@ -1639,6 +1639,7 @@ public static partial class Module
         }
 
         var raw = DealtDamage(power, attacker.Atk);
+        raw = ApplyEnraged(raw, attacker.StrengthBuff);
         raw = ApplyWeak(raw, attacker.WeakStacks);
         var afterArmor = AfterDefense(raw, target.Defense);
         if (attacker.Faction == Team.Enemies && raw > 0)

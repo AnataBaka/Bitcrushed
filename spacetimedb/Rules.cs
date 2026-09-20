@@ -55,6 +55,8 @@ public static partial class Module
     public const int MaxDodgeBps = 9500;
     public const int FragileDamageBpsPerStack = 1000;
     public const int WeakDamageBpsPerStack = 1000;
+    /// Enraged: outgoing damage is increased by 10% per stack (x * 10%).
+    public const int EnragedDamageBpsPerStack = 1000;
     public const int BludgeonFragileBps = 15000;
     public const int GrandUndertakingEnemyHpBps = 5000;
     public const int GrandUndertakingAllyHpBps = 1000;
@@ -70,7 +72,7 @@ public static partial class Module
     public const int FuriosoBaseDamage = 5;
     public const int FuriosoBonusPerHit = 3;
     public const int GrandshotManaCost = 100;
-    public const uint GrandshotLevelRequired = 30;
+    public const uint GrandshotLevelRequired = 10;
     public const int GrandshotBaseDamage = 50;
     public const int GrandshotDamagePerDodge = 50;
     public const int GrandshotDodgeCap = 4;
@@ -348,6 +350,47 @@ public static partial class Module
         public const string Overthrow = "Overthrow";
     }
 
+    /// Player skill unlocks. Capstones (Furioso, Grandshot, Grand Undertaking,
+    /// Necromancy, Finish the Job, Overthrow) all open at level 10.
+    public static uint SkillUnlockLevel(string name) =>
+        name switch
+        {
+            SkillNames.Bash => 1,
+            SkillNames.Rush => 1,
+            SkillNames.Embolden => 2,
+            SkillNames.GallantPride => 3,
+            SkillNames.Cleave => 4,
+            SkillNames.Bludgeon => 5,
+            SkillNames.Terrify => 6,
+            SkillNames.TripleSlash => 8,
+            SkillNames.Furioso => 10,
+
+            SkillNames.Shoot => 1,
+            SkillNames.Restring => 1,
+            SkillNames.Scheme => 2,
+            SkillNames.Evade => 2,
+            SkillNames.RainDown => 3,
+            SkillNames.Snipe => SnipeLevelRequired,
+            SkillNames.CurvedShot => 6,
+            SkillNames.Grandshot => GrandshotLevelRequired,
+
+            SkillNames.MagicMissile => 1,
+            SkillNames.Fireball => 2,
+            SkillNames.Concentrate => 2,
+            SkillNames.Pray => 3,
+            SkillNames.MagicBullet => 5,
+            SkillNames.GrandUndertaking => 10,
+            SkillNames.Necromancy => 10,
+
+            SkillNames.Spear => 1,
+            SkillNames.VerticalCut => 2,
+            SkillNames.FocusSpirit => 3,
+            SkillNames.FinishTheJob => 10,
+            SkillNames.Overthrow => 10,
+
+            _ => 1,
+        };
+
     public readonly struct MagicBulletStageDef
     {
         public MagicBulletStageDef(
@@ -485,6 +528,17 @@ public static partial class Module
         return Math.Max(0, ScaleByBps(damage, 10000 - (WeakDamageBpsPerStack * weakStacks)));
     }
 
+    /// Enraged multiplies outgoing damage by (1 + stacks * 10%).
+    public static int ApplyEnraged(int damage, int enragedStacks)
+    {
+        if (damage <= 0 || enragedStacks <= 0)
+        {
+            return damage;
+        }
+
+        return Math.Max(0, ScaleByBps(damage, 10000 + (EnragedDamageBpsPerStack * enragedStacks)));
+    }
+
     public static int ApplyBludgeonFragile(int damage) =>
         damage <= 0 ? 0 : ScaleByBps(damage, BludgeonFragileBps);
 
@@ -556,7 +610,7 @@ public static partial class Module
     public static int GrandshotDamageOf(int dodgeCount) =>
         GrandshotBaseDamage + (GrandshotCountedDodges(dodgeCount) * GrandshotDamagePerDodge);
 
-    /// Weapon/skill core. Class passives and Enraged stacks are added separately.
+    /// Weapon/skill core. Class passives are added separately; Enraged is a later multiplier.
     public static int DealtDamage(int characterDamage, int atk) =>
         Math.Max(0, characterDamage + atk);
 

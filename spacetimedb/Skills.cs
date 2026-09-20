@@ -287,6 +287,7 @@ public static partial class Module
                 EnterFinishTheJob(ctx, caster);
                 break;
             case SkillNames.Overthrow:
+                GainStrengthNow(ctx, caster.EntityId, OverthrowEnragedStacks);
                 AddLog(
                     ctx,
                     $"{caster.Name} uses {skill.Name} and applies {OverthrowEnragedStacks} Enraged to this attack.",
@@ -301,7 +302,7 @@ public static partial class Module
                         caster,
                         enemy.EntityId,
                         skill.Name,
-                        OverthrowDamage + OverthrowEnragedStacks,
+                        OverthrowDamage,
                         isSkill: true
                     );
                     QueueWeak(ctx, enemy.EntityId, OverthrowWeakStacks);

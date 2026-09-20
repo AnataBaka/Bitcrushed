@@ -32,7 +32,7 @@ public static class SkillInspect
             name,
             "Free",
             "Weapon ATK to one enemy",
-            "A free weapon swing. Adds class passives (Knight +0.2 per STR, Archer +0.5 per DEX and +2% dodge per DEX capped at 50%, Ninja +0.5 per base Speed). Mage basic attacks are not spells.",
+            "A free weapon swing. Adds class passives (Knight +0.2 per STR, Archer +0.5 per DEX and +2% dodge per DEX capped at 50%, Ninja +0.5 per base Speed). Mage basic attacks are not spells. Enraged increases damage by 10% per stack.",
             ""
         );
     }
@@ -113,11 +113,11 @@ public static class SkillInspect
                 return;
             case "Embolden":
                 damage = "None";
-                description = "Gain 2 Enraged next turn. Each Enraged stack adds +1 damage to your attacks that turn.";
+                description = "Gain 2 Enraged next turn. Each Enraged stack increases damage you deal by 10% that turn.";
                 return;
             case "Gallant Pride":
                 damage = "None";
-                description = "Gain 4 Enraged next turn, but your Speed becomes 1 next turn.";
+                description = "Gain 4 Enraged next turn, but your Speed becomes 1 next turn. Enraged increases damage by 10% per stack.";
                 return;
             case "Cleave":
                 damage = "7 to all enemies";
@@ -133,7 +133,7 @@ public static class SkillInspect
                 return;
             case "Triple Slash":
                 damage = "3 hits of 12 to one enemy";
-                description = "Three strikes on one enemy. Each hit that connects grants 1 Enraged immediately.";
+                description = "Three strikes on one enemy. Each hit that connects grants 1 Enraged immediately. Enraged increases damage by 10% per stack.";
                 return;
             case "Furioso":
                 damage = "9 hits, starting at 5";
@@ -145,11 +145,11 @@ public static class SkillInspect
                 return;
             case "Restring":
                 damage = "None";
-                description = "Gain +15% dodge chance and 4 Enraged next turn.";
+                description = "Gain +15% dodge chance and 4 Enraged next turn. Enraged increases damage by 10% per stack.";
                 return;
             case "Scheme":
                 damage = "None";
-                description = "If you used an attack last turn, recover 20 MP and gain 2 Enraged next turn. Does nothing otherwise.";
+                description = "If you used an attack last turn, recover 20 MP and gain 2 Enraged next turn. Does nothing otherwise. Enraged increases damage by 10% per stack.";
                 return;
             case "Evade":
                 damage = "None";
@@ -210,15 +210,15 @@ public static class SkillInspect
                 return;
             case "Focus Spirit":
                 damage = "None";
-                description = "This turn, incoming hits below 20 damage are negated. Dodging grants 5 Enraged next turn.";
+                description = "This turn, incoming hits below 20 damage are negated. Dodging grants 5 Enraged next turn. Enraged increases damage by 10% per stack.";
                 return;
             case "Finish the Job":
                 damage = "None";
-                description = $"Once per battle, after {GameManager.FinishTheJobTurnRequirement} turns have passed. Gain 6 Enraged next turn, +6 ATK, and a battle-long stance that adds +2 skill power plus +8 more at the start of every turn (caps at +40). Unlocks Overthrow.";
+                description = $"Once per battle, after {GameManager.FinishTheJobTurnRequirement} turns have passed. Gain 6 Enraged next turn, +6 ATK, and a battle-long stance that adds +2 skill power plus +8 more at the start of every turn (caps at +40). Unlocks Overthrow. Enraged increases damage by 10% per stack.";
                 return;
             case "Overthrow":
-                damage = "42 + 12 Enraged to all enemies";
-                description = "Gain 12 Enraged on this Overthrow (applied now, not next turn), deal 42 to all enemies, and inflict 3 Weak and 4 Fragile on all enemies next turn. 40 MP. Requires Finish the Job stance.";
+                damage = "42 to all enemies, +10% damage per Enraged stack";
+                description = "Gain 12 Enraged on this Overthrow (applied now, not next turn), deal 42 to all enemies, and inflict 3 Weak and 4 Fragile on all enemies next turn. 40 MP. Requires Finish the Job stance. Enraged increases damage by 10% per stack.";
                 return;
             default:
                 damage = "See battle log";
