@@ -98,6 +98,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Entity, int> SkillCooldown { get; }
         public global::SpacetimeDB.Col<Entity, bool> DoubleStrength { get; }
         public global::SpacetimeDB.Col<Entity, bool> NextTurnDoubleStrength { get; }
+        public global::SpacetimeDB.Col<Entity, int> TempHp { get; }
 
         public EntityCols(string tableName)
         {
@@ -160,6 +161,7 @@ namespace SpacetimeDB.Types
             SkillCooldown = new global::SpacetimeDB.Col<Entity, int>(tableName, "skill_cooldown");
             DoubleStrength = new global::SpacetimeDB.Col<Entity, bool>(tableName, "double_strength");
             NextTurnDoubleStrength = new global::SpacetimeDB.Col<Entity, bool>(tableName, "next_turn_double_strength");
+            TempHp = new global::SpacetimeDB.Col<Entity, int>(tableName, "temp_hp");
         }
     }
 

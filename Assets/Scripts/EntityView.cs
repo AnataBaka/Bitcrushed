@@ -986,7 +986,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         var parts = new System.Collections.Generic.List<string>();
         if (entity.StrengthBuff > 0)
         {
-            parts.Add($"Enraged {entity.StrengthBuff}");
+            parts.Add($"Enraged {entity.StrengthBuff} (+{entity.StrengthBuff * 10}%)");
         }
 
         if (entity.NextTurnStrengthBonus > 0)
@@ -1027,6 +1027,11 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         if (entity.EvadeThreshold > 0)
         {
             parts.Add($"Evade <{entity.EvadeThreshold}");
+        }
+
+        if (entity.TempHp > 0)
+        {
+            parts.Add($"Spirit HP +{entity.TempHp}");
         }
 
         if (entity.FinishTheJobStance)

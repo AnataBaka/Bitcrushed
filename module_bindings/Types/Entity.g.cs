@@ -131,6 +131,8 @@ namespace SpacetimeDB.Types
         public bool DoubleStrength;
         [DataMember(Name = "next_turn_double_strength")]
         public bool NextTurnDoubleStrength;
+        [DataMember(Name = "temp_hp")]
+        public int TempHp;
 
         public Entity(
             ulong EntityId,
@@ -191,7 +193,8 @@ namespace SpacetimeDB.Types
             bool IsBoss,
             int SkillCooldown,
             bool DoubleStrength,
-            bool NextTurnDoubleStrength
+            bool NextTurnDoubleStrength,
+            int TempHp
         )
         {
             this.EntityId = EntityId;
@@ -253,6 +256,7 @@ namespace SpacetimeDB.Types
             this.SkillCooldown = SkillCooldown;
             this.DoubleStrength = DoubleStrength;
             this.NextTurnDoubleStrength = NextTurnDoubleStrength;
+            this.TempHp = TempHp;
         }
 
         public Entity()

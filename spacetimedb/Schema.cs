@@ -219,7 +219,7 @@ public static partial class Module
         public int Atk;
         public int Defense;
 
-        /// Enraged stacks: +1 damage per stack on attacks this turn.
+        /// Enraged stacks: +10% outgoing damage per stack on attacks this turn.
         public int StrengthBuff;
         public int NextTurnStrengthBonus;
         /// Set by "always go first" skills; consumed when the next round is built.
@@ -312,6 +312,9 @@ public static partial class Module
         public bool DoubleStrength;
         [Default(false)]
         public bool NextTurnDoubleStrength;
+        /// Extra HP from Focus Spirit. Expires at the start of this combatant's next turn.
+        [Default(0)]
+        public int TempHp;
     }
 
     /// Rebuilt at the start of every round by BuildTurnOrder, fastest first.
