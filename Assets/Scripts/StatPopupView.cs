@@ -70,10 +70,6 @@ public class StatPopupView : MonoBehaviour
         view._root.pivot = new Vector2(0f, 1f);
         view._root.sizeDelta = new Vector2(Width, 360f);
 
-        var outline = panel.gameObject.AddComponent<Outline>();
-        outline.effectColor = new Color(0f, 0f, 0f, 0.55f);
-        outline.effectDistance = new Vector2(2f, -2f);
-
         var header = UiFactory.RoundedPanel(panel.transform, "Header", new Color(0.22f, 0.32f, 0.48f, 1f));
         view._header = header;
         header.raycastTarget = false;

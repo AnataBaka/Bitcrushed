@@ -82,10 +82,6 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
         panelRt.sizeDelta = new Vector2(PanelWidth, PanelHeight);
         view._panel = panelRt;
 
-        var outline = panel.gameObject.AddComponent<Outline>();
-        outline.effectColor = new Color(0f, 0f, 0f, 0.55f);
-        outline.effectDistance = new Vector2(2f, -2f);
-
         var catcher = panel.gameObject.AddComponent<PanelClickCatcher>();
         catcher.Host = view;
 
@@ -187,10 +183,6 @@ public class InventoryPopupView : MonoBehaviour, IPointerClickHandler
         rt.anchorMax = new Vector2(0f, 0f);
         rt.pivot = new Vector2(0f, 1f);
         rt.sizeDelta = new Vector2(108f, 76f);
-
-        var outline = panel.gameObject.AddComponent<Outline>();
-        outline.effectColor = new Color(0f, 0f, 0f, 0.55f);
-        outline.effectDistance = new Vector2(1.5f, -1.5f);
 
         equip = UiFactory.TextButton(panel.transform, "Equip", "Equip", 16, 30f);
         var equipRt = equip.GetComponent<RectTransform>();

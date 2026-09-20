@@ -42,10 +42,6 @@ public class SkillTooltipView : MonoBehaviour
         view._root.pivot = new Vector2(0f, 1f);
         view._root.sizeDelta = new Vector2(Width, 180f);
 
-        var outline = panel.gameObject.AddComponent<Outline>();
-        outline.effectColor = new Color(0f, 0f, 0f, 0.55f);
-        outline.effectDistance = new Vector2(2f, -2f);
-
         var layout = panel.gameObject.AddComponent<VerticalLayoutGroup>();
         layout.padding = new RectOffset(12, 12, 12, 12);
         layout.spacing = 6f;

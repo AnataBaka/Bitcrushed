@@ -43,10 +43,6 @@ public class EscapeMenuView : MonoBehaviour, IPointerClickHandler
         panelRt.anchoredPosition = Vector2.zero;
         view._panel = panelRt;
 
-        var outline = panel.gameObject.AddComponent<Outline>();
-        outline.effectColor = new Color(0f, 0f, 0f, 0.55f);
-        outline.effectDistance = new Vector2(2f, -2f);
-
         var title = UiFactory.Label(
             panel.transform,
             "Title",
