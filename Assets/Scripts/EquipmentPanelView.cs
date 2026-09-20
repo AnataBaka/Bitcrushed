@@ -70,7 +70,7 @@ public class EquipmentPanelView : MonoBehaviour
         );
         var bagLabel = UiFactory.Label(bag.transform, "Label", "BAG", 16, TextAnchor.MiddleCenter, UiFactory.TextColor);
         ItemIconFit.LayoutBag(bagIcon.rectTransform, bagLabel);
-        ItemIconFit.Bind(bagIcon, AmuletArt.Png("Sprites/backpack.png") ?? PlaceholderArt.Solid(new Color(0.55f, 0.38f, 0.22f)));
+        ItemIconFit.Bind(bagIcon, AmuletArt.Png("backpack.png") ?? PlaceholderArt.Solid(new Color(0.55f, 0.38f, 0.22f)));
 
         var button = bag.gameObject.AddComponent<Button>();
         button.targetGraphic = bag;

@@ -102,15 +102,6 @@ public static class AmuletArt
         var bytes = ReadPngBytes(relativePath);
         if (bytes == null || bytes.Length == 0)
         {
-            var fromSprites = Path.Combine(Application.dataPath, "Sprites", Path.GetFileName(relativePath));
-            if (File.Exists(fromSprites))
-            {
-                bytes = File.ReadAllBytes(fromSprites);
-            }
-        }
-
-        if (bytes == null || bytes.Length == 0)
-        {
             return null;
         }
 
