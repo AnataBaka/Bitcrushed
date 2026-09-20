@@ -107,6 +107,7 @@ public class BattleBootstrap : MonoBehaviour
         UiFactory.Anchor(logRect, new Vector2(0.20f, 0f), new Vector2(0.75f, 1f));
         logRect.offsetMin = new Vector2(5f, 10f);
         logRect.offsetMax = new Vector2(-5f, -10f);
+        backdrop.BindTarget(logRect);
 
         var menu = ActionMenuView.Create(bottom);
         var menuRect = menu.GetComponent<RectTransform>();
