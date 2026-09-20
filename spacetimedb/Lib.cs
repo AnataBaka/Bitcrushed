@@ -804,7 +804,14 @@ public static partial class Module
                 if (ctx.Db.Entity.EntityId.Find(target.EntityId) is Entity fresh && fresh.Alive)
                 {
                     var current = ctx.Db.Entity.EntityId.Find(enemy.EntityId) ?? enemy;
-                    ResolveHit(ctx, current, fresh, chosen.Name, 0, isSkill: true);
+                    ResolveHit(
+                        ctx,
+                        current,
+                        fresh,
+                        EnemyLoggedActionName(current, chosen.Name),
+                        0,
+                        isSkill: true
+                    );
                 }
             }
         }
@@ -1442,7 +1449,7 @@ public static partial class Module
                     NextTurnStrengthBonus = 0,
                     GoFirstNextRound = false,
                     Alive = true,
-                    BasicAttackName = arch.BasicAttackName,
+                    BasicAttackName = EnemyVisualBasicAttack(roll.VisualKind),
                     MagicBulletStage = 1,
                     VariantPrefix = prefix,
                     TintR = tintR,

@@ -887,7 +887,8 @@ public static partial class Module
         new EnemyArchetype("Bone Guard", "Skeleton", 100, 25, 5, 2, 1, 5, 5, 2, "Bone Slash", "Bone Slash"),
     };
 
-    /// Visual-only labels and sprite packs. Archetype stats and skills stay put.
+    /// Visual-only labels and sprite packs. Archetype stats and granted SkillDef
+    /// ids stay put; attack *display* names come from the visual type below.
     public static readonly string[] EnemyVisualKinds =
     {
         "Witch_Doctor",
@@ -897,7 +898,42 @@ public static partial class Module
     };
 
     public static string EnemyVisualDisplayName(string kind) =>
-        kind == "Witch_Doctor" ? "Witch Doctor" : kind;
+        kind == "Witch_Doctor" || kind == "Witch Doctor" ? "Witch Doctor" : kind;
+
+    public static string EnemyVisualKindKey(string kind) =>
+        kind == "Witch Doctor" ? "Witch_Doctor" : kind;
+
+    /// Display names for the type the player sees. Numbers still come from the
+    /// archetype SkillDef granted at spawn.
+    public static string EnemyVisualBasicAttack(string kind) =>
+        EnemyVisualKindKey(kind) switch
+        {
+            "Witch_Doctor" => "Staff Strike",
+            "Canine" => "Bite",
+            "Slime" => "Splat",
+            "Skeleton" => "Bone Slash",
+            _ => "Strike",
+        };
+
+    public static string EnemyVisualSkillName(string kind) =>
+        EnemyVisualKindKey(kind) switch
+        {
+            "Witch_Doctor" => "Hex Bolt",
+            "Canine" => "Pounce",
+            "Slime" => "Engulf",
+            "Skeleton" => "Bone Slash",
+            _ => "Strike",
+        };
+
+    public static string EnemyLoggedActionName(Entity attacker, string fallback)
+    {
+        if (attacker.Faction != Team.Enemies || attacker.IsBoss)
+        {
+            return fallback;
+        }
+
+        return EnemyVisualSkillName(attacker.ClassName);
+    }
 
     public static string BossVisualDisplayName(string visualKind) =>
         $"{BossAttributeName} {EnemyVisualDisplayName(visualKind)}";
