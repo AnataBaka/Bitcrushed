@@ -8,9 +8,11 @@ using UnityEngine;
 /// project does not depend on Unity sprite import settings.
 public static class AmuletArt
 {
-    /// Display name -> StreamingAssets relative path. Starter and unique rows
-    /// may share a name and therefore the same file.
-    static readonly Dictionary<string, string> FileByName = new Dictionary<string, string>
+    /// Display name -> StreamingAssets relative path. Starter, unique, and
+    /// boss-drop rows may share a name and therefore the same file.
+    static readonly Dictionary<string, string> FileByName = new Dictionary<string, string>(
+        StringComparer.OrdinalIgnoreCase
+    )
     {
         { "Amethyst Sash", "Amulets/amethyst_sash.png" },
         { "Golden Cross", "Amulets/golden_cross.png" },
@@ -48,11 +50,16 @@ public static class AmuletArt
         { "Health Amulet", "Amulets/golden_cross.png" },
         { "Health Potion", "Amulets/holy_grail.png" },
         { "Mana Potion", "Amulets/amethyst_sash.png" },
+        { "Wooden Cane", "Weapons/azure_cane.png" },
+        { "Weathered Bow", "Weapons/golden_bow.png" },
+        { "Rusted Katana", "Weapons/rusted_pummel.png" },
     };
 
     /// ShortName fallback so starter + unique rows that share a display name
     /// still resolve even if the name spelling drifts.
-    static readonly Dictionary<string, string> FileByShortName = new Dictionary<string, string>
+    static readonly Dictionary<string, string> FileByShortName = new Dictionary<string, string>(
+        StringComparer.OrdinalIgnoreCase
+    )
     {
         { "CSW", "Weapons/chipped_sword.png" },
         { "CHP", "Weapons/chipped_sword.png" },
@@ -77,21 +84,28 @@ public static class AmuletArt
         { "HPA", "Amulets/golden_cross.png" },
         { "HPT", "Amulets/holy_grail.png" },
         { "MPT", "Amulets/amethyst_sash.png" },
+        { "AMS", "Amulets/amethyst_sash.png" },
+        { "GLC", "Amulets/golden_cross.png" },
+        { "GRP", "Amulets/guardians_pendant.png" },
+        { "CNT", "Amulets/countess_necklace.png" },
+        { "EYE", "Amulets/eye_of_the_watcher.png" },
+        { "SIG", "Amulets/sigil_of_the_old.png" },
+        { "DFC", "Amulets/dragonfly_charm.png" },
+        { "TAC", "Amulets/twin_amethyst_charm.png" },
+        { "DRF", "Amulets/dragons_fire.png" },
+        { "EMP", "Amulets/emerald_pendant.png" },
+        { "JSW", "Amulets/justices_wings.png" },
+        { "HGR", "Amulets/holy_grail.png" },
+        { "HDC", "Amulets/hidden_dreamcatcher.png" },
+        { "RTB", "Amulets/rooted_blade.png" },
+        { "RCC", "Amulets/red_cocoon.png" },
+        { "RBS", "Amulets/ruby_scepter.png" },
     };
 
-    static readonly HashSet<string> StarterShortNames = new HashSet<string>
-    {
-        "CSW",
-        "WBW",
-        "WCN",
-        "KTN",
-    };
-
-    static readonly Dictionary<string, Sprite> Cache = new Dictionary<string, Sprite>();
-    static readonly Dictionary<uint, Sprite> CacheById = new Dictionary<uint, Sprite>();
-    static readonly Dictionary<string, uint> FileOwner = new Dictionary<string, uint>(
+    static readonly Dictionary<string, Sprite> Cache = new Dictionary<string, Sprite>(
         StringComparer.OrdinalIgnoreCase
     );
+    static readonly Dictionary<uint, Sprite> CacheById = new Dictionary<uint, Sprite>();
     static readonly HashSet<uint> MissingWarned = new HashSet<uint>();
     static bool _claimed;
 
@@ -106,13 +120,39 @@ public static class AmuletArt
             return false;
         }
 
+        if (!string.IsNullOrEmpty(def.ShortName) && FileByShortName.TryGetValue(def.ShortName, out fileName))
+        {
+            return true;
+        }
+
         if (!string.IsNullOrEmpty(def.Name) && FileByName.TryGetValue(def.Name, out fileName))
         {
             return true;
         }
 
-        return !string.IsNullOrEmpty(def.ShortName)
-            && FileByShortName.TryGetValue(def.ShortName, out fileName);
+        fileName = FallbackFileFor(def);
+        return !string.IsNullOrEmpty(fileName);
+    }
+
+    static string FallbackFileFor(ItemDef def)
+    {
+        if (def.Kind == ItemKind.Amulet)
+        {
+            return "Amulets/golden_cross.png";
+        }
+
+        if (def.Kind == ItemKind.Consumable)
+        {
+            return def.ManaRestoreAmount > 0 ? "Amulets/amethyst_sash.png" : "Amulets/holy_grail.png";
+        }
+
+        return def.WeaponType switch
+        {
+            WeaponType.Bow => "Weapons/golden_bow.png",
+            WeaponType.Staff => "Weapons/azure_cane.png",
+            WeaponType.Katana => "Weapons/rusted_pummel.png",
+            _ => "Weapons/chipped_sword.png",
+        };
     }
 
     /// Shared loader keyed by item definition id. Same-named catalog rows reuse one PNG.
@@ -149,7 +189,7 @@ public static class AmuletArt
             return null;
         }
 
-        return LoadFile(itemName, fileName);
+        return LoadFile(fileName, fileName);
     }
 
     /// Runtime PNG under StreamingAssets, same path rules as item icons.
@@ -172,7 +212,6 @@ public static class AmuletArt
     {
         _claimed = false;
         CacheById.Clear();
-        FileOwner.Clear();
         MissingWarned.Clear();
         EnsureClaims();
     }
@@ -185,25 +224,10 @@ public static class AmuletArt
         }
 
         _claimed = true;
-        var defs = new List<ItemDef>();
         foreach (var def in GameManager.Conn.Db.ItemDef.Iter())
-        {
-            defs.Add(def);
-        }
-
-        defs.Sort(CompareClaimOrder);
-        foreach (var def in defs)
         {
             Claim(def);
         }
-    }
-
-    static int CompareClaimOrder(ItemDef a, ItemDef b)
-    {
-        var aStarter = StarterShortNames.Contains(a.ShortName) ? 0 : 1;
-        var bStarter = StarterShortNames.Contains(b.ShortName) ? 0 : 1;
-        var starter = aStarter.CompareTo(bStarter);
-        return starter != 0 ? starter : a.Id.CompareTo(b.Id);
     }
 
     static void Claim(ItemDef def)
@@ -215,15 +239,6 @@ public static class AmuletArt
             return;
         }
 
-        if (FileOwner.TryGetValue(fileName, out var owner) && owner != def.Id)
-        {
-            if (CacheById.TryGetValue(owner, out var shared) && shared != null)
-            {
-                CacheById[def.Id] = shared;
-                return;
-            }
-        }
-
         var sprite = LoadFile(fileName, fileName);
         if (sprite == null)
         {
@@ -232,7 +247,6 @@ public static class AmuletArt
             return;
         }
 
-        FileOwner[fileName] = def.Id;
         CacheById[def.Id] = sprite;
     }
 
