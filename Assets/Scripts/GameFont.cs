@@ -63,11 +63,12 @@ public static class GameFont
         return Snap(Mathf.Max(MinReadableSize, size + SizeBump));
     }
 
-    /// Outline/shadow offset in UI pixels. Scales with font size and stays
-    /// inside typical 12px panel padding at LogSize (24 → 1.5).
+    /// Outline offset in whole UI pixels so the duplicate mesh stays on the
+    /// pixel grid. Scales with font size and stays inside typical 12px panel
+    /// padding at LogSize (24 → 2).
     public static Vector2 OutlineDistance(int fontSize)
     {
-        var d = Mathf.Clamp(fontSize / (float)(Pixel * 2), 1f, 3f);
+        var d = Mathf.Clamp(Mathf.RoundToInt(fontSize / (float)(Pixel * 2)), 1, 3);
         return new Vector2(d, -d);
     }
 

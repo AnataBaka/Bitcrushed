@@ -131,6 +131,7 @@ public static class UiFactory
         image.sprite = PlaceholderArt.FlatWhite();
         image.color = color;
         image.type = Image.Type.Simple;
+        image.useSpriteMesh = false;
         rt.gameObject.AddComponent<RectMask2D>();
         return image;
     }
@@ -143,6 +144,7 @@ public static class UiFactory
         image.color = color;
         image.type = Image.Type.Sliced;
         image.pixelsPerUnitMultiplier = 1.15f;
+        image.useSpriteMesh = false;
         return image;
     }
 
@@ -224,6 +226,7 @@ public static class UiFactory
         trackImage.sprite = PlaceholderArt.FlatWhite();
         trackImage.color = new Color(0.07f, 0.07f, 0.09f, 0.72f);
         trackImage.type = Image.Type.Simple;
+        trackImage.useSpriteMesh = false;
         trackImage.raycastTarget = false;
 
         var fillRt = NewRect(track, "Fill");
@@ -235,6 +238,7 @@ public static class UiFactory
         fill.sprite = PlaceholderArt.FlatWhite();
         fill.color = fillColor;
         fill.type = Image.Type.Filled;
+        fill.useSpriteMesh = false;
         fill.fillMethod = Image.FillMethod.Horizontal;
         fill.fillOrigin = (int)Image.OriginHorizontal.Left;
         fill.fillAmount = 1f;

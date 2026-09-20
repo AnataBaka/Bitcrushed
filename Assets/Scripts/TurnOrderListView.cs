@@ -54,6 +54,7 @@ public class TurnOrderListView : MonoBehaviour
         panel.sprite = PlaceholderArt.FlatWhite();
         panel.color = Backing;
         panel.type = Image.Type.Simple;
+        panel.useSpriteMesh = false;
         panel.raycastTarget = false;
         root.anchorMin = new Vector2(0f, 0.5f);
         root.anchorMax = new Vector2(0f, 0.5f);
@@ -357,6 +358,7 @@ public class TurnOrderListView : MonoBehaviour
         var highlight = highlightRt.gameObject.AddComponent<Image>();
         highlight.sprite = PlaceholderArt.FlatWhite();
         highlight.color = Highlight;
+        highlight.useSpriteMesh = false;
         highlight.raycastTarget = false;
         highlight.enabled = false;
 
