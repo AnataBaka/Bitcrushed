@@ -228,12 +228,17 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     /// combatants; Knight and Ninja run all the way in and swing instead.
     public void PlayLunge(Vector2 targetPosition) => StartCoroutine(LungeRoutine(targetPosition));
 
-    /// Run to the enemy, play the chosen attack clip, then run home.
+    /// Run to the enemy, play the chosen attack clip, then run home. Archer
+    /// instead strafes to the target's Y (no X change), looses an arrow, and
+    /// returns once the volley is done.
     public IEnumerator PlayStrike(
         Vector2 targetPosition,
         Action onImpact,
         Sprite[] attackFrames,
-        float attackFps
+        float attackFps,
+        string actionName = null,
+        bool returnHome = true,
+        RectTransform targetShape = null
     )
     {
         if (!_spriteMode || _flipbook == null)
@@ -242,6 +247,20 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             yield return new WaitForSeconds(0.14f);
             onImpact?.Invoke();
             yield return new WaitForSeconds(LungeSeconds - 0.14f);
+            yield break;
+        }
+
+        if (ClassSpriteArt.IsRanged(_spriteClass))
+        {
+            yield return PlayRangedStrike(
+                targetPosition,
+                onImpact,
+                attackFrames,
+                attackFps,
+                actionName,
+                returnHome,
+                targetShape
+            );
             yield break;
         }
 
@@ -295,6 +314,120 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
 
         _striking = false;
+    }
+
+    IEnumerator PlayRangedStrike(
+        Vector2 targetPosition,
+        Action onImpact,
+        Sprite[] attackFrames,
+        float attackFps,
+        string actionName,
+        bool returnHome,
+        RectTransform targetShape
+    )
+    {
+        _striking = true;
+        transform.SetAsLastSibling();
+
+        var run = ClassSpriteArt.Run(_spriteClass);
+        var idle = ClassSpriteArt.Idle(_spriteClass);
+        var clip = attackFrames != null && attackFrames.Length > 0
+            ? attackFrames
+            : ClassSpriteArt.AttackClipFor(_spriteClass, actionName);
+        var fps = attackFps > 0f ? attackFps : ClassSpriteArt.AttackFpsFor(_spriteClass);
+
+        var start = _root.anchoredPosition;
+        var aim = new Vector2(_home.x, targetPosition.y);
+        var toAim = Vector2.Distance(start, aim);
+        if (toAim > 6f)
+        {
+            if (run != null && run.Length > 0)
+            {
+                _flipbook.Play(run, ClassSpriteArt.RunFpsFor(_spriteClass), true);
+            }
+
+            yield return Slide(start, aim, MoveSeconds(start, aim, _spriteClass));
+            _root.anchoredPosition = aim;
+        }
+        else
+        {
+            _root.anchoredPosition = aim;
+        }
+
+        _flipbook.Play(clip, fps, false);
+        var swing = clip != null && clip.Length > 0 && fps > 0f ? clip.Length / fps : 0.4f;
+        var releaseAt = swing * ClassSpriteArt.AttackReleaseNormalized(_spriteClass);
+        if (releaseAt > 0f)
+        {
+            yield return new WaitForSeconds(releaseAt);
+        }
+
+        var field = _root.parent as RectTransform;
+        var from = BowWorld();
+        var to = targetShape != null ? CombatVfx.WorldCenter(targetShape) : from + new Vector3(400f, 0f, 0f);
+        var arrow = ClassSpriteArt.ArrowSprite(_spriteClass);
+        if (field != null && arrow != null && ClassSpriteArt.FiresProjectile(_spriteClass, actionName))
+        {
+            yield return CombatProjectile.FireArrow(field, from, to, actionName, arrow);
+        }
+        else
+        {
+            yield return new WaitForSeconds(0.08f);
+        }
+
+        onImpact?.Invoke();
+
+        while (_flipbook != null && _flipbook.IsPlaying)
+        {
+            yield return null;
+        }
+
+        if (!returnHome)
+        {
+            if (!_deadPose && !_dying && _flipbook != null && idle != null && idle.Length > 0)
+            {
+                _flipbook.Play(idle, ClassSpriteArt.IdleFps, true);
+            }
+
+            yield break;
+        }
+
+        var fromAim = _root.anchoredPosition;
+        if (Vector2.Distance(fromAim, _home) > 6f && run != null && run.Length > 0 && !_deadPose && !_dying)
+        {
+            _flipbook.Play(run, ClassSpriteArt.RunFpsFor(_spriteClass), true);
+        }
+
+        yield return Slide(fromAim, _home, MoveSeconds(fromAim, _home, _spriteClass));
+        _root.anchoredPosition = _home;
+
+        if (!_deadPose && !_dying && _flipbook != null && idle != null && idle.Length > 0)
+        {
+            _flipbook.Play(idle, ClassSpriteArt.IdleFps, true);
+        }
+
+        _striking = false;
+    }
+
+    Vector3 BowWorld()
+    {
+        var center = CombatVfx.WorldCenter(ShapeRect);
+        var corners = new Vector3[4];
+        ShapeRect.GetWorldCorners(corners);
+        var width = Mathf.Abs(corners[2].x - corners[0].x);
+        var height = Mathf.Abs(corners[2].y - corners[0].y);
+        return center + new Vector3(width * 0.12f, height * 0.04f, 0f);
+    }
+
+    /// Minecraft-like enchant gleam on the body. Does not occupy Busy.
+    public void PlayBuffGleam()
+    {
+        if (_shape == null)
+        {
+            return;
+        }
+
+        BuffGleam.Play(_shape, BuffGleam.Duration);
     }
 
     /// Plays the class death clip and holds the last frame. No-op for placeholders.
@@ -373,7 +506,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
     }
 
-    /// Hurt clip for Knight / Ninja; squash-and-flash for placeholder shapes.
+    /// Hurt clip for Knight / Ninja / Archer; squash-and-flash for placeholder shapes.
     public void PlayHit()
     {
         if (_hit != null)
@@ -560,7 +693,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
 
     void EnableClassSprite(string className)
     {
-        _spriteClass = className;
+        _spriteClass = ClassSpriteArt.CanonicalClass(className);
         _flipX = ClassSpriteArt.FlipX(className);
         ApplyFacingScale(1f);
 

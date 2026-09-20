@@ -667,6 +667,23 @@ public class BattleHud : MonoBehaviour
             return;
         }
 
+        if (row.Kind == LogKind.Focus || row.Kind == LogKind.Heal)
+        {
+            if (
+                ClassSpriteArt.IsPlayerBuffMessage(
+                    row.Message,
+                    row.Kind == LogKind.Heal,
+                    row.Kind == LogKind.Focus
+                )
+                && row.TargetEntityId != 0
+            )
+            {
+                _pendingHits.Enqueue(row);
+            }
+
+            return;
+        }
+
         if (row.Kind != LogKind.Attack && row.Kind != LogKind.Aoe)
         {
             return;
@@ -700,6 +717,27 @@ public class BattleHud : MonoBehaviour
     IEnumerator PlayHit(BattleLog row)
     {
         _animating = true;
+
+        if (row.Kind == LogKind.Focus || row.Kind == LogKind.Heal)
+        {
+            if (_views.TryGetValue(row.TargetEntityId, out var buffTarget) && buffTarget != null)
+            {
+                var buffEntity = GameManager.FindEntity(row.TargetEntityId);
+                if (buffEntity != null && buffEntity.Faction == Team.Players)
+                {
+                    buffTarget.PlayBuffGleam();
+                }
+            }
+
+            yield return new WaitForSeconds(0.18f);
+            _animating = false;
+            if (_pendingHits.Count == 0)
+            {
+                Refresh();
+            }
+
+            yield break;
+        }
 
         if (row.Kind == LogKind.Aoe)
         {
@@ -746,19 +784,31 @@ public class BattleHud : MonoBehaviour
         var actionName = ClassSpriteArt.ActionNameFromLog(row.Message);
         var actorEntity = GameManager.FindEntity(row.ActorEntityId);
         var className = actorEntity != null ? actorEntity.ClassName : null;
+        var targetEntity = GameManager.FindEntity(row.TargetEntityId);
 
         void Impact()
         {
             if (target != null)
             {
                 target.PlayHit();
-                if (
-                    className != null
-                    && row.Damage > 0
-                    && ClassSpriteArt.TryHitEffect(className, actionName, out var effect)
-                )
+                if (row.Damage > 0)
                 {
-                    CombatVfx.Spawn(_field, target.ShapeRect, effect);
+                    if (
+                        className != null
+                        && ClassSpriteArt.TryHitEffect(className, actionName, out var effect)
+                    )
+                    {
+                        CombatVfx.Spawn(_field, target.ShapeRect, effect);
+                    }
+                    else if (
+                        actorEntity != null
+                        && actorEntity.Faction == Team.Enemies
+                        && targetEntity != null
+                        && targetEntity.Faction == Team.Players
+                    )
+                    {
+                        CombatVfx.Spawn(_field, target.ShapeRect, HitEffectKind.Impact);
+                    }
                 }
             }
 
@@ -781,7 +831,10 @@ public class BattleHud : MonoBehaviour
                 targetHome,
                 Impact,
                 ClassSpriteArt.AttackClipFor(className, actionName),
-                ClassSpriteArt.AttackFps
+                ClassSpriteArt.AttackFpsFor(className),
+                actionName,
+                returnHome: !SameVolleyContinues(row, actionName),
+                target?.ShapeRect
             );
         }
         else
@@ -808,6 +861,22 @@ public class BattleHud : MonoBehaviour
             _aoeLungeActor = 0;
             Refresh();
         }
+    }
+
+    bool SameVolleyContinues(BattleLog current, string actionName)
+    {
+        if (_pendingHits.Count == 0 || string.IsNullOrEmpty(actionName))
+        {
+            return false;
+        }
+
+        var next = _pendingHits.Peek();
+        if (next.Kind != LogKind.Attack || next.ActorEntityId != current.ActorEntityId)
+        {
+            return false;
+        }
+
+        return ClassSpriteArt.ActionNameFromLog(next.Message) == actionName;
     }
 
     bool TryLastHome(ulong entityId, out Vector2 home)
