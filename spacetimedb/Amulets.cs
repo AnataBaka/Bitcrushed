@@ -285,16 +285,7 @@ public static partial class Module
 
     public static void GiveStartingWeapon(ReducerContext ctx, Identity owner, PlayerClass playerClass)
     {
-        var names = UniqueWeaponsFor(playerClass);
-        if (names.Length == 0)
-        {
-            EquipFresh(ctx, owner, RequireItem(ctx, StarterWeaponName(playerClass)));
-            return;
-        }
-
-        var pick = names[ctx.Rng.Next(0, names.Length)];
-        EquipFresh(ctx, owner, RequireItem(ctx, pick));
-        GiveToBag(ctx, owner, RequireItem(ctx, StarterWeaponName(playerClass)).Id, 1);
+        EquipFresh(ctx, owner, RequireItemByShortName(ctx, StarterWeaponShortName(playerClass)));
     }
 
     public static void GrantRandomUnownedWeapon(

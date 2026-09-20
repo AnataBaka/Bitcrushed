@@ -228,10 +228,21 @@ public static partial class Module
         playerClass switch
         {
             PlayerClass.Knight => "Chipped Sword",
-            PlayerClass.Mage => "Wooden Cane",
-            PlayerClass.Ninja => "Rusted Katana",
-            PlayerClass.Archer => "Weathered Bow",
+            PlayerClass.Mage => "Azure Cane",
+            PlayerClass.Ninja => "Rusted Pommel",
+            PlayerClass.Archer => "Golden Bow",
             _ => "Chipped Sword",
+        };
+
+    /// Stable catalog keys. Unique loot can share Golden Bow / Azure Cane names.
+    public static string StarterWeaponShortName(PlayerClass playerClass) =>
+        playerClass switch
+        {
+            PlayerClass.Knight => "CSW",
+            PlayerClass.Mage => "WCN",
+            PlayerClass.Ninja => "KTN",
+            PlayerClass.Archer => "WBW",
+            _ => "CSW",
         };
 
     public static string BasicAttackName(PlayerClass playerClass) =>

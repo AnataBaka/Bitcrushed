@@ -472,9 +472,9 @@ public static partial class Module
     static void SeedItems(ReducerContext ctx)
     {
         AddWeapon(ctx, "Chipped Sword", "CSW", WeaponType.Sword, atk: 12, strength: 1);
-        AddWeapon(ctx, "Wooden Cane", "WCN", WeaponType.Staff, atk: 6, intelligence: 2);
-        AddWeapon(ctx, "Rusted Katana", "KTN", WeaponType.Katana, atk: 9, speed: 2);
-        AddWeapon(ctx, "Weathered Bow", "WBW", WeaponType.Bow, atk: 10, dexterity: 2);
+        AddWeapon(ctx, "Azure Cane", "WCN", WeaponType.Staff, atk: 6, intelligence: 2);
+        AddWeapon(ctx, "Rusted Pommel", "KTN", WeaponType.Katana, atk: 9, speed: 2);
+        AddWeapon(ctx, "Golden Bow", "WBW", WeaponType.Bow, atk: 10, dexterity: 2);
         AddWeapon(ctx, "Copper Sword", "CPS", WeaponType.Sword, atk: 18, strength: 2);
         AddWeapon(ctx, "Wooden Bow", "WDB", WeaponType.Bow, atk: 15, dexterity: 3);
         AddWeapon(ctx, "Crooked Stick", "CST", WeaponType.Staff, atk: 9, intelligence: 3);
@@ -509,6 +509,10 @@ public static partial class Module
 
             SeedOneUniqueWeapon(ctx, name);
         }
+
+        RenameStarterWeapon(ctx, "WCN", "Azure Cane", "Wooden Cane");
+        RenameStarterWeapon(ctx, "KTN", "Rusted Pommel", "Rusted Katana");
+        RenameStarterWeapon(ctx, "WBW", "Golden Bow", "Weathered Bow");
 
         foreach (var item in ctx.Db.ItemDef.Iter().ToList())
         {
@@ -800,6 +804,38 @@ public static partial class Module
         throw new Exception($"Item catalog is missing {name}.");
     }
 
+    static ItemDef RequireItemByShortName(ReducerContext ctx, string shortName)
+    {
+        foreach (var item in ctx.Db.ItemDef.Iter())
+        {
+            if (item.ShortName == shortName)
+            {
+                return item;
+            }
+        }
+
+        throw new Exception($"Item catalog is missing short name {shortName}.");
+    }
+
+    static void RenameStarterWeapon(ReducerContext ctx, string shortName, string newName, string oldName)
+    {
+        foreach (var item in ctx.Db.ItemDef.Iter().ToList())
+        {
+            if (item.ShortName != shortName)
+            {
+                continue;
+            }
+
+            if (item.Name != newName)
+            {
+                ctx.Db.ItemDef.Id.Update(item with { Name = newName });
+            }
+
+            _ = oldName;
+            return;
+        }
+    }
+
     static SkillDef RequireSkill(ReducerContext ctx, string name)
     {
         foreach (var skill in ctx.Db.SkillDef.Iter())
@@ -813,7 +849,7 @@ public static partial class Module
         throw new Exception($"Skill catalog is missing {name}.");
     }
 
-    /// Class base weapon worn, a random starting amulet, 3x3 inventory empty.
+    /// Class base weapon worn, amulet empty, 3x3 inventory empty.
     /// Potions stay in the action-menu bag and are not part of inventory.
     public static void GiveStartingLoadout(
         ReducerContext ctx,
@@ -826,15 +862,14 @@ public static partial class Module
 
         GiveToBag(ctx, owner, RequireItem(ctx, "Health Potion").Id, 3);
         GiveToBag(ctx, owner, RequireItem(ctx, "Mana Potion").Id, 2);
-        GiveRandomStartingAmulet(ctx, owner);
 
         if (SeedTestItems)
         {
             TryAddItemToInventory(ctx, owner, RequireItem(ctx, "Health Amulet").Id);
-            TryAddItemToInventory(ctx, owner, RequireItem(ctx, "Chipped Sword").Id);
-            TryAddItemToInventory(ctx, owner, RequireItem(ctx, "Weathered Bow").Id);
-            TryAddItemToInventory(ctx, owner, RequireItem(ctx, "Wooden Cane").Id);
-            TryAddItemToInventory(ctx, owner, RequireItem(ctx, "Rusted Katana").Id);
+            TryAddItemToInventory(ctx, owner, RequireItemByShortName(ctx, "CSW").Id);
+            TryAddItemToInventory(ctx, owner, RequireItemByShortName(ctx, "WBW").Id);
+            TryAddItemToInventory(ctx, owner, RequireItemByShortName(ctx, "WCN").Id);
+            TryAddItemToInventory(ctx, owner, RequireItemByShortName(ctx, "KTN").Id);
         }
 
         GrantUnlockedSkills(ctx, entity.EntityId, playerClass, 1);
