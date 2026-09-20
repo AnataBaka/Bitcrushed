@@ -66,7 +66,7 @@ public class LevelUpBannerView : MonoBehaviour
         UiFactory.Anchor(title.rectTransform, new Vector2(0f, 0.42f), Vector2.one);
         var outline = title.gameObject.AddComponent<Outline>();
         outline.effectColor = OutlineColor;
-        outline.effectDistance = new Vector2(2.5f, -2.5f);
+        outline.effectDistance = GameFont.OutlineDistance(TitleSize);
         outline.useGraphicAlpha = true;
 
         var sub = UiFactory.Label(root, "Sub", "", 24, TextAnchor.UpperCenter, SubColor);

@@ -49,6 +49,11 @@ public class DamagePopupView : MonoBehaviour
 
         var size = FontSize();
         label.fontSize = size;
+        var outline = label.GetComponent<Outline>();
+        if (outline != null)
+        {
+            outline.effectDistance = GameFont.OutlineDistance(size);
+        }
         label.text = damage.ToString();
         label.color = new Color(0.92f, 0.18f, 0.16f, 1f);
         label.gameObject.SetActive(true);
@@ -84,7 +89,7 @@ public class DamagePopupView : MonoBehaviour
         label.rectTransform.sizeDelta = new Vector2(160f, 48f);
         var outline = label.gameObject.AddComponent<Outline>();
         outline.effectColor = new Color(0.08f, 0.04f, 0.04f, 0.92f);
-        outline.effectDistance = new Vector2(1.5f, -1.5f);
+        outline.effectDistance = GameFont.OutlineDistance(24);
         label.gameObject.SetActive(false);
         return label;
     }

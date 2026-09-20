@@ -356,6 +356,7 @@ public static class UiFactory
         image.sprite = PlaceholderArt.Solid(Color.white);
         image.color = color;
         image.type = Image.Type.Sliced;
+        rt.gameObject.AddComponent<RectMask2D>();
         return image;
     }
 

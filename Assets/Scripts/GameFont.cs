@@ -63,6 +63,14 @@ public static class GameFont
         return Snap(Mathf.Max(MinReadableSize, size + SizeBump));
     }
 
+    /// Outline/shadow offset in UI pixels. Scales with font size and stays
+    /// inside typical 12px panel padding at LogSize (24 → 1.5).
+    public static Vector2 OutlineDistance(int fontSize)
+    {
+        var d = Mathf.Clamp(fontSize / (float)(Pixel * 2), 1f, 3f);
+        return new Vector2(d, -d);
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
