@@ -329,11 +329,11 @@ public class StatPopupView : MonoBehaviour
             return;
         }
 
-        var entity = GameManager.FindEntity(_entityId);
+        var entity = GameManager.FindEntity(_entityId) ?? CombatHpPresenter.Ghost(_entityId);
         var session = GameManager.Session();
         if (
             entity == null
-            || !entity.Alive
+            || !CombatHpPresenter.IsTargetable(entity)
             || session == null
             || session.Phase != _phaseWhenOpened
         )
@@ -364,8 +364,9 @@ public class StatPopupView : MonoBehaviour
             _subtitle.text = entity.ClassName;
         }
 
-        UiFactory.SetBar(_hpFill, entity.Hp, entity.MaxHp);
-        _hpText.text = $"{entity.Hp}/{entity.MaxHp}";
+        var hp = CombatHpPresenter.DisplayedHp(entity);
+        UiFactory.SetBar(_hpFill, hp, entity.MaxHp);
+        _hpText.text = $"{hp}/{entity.MaxHp}";
         UiFactory.SetBar(_manaFill, entity.Mana, entity.MaxMana);
         _manaText.text = $"{entity.Mana}/{entity.MaxMana}";
         _strengthText.text = entity.Strength.ToString();

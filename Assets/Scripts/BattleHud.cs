@@ -69,6 +69,7 @@ public class BattleHud : MonoBehaviour
     /// Hits waiting to be animated, oldest first.
     readonly Queue<BattleLog> _pendingHits = new Queue<BattleLog>();
     bool _animating;
+    bool _refreshing;
     ulong _aoeLungeActor;
     bool _magicBulletViiHold;
     bool _magicBulletViiBurstPlayed;
@@ -151,18 +152,22 @@ public class BattleHud : MonoBehaviour
     {
         GameManager.StateChanged += Refresh;
         GameManager.LogAppended += HandleLogAppended;
+        CombatHpPresenter.Changed += Refresh;
     }
 
     void OnDisable()
     {
         GameManager.StateChanged -= Refresh;
         GameManager.LogAppended -= HandleLogAppended;
+        CombatHpPresenter.Changed -= Refresh;
     }
 
     void Start() => Refresh();
 
     void Update()
     {
+        CombatHpPresenter.Tick();
+
         if (!_animating && _pendingHits.Count > 0)
         {
             StartCoroutine(PlayHit(_pendingHits.Dequeue()));
@@ -173,6 +178,7 @@ public class BattleHud : MonoBehaviour
             && (_endScreenPhase == BattlePhase.StageTransition || _endScreenPhase == BattlePhase.Defeat)
             && Time.unscaledTime >= _endScreenAt
             && !AnimationsPending()
+            && !CombatHpPresenter.HoldsTeardown
         )
         {
             Refresh();
@@ -249,11 +255,24 @@ public class BattleHud : MonoBehaviour
 
     void Refresh()
     {
-        if (_field == null)
+        if (_field == null || _refreshing)
         {
             return;
         }
 
+        _refreshing = true;
+        try
+        {
+            RefreshBody();
+        }
+        finally
+        {
+            _refreshing = false;
+        }
+    }
+
+    void RefreshBody()
+    {
         if (_connectionLabel != null && GameManager.Instance != null)
         {
             _connectionLabel.text =
@@ -289,8 +308,8 @@ public class BattleHud : MonoBehaviour
             ClearTargeting();
         }
 
-        SyncTeam(GameManager.TeamMembers(Team.Players), PlayerSlots, PlayerCardSize, true, me);
-        var enemies = GameManager.TeamMembers(Team.Enemies);
+        SyncTeam(CombatHpPresenter.VisibleTeam(Team.Players), PlayerSlots, PlayerCardSize, true, me);
+        var enemies = CombatHpPresenter.VisibleTeam(Team.Enemies);
         SyncTeam(enemies, EnemySlotsFor(enemies), EnemyCardSize, false, me);
         PruneMissing();
         if (
@@ -377,7 +396,9 @@ public class BattleHud : MonoBehaviour
             _endScreenAt = Time.unscaledTime + EndScreenDelaySeconds;
         }
 
-        return !AnimationsPending() && Time.unscaledTime >= _endScreenAt;
+        return !AnimationsPending()
+            && !CombatHpPresenter.HoldsTeardown
+            && Time.unscaledTime >= _endScreenAt;
     }
 
     static string NextLine(GameSession session)
@@ -433,13 +454,21 @@ public class BattleHud : MonoBehaviour
             // Defeated combatants keep an existing card so the killing blow can
             // finish, but a later attack must never spawn a new one. AnimationsPending
             // used to force a recreate, which is what flickered dead entities back in.
-            if (!entity.Alive && !hasView)
+            if (!CombatHpPresenter.IsVisible(entity) && !hasView)
             {
                 continue;
             }
 
             if (!hasView)
             {
+                if (CombatHpPresenter.HoldsTeardown && entity.Alive && entity.Hp > 0)
+                {
+                    var table = GameManager.FindEntity(entity.EntityId);
+                    if (table != null && table.Alive && CombatHpPresenter.ViewOf(entity).PendingHits == 0)
+                    {
+                        continue;
+                    }
+                }
                 var size = entity.IsBoss ? BossCardSize : cardSize;
                 view = EntityView.Create(_field, entity.Name, size, showMana);
                 _views[entity.EntityId] = view;
@@ -455,7 +484,10 @@ public class BattleHud : MonoBehaviour
 
             var isLocal = me != null && me.EntityId == entity.EntityId;
             var targetable =
-                _targeting && myTurn && entity.Faction == Team.Enemies && entity.Alive;
+                _targeting
+                && myTurn
+                && entity.Faction == Team.Enemies
+                && CombatHpPresenter.IsTargetable(entity);
             view.Bind(entity, activeId == entity.EntityId, isLocal, targetable, HandleEntityClicked);
             _lastHomes[entity.EntityId] = view.Home;
 
@@ -474,20 +506,21 @@ public class BattleHud : MonoBehaviour
 
     void PruneMissing()
     {
+        if (_animating || _magicBulletViiHold)
+        {
+            return;
+        }
+
         _stale.Clear();
 
         foreach (var pair in _views)
         {
-            var entity = GameManager.FindEntity(pair.Key);
-            if (entity == null)
+            if (pair.Value != null && pair.Value.Busy)
             {
-                _stale.Add(pair.Key);
+                continue;
             }
-            else if (
-                !entity.Alive
-                && !AnimationsPending()
-                && (pair.Value == null || !pair.Value.Busy)
-            )
+
+            if (CombatHpPresenter.DisplayedHp(pair.Key) <= 0)
             {
                 _stale.Add(pair.Key);
             }
@@ -501,12 +534,13 @@ public class BattleHud : MonoBehaviour
             }
 
             _views.Remove(id);
+            CombatHpPresenter.Hide(id);
         }
     }
 
     bool AnimationsPending()
     {
-        if (_animating || _pendingHits.Count > 0 || _magicBulletViiHold)
+        if (_animating || _pendingHits.Count > 0 || _magicBulletViiHold || CombatHpPresenter.HasPending)
         {
             return true;
         }
@@ -561,9 +595,14 @@ public class BattleHud : MonoBehaviour
 
     void HandleEntityClicked(ulong entityId, Vector2 screenPoint)
     {
-        var entity = GameManager.FindEntity(entityId);
-        if (entity == null)
+        var entity = GameManager.FindEntity(entityId) ?? CombatHpPresenter.Ghost(entityId);
+        if (entity == null || !CombatHpPresenter.IsTargetable(entity))
         {
+            if (_popup != null && _popup.IsOpen && _popup.EntityId == entityId)
+            {
+                _popup.Close();
+            }
+
             return;
         }
 
@@ -575,7 +614,7 @@ public class BattleHud : MonoBehaviour
             }
 
             var skillDefId = _pendingSkillId;
-            if (!entity.Alive || entity.Faction != Team.Enemies)
+            if (entity.Faction != Team.Enemies)
             {
                 return;
             }
@@ -589,11 +628,6 @@ public class BattleHud : MonoBehaviour
             }
 
             GameManager.CastSkill(skillDefId, entityId);
-            return;
-        }
-
-        if (!entity.Alive)
-        {
             return;
         }
 
@@ -720,7 +754,7 @@ public class BattleHud : MonoBehaviour
         {
             SetAllBarsFrozen(true);
             _magicBulletViiHold = true;
-            _pendingHits.Enqueue(row);
+            QueueHit(row);
             return;
         }
 
@@ -746,7 +780,16 @@ public class BattleHud : MonoBehaviour
             return;
         }
 
+        QueueHit(row);
+    }
+
+    void QueueHit(BattleLog row)
+    {
         _pendingHits.Enqueue(row);
+        if (row.Kind == LogKind.Attack && row.TargetEntityId != 0)
+        {
+            CombatHpPresenter.RegisterHit(row.TargetEntityId);
+        }
     }
 
     IEnumerator PlayHit(BattleLog row)
@@ -823,8 +866,74 @@ public class BattleHud : MonoBehaviour
 
         _views.TryGetValue(row.ActorEntityId, out var actor);
         _views.TryGetValue(row.TargetEntityId, out var target);
+        var actorEntity = GameManager.FindEntity(row.ActorEntityId) ?? CombatHpPresenter.Ghost(row.ActorEntityId);
+        var targetEntity = GameManager.FindEntity(row.TargetEntityId) ?? CombatHpPresenter.Ghost(row.TargetEntityId);
+
+        var skipLunge =
+            IsBurnLog(row)
+            || (_aoeLungeActor != 0 && row.ActorEntityId == _aoeLungeActor);
+        var actionName = ClassSpriteArt.ActionNameFromLog(row.Message);
+        var className = actorEntity != null ? actorEntity.ClassName : null;
+        var spriteClass = actorEntity != null
+            ? ClassSpriteArt.SpriteClassFor(
+                className,
+                actorEntity.EntityId,
+                actorEntity.Faction == Team.Enemies
+            )
+            : className;
+        var magicBulletStage = actorEntity != null ? actorEntity.MagicBulletStage : 0;
+        var casterAlive = actorEntity == null || actorEntity.Alive;
+
+        void Impact()
+        {
+            var alreadyGone = CombatHpPresenter.DisplayedHp(row.TargetEntityId) <= 0
+                || !CombatHpPresenter.IsVisible(row.TargetEntityId);
+            CombatHpPresenter.ApplyImpact(row.TargetEntityId, row.Damage);
+            if (alreadyGone || target == null)
+            {
+                return;
+            }
+
+            target.PlayHit();
+            if (row.Damage > 0)
+            {
+                if (
+                    className != null
+                    && ClassSpriteArt.TryHitEffect(
+                        className,
+                        actionName,
+                        out var effect,
+                        magicBulletStage,
+                        casterAlive
+                    )
+                )
+                {
+                    CombatVfx.Spawn(_field, target.ShapeRect, effect);
+                }
+                else if (
+                    actorEntity != null
+                    && actorEntity.Faction == Team.Enemies
+                    && targetEntity != null
+                    && targetEntity.Faction == Team.Players
+                )
+                {
+                    CombatVfx.Spawn(_field, target.ShapeRect, HitEffectKind.Impact);
+                }
+            }
+
+            if (CombatHpPresenter.DisplayedHp(row.TargetEntityId) <= 0)
+            {
+                target.PlayDeath();
+                if (_popup != null && _popup.IsOpen && _popup.EntityId == row.TargetEntityId)
+                {
+                    _popup.Close();
+                }
+            }
+        }
+
         if (actor == null)
         {
+            Impact();
             _animating = false;
             if (_pendingHits.Count == 0)
             {
@@ -838,62 +947,6 @@ public class BattleHud : MonoBehaviour
         if (!TryLastHome(row.TargetEntityId, out var targetHome))
         {
             targetHome = actor.Home;
-        }
-
-        var skipLunge =
-            IsBurnLog(row)
-            || (_aoeLungeActor != 0 && row.ActorEntityId == _aoeLungeActor);
-        var actionName = ClassSpriteArt.ActionNameFromLog(row.Message);
-        var actorEntity = GameManager.FindEntity(row.ActorEntityId);
-        var className = actorEntity != null ? actorEntity.ClassName : null;
-        var spriteClass = actorEntity != null
-            ? ClassSpriteArt.SpriteClassFor(
-                className,
-                actorEntity.EntityId,
-                actorEntity.Faction == Team.Enemies
-            )
-            : className;
-        var targetEntity = GameManager.FindEntity(row.TargetEntityId);
-        var magicBulletStage = actorEntity != null ? actorEntity.MagicBulletStage : 0;
-        var casterAlive = actorEntity == null || actorEntity.Alive;
-
-        void Impact()
-        {
-            if (target != null)
-            {
-                target.PlayHit();
-                if (row.Damage > 0)
-                {
-                    if (
-                        className != null
-                        && ClassSpriteArt.TryHitEffect(
-                            className,
-                            actionName,
-                            out var effect,
-                            magicBulletStage,
-                            casterAlive
-                        )
-                    )
-                    {
-                        CombatVfx.Spawn(_field, target.ShapeRect, effect);
-                    }
-                    else if (
-                        actorEntity != null
-                        && actorEntity.Faction == Team.Enemies
-                        && targetEntity != null
-                        && targetEntity.Faction == Team.Players
-                    )
-                    {
-                        CombatVfx.Spawn(_field, target.ShapeRect, HitEffectKind.Impact);
-                    }
-                }
-            }
-
-            var victim = GameManager.FindEntity(row.TargetEntityId);
-            if (victim != null && !victim.Alive && target != null)
-            {
-                target.PlayDeath();
-            }
         }
 
         if (skipLunge)
@@ -963,22 +1016,28 @@ public class BattleHud : MonoBehaviour
             yield return CombatVfx.PlayFullscreen(_field, HitEffectKind.Explosion2);
             _magicBulletViiHold = false;
             SetAllBarsFrozen(false);
+            CombatHpPresenter.RevealNow(row.ActorEntityId);
             Refresh();
-            var caster = GameManager.FindEntity(row.ActorEntityId);
-            if (mage != null && caster != null && !caster.Alive)
+            if (mage != null && CombatHpPresenter.DisplayedHp(row.ActorEntityId) <= 0)
             {
                 mage.PlayDeath();
             }
         }
 
         _views.TryGetValue(row.TargetEntityId, out var target);
-        if (target != null)
+        var alreadyGone = CombatHpPresenter.DisplayedHp(row.TargetEntityId) <= 0
+            || !CombatHpPresenter.IsVisible(row.TargetEntityId);
+        CombatHpPresenter.ApplyImpact(row.TargetEntityId, row.Damage);
+        if (target != null && !alreadyGone && CombatHpPresenter.IsVisible(row.TargetEntityId))
         {
             target.PlayHit();
-            var victim = GameManager.FindEntity(row.TargetEntityId);
-            if (victim != null && !victim.Alive)
+            if (CombatHpPresenter.DisplayedHp(row.TargetEntityId) <= 0)
             {
                 target.PlayDeath();
+                if (_popup != null && _popup.IsOpen && _popup.EntityId == row.TargetEntityId)
+                {
+                    _popup.Close();
+                }
             }
         }
 
@@ -1062,10 +1121,10 @@ public class BattleHud : MonoBehaviour
         var count = 0;
         foreach (var pair in _views)
         {
-            var entity = GameManager.FindEntity(pair.Key);
+            var entity = GameManager.FindEntity(pair.Key) ?? CombatHpPresenter.Ghost(pair.Key);
             if (
                 entity == null
-                || !entity.Alive
+                || !CombatHpPresenter.IsVisible(entity)
                 || entity.Faction != Team.Players
                 || pair.Value == null
             )

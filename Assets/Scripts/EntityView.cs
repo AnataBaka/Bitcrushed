@@ -833,8 +833,9 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
 
         if (!_barsFrozen)
         {
-            UiFactory.SetBar(_hpFill, entity.Hp, entity.MaxHp);
-            _hpText.text = $"{entity.Hp}/{entity.MaxHp} hp";
+            var hp = CombatHpPresenter.DisplayedHp(entity);
+            UiFactory.SetBar(_hpFill, hp, entity.MaxHp);
+            _hpText.text = $"{hp}/{entity.MaxHp} hp";
 
             if (_manaFill != null)
             {
@@ -862,7 +863,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             _card.color = new Color(0f, 0f, 0f, 0f);
         }
 
-        _button.interactable = entity.Alive;
+        _button.interactable = CombatHpPresenter.IsTargetable(entity);
 
         if (_statusText != null)
         {
@@ -1004,7 +1005,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
 
         if (
-            entity.Alive
+            CombatHpPresenter.DisplayedAlive(entity)
             && entity.Faction == Team.Players
             && entity.ClassName == "Archer"
             && entity.DodgeCount > 0

@@ -146,8 +146,8 @@ public class TurnOrderListView : MonoBehaviour
                 continue;
             }
 
-            var entity = GameManager.FindEntity(entry.EntityId);
-            if (entity == null || !entity.Alive)
+            var entity = GameManager.FindEntity(entry.EntityId) ?? CombatHpPresenter.Ghost(entry.EntityId);
+            if (entity == null || !CombatHpPresenter.IsVisible(entity))
             {
                 continue;
             }

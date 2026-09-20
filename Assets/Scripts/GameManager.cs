@@ -139,9 +139,21 @@ public class GameManager : MonoBehaviour
         Status = "Connected. Subscribing...";
 
         // Register row callbacks before subscribing so the initial batch is seen.
-        conn.Db.Entity.OnInsert += (_, _) => Changed();
-        conn.Db.Entity.OnUpdate += (_, _, _) => Changed();
-        conn.Db.Entity.OnDelete += (_, _) => Changed();
+        conn.Db.Entity.OnInsert += (_, row) =>
+        {
+            CombatHpPresenter.OnInserted(row);
+            Changed();
+        };
+        conn.Db.Entity.OnUpdate += (_, previous, next) =>
+        {
+            CombatHpPresenter.OnUpdated(previous, next);
+            Changed();
+        };
+        conn.Db.Entity.OnDelete += (_, row) =>
+        {
+            CombatHpPresenter.OnDeleted(row);
+            Changed();
+        };
         conn.Db.GameSession.OnInsert += (_, _) => Changed();
         conn.Db.GameSession.OnUpdate += (_, _, _) => Changed();
         conn.Db.Player.OnInsert += (_, _) => Changed();
@@ -175,6 +187,7 @@ public class GameManager : MonoBehaviour
     {
         SubscriptionReady = true;
         Status = "Connected.";
+        CombatHpPresenter.OnSubscribed();
         AmuletArt.ClaimCatalog();
         Changed();
     }
