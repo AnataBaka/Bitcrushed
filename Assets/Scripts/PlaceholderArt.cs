@@ -17,6 +17,17 @@ public static class PlaceholderArt
 {
     static readonly Dictionary<string, Sprite> Cache = new Dictionary<string, Sprite>();
 
+    /// Point-filtered, no mips, clamp wrap. Every generated gameplay sprite
+    /// goes through this so logical pixels stay hard-edged.
+    public static Texture2D PixelTexture(int width, int height)
+    {
+        return new Texture2D(Mathf.Max(1, width), Mathf.Max(1, height), TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Point,
+            wrapMode = TextureWrapMode.Clamp,
+        };
+    }
+
     public static Sprite Solid(Color color) => Shape(ShapeKind.Rect, color, 8, 8);
 
     /// 2x2 white square with no outline. Use for flat UI fills so a stretched
@@ -168,16 +179,12 @@ public static class PlaceholderArt
             return cached;
         }
 
-        var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
-        {
-            filterMode = FilterMode.Bilinear,
-            wrapMode = TextureWrapMode.Clamp,
-        };
+        var texture = PixelTexture(width, height);
 
         var pixels = new Color32[width * height];
         var outline = new Color(color.r * 0.45f, color.g * 0.45f, color.b * 0.45f, 1f);
-        var stepX = 2f / width;
-        var stepY = 2f / height;
+        var stepX = 1f / width;
+        var stepY = 1f / height;
 
         for (var y = 0; y < height; y++)
         {

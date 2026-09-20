@@ -8,8 +8,13 @@ using UnityEngine;
 /// biomes keep the shared Land slots unchanged.
 public static class StageLayout
 {
-    /// Uniform sprite scale. 1 keeps the existing card sizes; tighten spacing first.
-    public const float EntityScale = 1f;
+    /// Uniform sprite scale. 1.25 is the largest step in 1.2–1.4 that keeps
+    /// 3+4 and 3+boss on land after snapping sizes to whole pixels.
+    public const float EntityScale = 1.25f;
+
+    public static int ScaledPx(float value) => Mathf.Max(1, Mathf.RoundToInt(value * EntityScale));
+
+    public static int ScaledFont(int pts) => GameFont.Snap(Mathf.RoundToInt(pts * EntityScale));
 
     /// Shared solid-land region in normalized image coordinates (bottom-left origin).
     /// Intersection of plains grass, tundra snow, volcano rock, and swamp bank.
@@ -62,16 +67,19 @@ public static class StageLayout
         },
         new[]
         {
-            new Vector2(0.56f, 0.10f),
-            new Vector2(0.66f, 0.16f),
-            new Vector2(0.76f, 0.11f),
-            new Vector2(0.84f, 0.15f),
+            new Vector2(0.54f, 0.09f),
+            new Vector2(0.65f, 0.17f),
+            new Vector2(0.76f, 0.10f),
+            new Vector2(0.86f, 0.16f),
         },
     };
 
-    public static Vector2 PlayerSize => new Vector2(250f, 190f) * EntityScale;
-    public static Vector2 EnemySize => new Vector2(220f, 155f) * EntityScale;
-    public static Vector2 BossSize => new Vector2(320f, 250f) * EntityScale;
+    public static Vector2 PlayerSize =>
+        new Vector2(ScaledPx(250f), ScaledPx(190f));
+    public static Vector2 EnemySize =>
+        new Vector2(ScaledPx(220f), ScaledPx(155f));
+    public static Vector2 BossSize =>
+        new Vector2(ScaledPx(320f), ScaledPx(250f));
 
     public static Vector2[] Players(BiomeBackdropView backdrop, RectTransform field)
     {

@@ -46,7 +46,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     bool _barsFrozen;
 
     /// Vertical gap between stacked combat tags, measured from the sprite top.
-    public const float LabelGap = 4f;
+    public static float LabelGap => StageLayout.EntityScale * 4f;
 
     /// Where the card sits when nothing is animating.
     public Vector2 Home => _home;
@@ -112,8 +112,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             labelStack,
             "BurnTag",
             "BURN",
-            16,
-            18f,
+            StageLayout.ScaledFont(16),
+            StageLayout.ScaledPx(18f),
             new Color(1f, 0.42f, 0.12f, 1f),
             true
         );
@@ -123,8 +123,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             labelStack,
             "BossTag",
             "BOSS",
-            16,
-            20f,
+            StageLayout.ScaledFont(16),
+            StageLayout.ScaledPx(20f),
             new Color(1f, 0.55f, 0.18f, 1f),
             true
         );
@@ -134,8 +134,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             labelStack,
             "Tag",
             "",
-            16,
-            20f,
+            StageLayout.ScaledFont(16),
+            StageLayout.ScaledPx(20f),
             UiFactory.ActiveColor,
             false
         );
@@ -145,8 +145,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             labelStack,
             "ReadyBanner",
             "",
-            16,
-            24f,
+            StageLayout.ScaledFont(16),
+            StageLayout.ScaledPx(24f),
             new Color(0.35f, 0.88f, 0.42f, 1f),
             true
         );
@@ -157,34 +157,35 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         footer.anchorMin = new Vector2(0f, 0f);
         footer.anchorMax = new Vector2(1f, 0f);
         footer.pivot = new Vector2(0.5f, 0f);
-        footer.sizeDelta = new Vector2(0f, showMana ? 88f : 66f);
+        footer.sizeDelta = new Vector2(0f, showMana ? StageLayout.ScaledPx(88f) : StageLayout.ScaledPx(66f));
         footer.anchoredPosition = Vector2.zero;
 
         view._nameText = UiFactory.Label(
             footer,
             "Name",
             name,
-            16,
+            StageLayout.ScaledFont(16),
             TextAnchor.MiddleCenter,
             UiFactory.TextColor
         );
         view._nameText.resizeTextForBestFit = true;
-        view._nameText.resizeTextMinSize = GameFont.Resolve(8);
-        view._nameText.resizeTextMaxSize = GameFont.Resolve(16);
+        view._nameText.resizeTextMinSize = StageLayout.ScaledFont(16);
+        view._nameText.resizeTextMaxSize = StageLayout.ScaledFont(16);
         view._nameText.horizontalOverflow = HorizontalWrapMode.Overflow;
         view._nameText.rectTransform.anchorMin = new Vector2(0f, 1f);
         view._nameText.rectTransform.anchorMax = new Vector2(1f, 1f);
         view._nameText.rectTransform.pivot = new Vector2(0.5f, 1f);
-        view._nameText.rectTransform.sizeDelta = new Vector2(0f, 24f);
+        view._nameText.rectTransform.sizeDelta = new Vector2(0f, StageLayout.ScaledPx(24f));
         view._nameText.rectTransform.anchoredPosition = Vector2.zero;
 
         var hpRow = UiFactory.NewRect(footer, "HpRow");
         hpRow.anchorMin = new Vector2(0.16f, 1f);
         hpRow.anchorMax = new Vector2(0.84f, 1f);
         hpRow.pivot = new Vector2(0.5f, 1f);
-        hpRow.sizeDelta = new Vector2(0f, 20f);
-        hpRow.anchoredPosition = new Vector2(0f, -24f);
+        hpRow.sizeDelta = new Vector2(0f, StageLayout.ScaledPx(20f));
+        hpRow.anchoredPosition = new Vector2(0f, -StageLayout.ScaledPx(24f));
         view._hpFill = UiFactory.Bar(hpRow, "Hp", UiFactory.HpColor, out view._hpText);
+        view._hpText.fontSize = StageLayout.ScaledFont(16);
 
         if (showMana)
         {
@@ -192,28 +193,29 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             view._manaRow.anchorMin = new Vector2(0.16f, 1f);
             view._manaRow.anchorMax = new Vector2(0.84f, 1f);
             view._manaRow.pivot = new Vector2(0.5f, 1f);
-            view._manaRow.sizeDelta = new Vector2(0f, 20f);
-            view._manaRow.anchoredPosition = new Vector2(0f, -47f);
+            view._manaRow.sizeDelta = new Vector2(0f, StageLayout.ScaledPx(20f));
+            view._manaRow.anchoredPosition = new Vector2(0f, -StageLayout.ScaledPx(47f));
             view._manaFill = UiFactory.Bar(
                 view._manaRow,
                 "Mana",
                 UiFactory.ManaColor,
                 out view._manaText
             );
+            view._manaText.fontSize = StageLayout.ScaledFont(16);
         }
 
         view._statusText = UiFactory.Label(
             footer,
             "Status",
             "",
-            8,
+            StageLayout.ScaledFont(8),
             TextAnchor.MiddleCenter,
             UiFactory.MutedColor
         );
         view._statusText.rectTransform.anchorMin = new Vector2(0f, 0f);
         view._statusText.rectTransform.anchorMax = new Vector2(1f, 0f);
         view._statusText.rectTransform.pivot = new Vector2(0.5f, 0f);
-        view._statusText.rectTransform.sizeDelta = new Vector2(0f, 20f);
+        view._statusText.rectTransform.sizeDelta = new Vector2(0f, StageLayout.ScaledPx(20f));
         view._statusText.rectTransform.anchoredPosition = Vector2.zero;
 
         return view;
@@ -310,7 +312,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         transform.SetAsLastSibling();
 
         var start = _home;
-        var reach = targetPosition + new Vector2(-90f, 0f);
+        var reach = targetPosition + new Vector2(-StageLayout.ScaledPx(90f), 0f);
         var outbound = MoveSeconds(start, reach, _spriteClass);
         var inbound = MoveSeconds(reach, start, _spriteClass);
 
@@ -381,7 +383,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
 
         var start = _home;
-        var reach = targetPosition + new Vector2(90f, 0f);
+        var reach = targetPosition + new Vector2(StageLayout.ScaledPx(90f), 0f);
         var outbound = MoveSeconds(start, reach, _spriteClass);
         var inbound = MoveSeconds(reach, start, _spriteClass);
         yield return Slide(start, reach, outbound);
@@ -923,7 +925,12 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             ? PlaceholderArt.EnemyVisual(entity.ClassName).Shape
             : PlaceholderArt.ClassShape(entity.ClassName);
 
-        _shape.sprite = PlaceholderArt.Shape(shape, color);
+        _shape.sprite = PlaceholderArt.Shape(
+            shape,
+            color,
+            StageLayout.ScaledPx(128f),
+            StageLayout.ScaledPx(128f)
+        );
         if (_hit == null)
         {
             _shape.color = Color.white;
