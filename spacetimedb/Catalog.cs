@@ -356,6 +356,7 @@ public static partial class Module
         AddConsumable(ctx, "Mana Potion", "MPT", heal: 0, mana: 30);
 
         SeedAmulets(ctx);
+        SeedUniqueWeapons(ctx);
     }
 
     public static void EnsureItemCatalog(ReducerContext ctx)
@@ -368,6 +369,16 @@ public static partial class Module
             }
 
             SeedOneAmulet(ctx, name);
+        }
+
+        foreach (var name in AllUniqueWeaponNames)
+        {
+            if (FindExistingItem(ctx, name) is not null)
+            {
+                continue;
+            }
+
+            SeedOneUniqueWeapon(ctx, name);
         }
     }
 
@@ -443,6 +454,57 @@ public static partial class Module
                 break;
             case AmuletNames.RubyScepter:
                 AddAmulet(ctx, name, "RBS");
+                break;
+        }
+    }
+
+    static void SeedUniqueWeapons(ReducerContext ctx)
+    {
+        foreach (var name in AllUniqueWeaponNames)
+        {
+            SeedOneUniqueWeapon(ctx, name);
+        }
+    }
+
+    static void SeedOneUniqueWeapon(ReducerContext ctx, string name)
+    {
+        switch (name)
+        {
+            case UniqueWeaponNames.ChippedSword:
+                AddWeapon(ctx, name, "CHP", WeaponType.Sword, atk: 12, strength: 1);
+                break;
+            case UniqueWeaponNames.JaggedSword:
+                AddWeapon(ctx, name, "JAG", WeaponType.Sword, atk: 12, strength: 2);
+                break;
+            case UniqueWeaponNames.CrimsonBlade:
+                AddWeapon(ctx, name, "CRB", WeaponType.Sword, atk: 12, strength: 3);
+                break;
+            case UniqueWeaponNames.GoldenBow:
+                AddWeapon(ctx, name, "GLB", WeaponType.Bow, atk: 10, dexterity: 1);
+                break;
+            case UniqueWeaponNames.EmeraldBow:
+                AddWeapon(ctx, name, "EMB", WeaponType.Bow, atk: 10, dexterity: 2);
+                break;
+            case UniqueWeaponNames.CrimsonBow:
+                AddWeapon(ctx, name, "CRW", WeaponType.Bow, atk: 10, dexterity: 3);
+                break;
+            case UniqueWeaponNames.AzureCane:
+                AddWeapon(ctx, name, "AZC", WeaponType.Staff, atk: 6, intelligence: 1);
+                break;
+            case UniqueWeaponNames.ElegantCane:
+                AddWeapon(ctx, name, "ELC", WeaponType.Staff, atk: 6, intelligence: 2);
+                break;
+            case UniqueWeaponNames.StaffOfTheQueen:
+                AddWeapon(ctx, name, "SOQ", WeaponType.Staff, atk: 6, intelligence: 3);
+                break;
+            case UniqueWeaponNames.RustedPummel:
+                AddWeapon(ctx, name, "RPM", WeaponType.Dagger, atk: 9, speed: 1);
+                break;
+            case UniqueWeaponNames.CrimsonDagger:
+                AddWeapon(ctx, name, "CRD", WeaponType.Dagger, atk: 9, speed: 2);
+                break;
+            case UniqueWeaponNames.AzureDagger:
+                AddWeapon(ctx, name, "AZD", WeaponType.Dagger, atk: 9, speed: 3);
                 break;
         }
     }
@@ -610,7 +672,7 @@ public static partial class Module
         PlayerClass playerClass
     )
     {
-        EquipFresh(ctx, owner, RequireItem(ctx, StarterWeaponName(playerClass)));
+        GiveStartingWeapon(ctx, owner, playerClass);
 
         if (CanWearArmor(playerClass))
         {

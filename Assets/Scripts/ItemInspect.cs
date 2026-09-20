@@ -73,6 +73,30 @@ public static class ItemInspect
                 return "Every time you take damage, deal 1 damage to the enemy who hurt you.";
             case "Ruby Scepter":
                 return "If a spell applies Burn, it gains +3 base power.";
+            case "Chipped Sword":
+                return "Knight sword. Grants +1 Strength.";
+            case "Jagged Sword":
+                return "Knight sword. Grants +2 Strength.";
+            case "Crimson Blade":
+                return "Knight sword. Grants +3 Strength.";
+            case "Golden Bow":
+                return "Archer bow. Grants +1 Dexterity.";
+            case "Emerald Bow":
+                return "Archer bow. Grants +2 Dexterity.";
+            case "Crimson Bow":
+                return "Archer bow. Grants +3 Dexterity.";
+            case "Azure Cane":
+                return "Mage staff. Grants +1 Intelligence.";
+            case "Elegant Cane":
+                return "Mage staff. Grants +2 Intelligence.";
+            case "Staff of the Queen":
+                return "Mage staff. Grants +3 Intelligence.";
+            case "Rusted Pummel":
+                return "Ninja dagger. Grants +1 Speed.";
+            case "Crimson Dagger":
+                return "Ninja dagger. Grants +2 Speed.";
+            case "Azure Dagger":
+                return "Ninja dagger. Grants +3 Speed.";
             default:
                 return StatSummary(def);
         }
