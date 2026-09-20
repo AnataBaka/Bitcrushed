@@ -84,7 +84,7 @@ public class StatPopupView : MonoBehaviour
             "Title",
             "",
             16,
-            TextAnchor.MiddleLeft,
+            TextAnchor.MiddleCenter,
             UiFactory.TextColor
         );
         view._title.supportRichText = false;
@@ -101,7 +101,7 @@ public class StatPopupView : MonoBehaviour
             "Subtitle",
             "",
             16,
-            TextAnchor.UpperLeft,
+            TextAnchor.UpperCenter,
             new Color(0.88f, 0.88f, 0.84f, 0.9f)
         );
         UiFactory.Anchor(view._subtitle.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0.48f));
