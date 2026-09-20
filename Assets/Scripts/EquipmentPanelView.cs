@@ -65,20 +65,12 @@ public class EquipmentPanelView : MonoBehaviour
         var bagIcon = UiFactory.Graphic(
             bag.transform,
             "Icon",
-            PlaceholderArt.Shape(ShapeKind.Mound, new Color(0.55f, 0.38f, 0.22f), 64, 64),
+            PlaceholderArt.Solid(Color.white),
             Color.white
         );
-        bagIcon.rectTransform.anchorMin = new Vector2(0.08f, 0.18f);
-        bagIcon.rectTransform.anchorMax = new Vector2(0.38f, 0.88f);
-        bagIcon.rectTransform.offsetMin = Vector2.zero;
-        bagIcon.rectTransform.offsetMax = Vector2.zero;
-
-        var bagLabel = UiFactory.Label(bag.transform, "Label", "BAG", 16, TextAnchor.MiddleLeft, UiFactory.TextColor);
-        bagLabel.fontStyle = FontStyle.Bold;
-        bagLabel.rectTransform.anchorMin = new Vector2(0.40f, 0f);
-        bagLabel.rectTransform.anchorMax = new Vector2(1f, 1f);
-        bagLabel.rectTransform.offsetMin = Vector2.zero;
-        bagLabel.rectTransform.offsetMax = Vector2.zero;
+        var bagLabel = UiFactory.Label(bag.transform, "Label", "BAG", 16, TextAnchor.MiddleCenter, UiFactory.TextColor);
+        ItemIconFit.LayoutBag(bagIcon.rectTransform, bagLabel);
+        ItemIconFit.Bind(bagIcon, AmuletArt.Png("Sprites/backpack.png") ?? PlaceholderArt.Solid(new Color(0.55f, 0.38f, 0.22f)));
 
         var button = bag.gameObject.AddComponent<Button>();
         button.targetGraphic = bag;

@@ -44,6 +44,9 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     Coroutine _death;
     bool _barsFrozen;
 
+    /// Vertical gap between stacked combat tags, measured from the sprite top.
+    public const float LabelGap = 4f;
+
     /// Where the card sits when nothing is animating.
     public Vector2 Home => _home;
 
@@ -81,34 +84,67 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         view._shape.useSpriteMesh = false;
         view._shape.raycastTarget = false;
 
-        view._tagText = UiFactory.Label(
-            card.transform,
+        var labelStack = UiFactory.NewRect(card.transform, "LabelStack");
+        labelStack.anchorMin = new Vector2(0f, 1f);
+        labelStack.anchorMax = new Vector2(1f, 1f);
+        labelStack.pivot = new Vector2(0.5f, 0f);
+        labelStack.sizeDelta = new Vector2(0f, 0f);
+        labelStack.anchoredPosition = new Vector2(0f, LabelGap);
+        var stackLayout = labelStack.gameObject.AddComponent<VerticalLayoutGroup>();
+        stackLayout.spacing = LabelGap;
+        stackLayout.childAlignment = TextAnchor.LowerCenter;
+        stackLayout.childControlHeight = true;
+        stackLayout.childControlWidth = true;
+        stackLayout.childForceExpandHeight = false;
+        stackLayout.childForceExpandWidth = true;
+        stackLayout.reverseArrangement = true;
+        var stackFitter = labelStack.gameObject.AddComponent<ContentSizeFitter>();
+        stackFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        stackFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        view._burnTag = MakeStackLabel(
+            labelStack,
+            "BurnTag",
+            "BURN",
+            14,
+            18f,
+            new Color(1f, 0.42f, 0.12f, 1f),
+            true
+        );
+        view._burnTag.gameObject.SetActive(false);
+
+        view._bossTag = MakeStackLabel(
+            labelStack,
+            "BossTag",
+            "BOSS",
+            16,
+            20f,
+            new Color(1f, 0.55f, 0.18f, 1f),
+            true
+        );
+        view._bossTag.gameObject.SetActive(false);
+
+        view._tagText = MakeStackLabel(
+            labelStack,
             "Tag",
             "",
             16,
-            TextAnchor.UpperCenter,
-            UiFactory.ActiveColor
+            20f,
+            UiFactory.ActiveColor,
+            false
         );
-        view._tagText.rectTransform.anchorMin = new Vector2(0f, 1f);
-        view._tagText.rectTransform.anchorMax = new Vector2(1f, 1f);
-        view._tagText.rectTransform.pivot = new Vector2(0.5f, 0f);
-        view._tagText.rectTransform.sizeDelta = new Vector2(0f, 20f);
-        view._tagText.rectTransform.anchoredPosition = new Vector2(0f, 2f);
+        view._tagText.gameObject.SetActive(false);
 
-        view._readyBanner = UiFactory.Label(
-            card.transform,
+        view._readyBanner = MakeStackLabel(
+            labelStack,
             "ReadyBanner",
             "",
             18,
-            TextAnchor.MiddleCenter,
-            new Color(0.35f, 0.88f, 0.42f, 1f)
+            24f,
+            new Color(0.35f, 0.88f, 0.42f, 1f),
+            true
         );
-        view._readyBanner.fontStyle = FontStyle.Bold;
-        view._readyBanner.rectTransform.anchorMin = new Vector2(0f, 1f);
-        view._readyBanner.rectTransform.anchorMax = new Vector2(1f, 1f);
-        view._readyBanner.rectTransform.pivot = new Vector2(0.5f, 0f);
-        view._readyBanner.rectTransform.sizeDelta = new Vector2(0f, 24f);
-        view._readyBanner.rectTransform.anchoredPosition = new Vector2(0f, 22f);
+        view._readyBanner.gameObject.SetActive(false);
 
         // Name + bars stack under the shape.
         var footer = UiFactory.NewRect(card.transform, "Footer");
@@ -174,39 +210,27 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         view._statusText.rectTransform.sizeDelta = new Vector2(0f, 16f);
         view._statusText.rectTransform.anchoredPosition = Vector2.zero;
 
-        view._burnTag = UiFactory.Label(
-            card.transform,
-            "BurnTag",
-            "BURN",
-            14,
-            TextAnchor.MiddleCenter,
-            new Color(1f, 0.42f, 0.12f, 1f)
-        );
-        view._burnTag.fontStyle = FontStyle.Bold;
-        view._burnTag.rectTransform.anchorMin = new Vector2(0.5f, 1f);
-        view._burnTag.rectTransform.anchorMax = new Vector2(0.5f, 1f);
-        view._burnTag.rectTransform.pivot = new Vector2(0.5f, 0f);
-        view._burnTag.rectTransform.sizeDelta = new Vector2(76f, 18f);
-        view._burnTag.rectTransform.anchoredPosition = new Vector2(0f, -16f);
-        view._burnTag.gameObject.SetActive(false);
-
-        view._bossTag = UiFactory.Label(
-            card.transform,
-            "BossTag",
-            "BOSS",
-            16,
-            TextAnchor.MiddleCenter,
-            new Color(1f, 0.55f, 0.18f, 1f)
-        );
-        view._bossTag.fontStyle = FontStyle.Bold;
-        view._bossTag.rectTransform.anchorMin = new Vector2(0.5f, 1f);
-        view._bossTag.rectTransform.anchorMax = new Vector2(0.5f, 1f);
-        view._bossTag.rectTransform.pivot = new Vector2(0.5f, 0f);
-        view._bossTag.rectTransform.sizeDelta = new Vector2(80f, 20f);
-        view._bossTag.rectTransform.anchoredPosition = new Vector2(0f, 2f);
-        view._bossTag.gameObject.SetActive(false);
-
         return view;
+    }
+
+    static Text MakeStackLabel(
+        Transform parent,
+        string name,
+        string text,
+        int fontSize,
+        float height,
+        Color color,
+        bool bold
+    )
+    {
+        var label = UiFactory.Label(parent, name, text, fontSize, TextAnchor.MiddleCenter, color);
+        label.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
+        label.raycastTarget = false;
+        var element = label.gameObject.AddComponent<LayoutElement>();
+        element.minHeight = height;
+        element.preferredHeight = height;
+        element.flexibleWidth = 1f;
+        return label;
     }
 
     public void SetPosition(Vector2 anchoredPosition)
@@ -679,16 +703,19 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         if (targetable)
         {
             _tagText.text = "CLICK TO TARGET";
+            _tagText.gameObject.SetActive(true);
             _card.color = new Color(0.95f, 0.82f, 0.30f, 0.20f);
         }
         else if (isActive)
         {
             _tagText.text = "ACTIVE";
+            _tagText.gameObject.SetActive(true);
             _card.color = new Color(0.95f, 0.82f, 0.30f, 0.10f);
         }
         else
         {
             _tagText.text = "";
+            _tagText.gameObject.SetActive(false);
             _card.color = new Color(0f, 0f, 0f, 0f);
         }
 
@@ -858,6 +885,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             return;
         }
 
+        _readyBanner.gameObject.SetActive(visible);
         _readyBanner.text = visible ? "READY" : "";
     }
 

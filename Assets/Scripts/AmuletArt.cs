@@ -86,6 +86,54 @@ public static class AmuletArt
         return sprite;
     }
 
+    /// Runtime PNG under StreamingAssets, same path rules as item icons.
+    public static Sprite Png(string relativePath)
+    {
+        if (string.IsNullOrEmpty(relativePath))
+        {
+            return null;
+        }
+
+        if (Cache.TryGetValue(relativePath, out var cached) && cached != null)
+        {
+            return cached;
+        }
+
+        var bytes = ReadPngBytes(relativePath);
+        if (bytes == null || bytes.Length == 0)
+        {
+            var fromSprites = Path.Combine(Application.dataPath, "Sprites", Path.GetFileName(relativePath));
+            if (File.Exists(fromSprites))
+            {
+                bytes = File.ReadAllBytes(fromSprites);
+            }
+        }
+
+        if (bytes == null || bytes.Length == 0)
+        {
+            return null;
+        }
+
+        var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        if (!texture.LoadImage(bytes))
+        {
+            Object.Destroy(texture);
+            return null;
+        }
+
+        texture.filterMode = FilterMode.Bilinear;
+        texture.wrapMode = TextureWrapMode.Clamp;
+        var sprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, texture.width, texture.height),
+            new Vector2(0.5f, 0.5f),
+            100f
+        );
+        sprite.name = relativePath;
+        Cache[relativePath] = sprite;
+        return sprite;
+    }
+
     static byte[] ReadPngBytes(string fileName)
     {
         var streaming = Path.Combine(Application.streamingAssetsPath, fileName);

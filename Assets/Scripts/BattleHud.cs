@@ -19,18 +19,30 @@ public class BattleHud : MonoBehaviour
         new Vector2(810f, 550f),
     };
 
-    static readonly Vector2[] EnemySlots =
-    {
-        new Vector2(1680f, 30f),
-        new Vector2(1420f, 220f),
-        new Vector2(1680f, 410f),
-        new Vector2(1420f, 600f),
-    };
-
     static readonly Vector2 PlayerCardSize = new Vector2(250f, 190f);
     static readonly Vector2 EnemyCardSize = new Vector2(220f, 155f);
     static readonly Vector2 BossCardSize = new Vector2(320f, 250f);
     static readonly Vector2 BossSlot = new Vector2(1540f, 210f);
+
+    static readonly Vector2[][] EnemyPackSlots =
+    {
+        System.Array.Empty<Vector2>(),
+        new[] { new Vector2(1550f, 300f) },
+        new[] { new Vector2(1550f, 140f), new Vector2(1550f, 470f) },
+        new[]
+        {
+            new Vector2(1680f, 90f),
+            new Vector2(1420f, 300f),
+            new Vector2(1680f, 510f),
+        },
+        new[]
+        {
+            new Vector2(1680f, 40f),
+            new Vector2(1420f, 210f),
+            new Vector2(1680f, 380f),
+            new Vector2(1420f, 550f),
+        },
+    };
 
     RectTransform _field;
     BattleLogView _log;
@@ -278,7 +290,8 @@ public class BattleHud : MonoBehaviour
         }
 
         SyncTeam(GameManager.TeamMembers(Team.Players), PlayerSlots, PlayerCardSize, true, me);
-        SyncTeam(GameManager.TeamMembers(Team.Enemies), EnemySlots, EnemyCardSize, false, me);
+        var enemies = GameManager.TeamMembers(Team.Enemies);
+        SyncTeam(enemies, EnemySlotsFor(enemies), EnemyCardSize, false, me);
         PruneMissing();
         if (
             _itemTooltip != null
@@ -387,6 +400,18 @@ public class BattleHud : MonoBehaviour
         }
 
         return $"Next: Stage {session.StageNumber + 1}";
+    }
+
+    static Vector2[] EnemySlotsFor(List<Entity> enemies)
+    {
+        var pack = 0;
+        foreach (var entity in enemies)
+        {
+            pack = Mathf.Max(pack, (int)entity.Slot + 1);
+        }
+
+        pack = Mathf.Clamp(pack, 1, EnemyPackSlots.Length - 1);
+        return EnemyPackSlots[pack];
     }
 
     void SyncTeam(

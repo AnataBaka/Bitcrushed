@@ -23,6 +23,26 @@ public static class ItemIconFit
         PlaceNameStrip(name, InventoryNameBand, 7, 10);
     }
 
+    /// Left-aligned icon on the BAG button; the label uses the remaining width.
+    public static void LayoutBag(RectTransform icon, Text label)
+    {
+        icon.anchorMin = new Vector2(0.04f, 0.14f);
+        icon.anchorMax = new Vector2(0.34f, 0.86f);
+        icon.pivot = new Vector2(0.5f, 0.5f);
+        icon.offsetMin = Vector2.zero;
+        icon.offsetMax = Vector2.zero;
+        icon.anchoredPosition = Vector2.zero;
+        icon.sizeDelta = Vector2.zero;
+
+        label.alignment = TextAnchor.MiddleCenter;
+        label.fontStyle = FontStyle.Bold;
+        label.raycastTarget = false;
+        label.rectTransform.anchorMin = new Vector2(0.36f, 0f);
+        label.rectTransform.anchorMax = new Vector2(1f, 1f);
+        label.rectTransform.offsetMin = Vector2.zero;
+        label.rectTransform.offsetMax = Vector2.zero;
+    }
+
     public static void Bind(Image icon, Sprite sprite)
     {
         icon.sprite = sprite;
