@@ -9,7 +9,7 @@ public static class ItemIconFit
     public const float AreaFraction = 0.62f;
     public const float EquipmentHeaderBand = 0.20f;
     public const float EquipmentNameBand = 0.30f;
-    public const float InventoryNameBand = 0.36f;
+    public const float InventoryNameBand = 0.48f;
 
     public static void LayoutEquipment(RectTransform icon, Text name)
     {

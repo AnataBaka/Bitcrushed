@@ -157,7 +157,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         footer.anchorMin = new Vector2(0f, 0f);
         footer.anchorMax = new Vector2(1f, 0f);
         footer.pivot = new Vector2(0.5f, 0f);
-        footer.sizeDelta = new Vector2(0f, showMana ? 78f : 58f);
+        footer.sizeDelta = new Vector2(0f, showMana ? 88f : 66f);
         footer.anchoredPosition = Vector2.zero;
 
         view._nameText = UiFactory.Label(
@@ -182,7 +182,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         hpRow.anchorMin = new Vector2(0.16f, 1f);
         hpRow.anchorMax = new Vector2(0.84f, 1f);
         hpRow.pivot = new Vector2(0.5f, 1f);
-        hpRow.sizeDelta = new Vector2(0f, 16f);
+        hpRow.sizeDelta = new Vector2(0f, 20f);
         hpRow.anchoredPosition = new Vector2(0f, -24f);
         view._hpFill = UiFactory.Bar(hpRow, "Hp", UiFactory.HpColor, out view._hpText);
 
@@ -192,8 +192,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             view._manaRow.anchorMin = new Vector2(0.16f, 1f);
             view._manaRow.anchorMax = new Vector2(0.84f, 1f);
             view._manaRow.pivot = new Vector2(0.5f, 1f);
-            view._manaRow.sizeDelta = new Vector2(0f, 16f);
-            view._manaRow.anchoredPosition = new Vector2(0f, -43f);
+            view._manaRow.sizeDelta = new Vector2(0f, 20f);
+            view._manaRow.anchoredPosition = new Vector2(0f, -47f);
             view._manaFill = UiFactory.Bar(
                 view._manaRow,
                 "Mana",
@@ -213,7 +213,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         view._statusText.rectTransform.anchorMin = new Vector2(0f, 0f);
         view._statusText.rectTransform.anchorMax = new Vector2(1f, 0f);
         view._statusText.rectTransform.pivot = new Vector2(0.5f, 0f);
-        view._statusText.rectTransform.sizeDelta = new Vector2(0f, 16f);
+        view._statusText.rectTransform.sizeDelta = new Vector2(0f, 20f);
         view._statusText.rectTransform.anchoredPosition = Vector2.zero;
 
         return view;

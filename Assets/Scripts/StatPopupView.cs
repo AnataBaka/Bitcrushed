@@ -213,8 +213,8 @@ public class StatPopupView : MonoBehaviour
         hostElement.minWidth = ValueWidth;
         hostElement.preferredWidth = ValueWidth;
         hostElement.flexibleWidth = 1f;
-        hostElement.minHeight = 14f;
-        hostElement.preferredHeight = 14f;
+        hostElement.minHeight = 18f;
+        hostElement.preferredHeight = 18f;
         fill = UiFactory.Bar(barHost, "Bar", color, out value);
         value.alignment = TextAnchor.MiddleRight;
         value.fontSize = GameFont.Resolve(16);

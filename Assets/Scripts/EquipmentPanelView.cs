@@ -115,7 +115,7 @@ public class EquipmentPanelView : MonoBehaviour
         header.rectTransform.anchorMin = new Vector2(0f, 1f);
         header.rectTransform.anchorMax = new Vector2(1f, 1f);
         header.rectTransform.pivot = new Vector2(0.5f, 1f);
-        header.rectTransform.sizeDelta = new Vector2(-6f, 16f);
+        header.rectTransform.sizeDelta = new Vector2(-6f, 20f);
         header.rectTransform.anchoredPosition = new Vector2(0f, -4f);
         header.raycastTarget = false;
 
