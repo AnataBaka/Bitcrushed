@@ -61,6 +61,7 @@ public class BattleHud : MonoBehaviour
     EscapeMenuView _escape;
     BiomeBackdropView _backdrop;
     ItemTooltipView _itemTooltip;
+    DamagePopupView _damagePopups;
 
     readonly Dictionary<ulong, EntityView> _views = new Dictionary<ulong, EntityView>();
     readonly Dictionary<ulong, Vector2> _lastHomes = new Dictionary<ulong, Vector2>();
@@ -120,6 +121,11 @@ public class BattleHud : MonoBehaviour
         _escape = escape;
         _backdrop = backdrop;
         _itemTooltip = itemTooltip;
+        if (_field != null && _field.parent != null)
+        {
+            _damagePopups = DamagePopupView.Create(_field.parent);
+            _damagePopups.transform.SetSiblingIndex(_field.GetSiblingIndex() + 1);
+        }
 
         bool TooltipBlocked() =>
             (_popup != null && _popup.IsOpen)
@@ -777,6 +783,7 @@ public class BattleHud : MonoBehaviour
         // "CRITICAL HIT!" reuses LogKind.Attack but is not a strike of its own.
         if (!isBurn && ClassSpriteArt.ActionNameFromLog(row.Message) == null)
         {
+            TryImmediateDamagePopup(row);
             return;
         }
 
@@ -889,6 +896,10 @@ public class BattleHud : MonoBehaviour
             var alreadyGone = CombatHpPresenter.DisplayedHp(row.TargetEntityId) <= 0
                 || !CombatHpPresenter.IsVisible(row.TargetEntityId);
             CombatHpPresenter.ApplyImpact(row.TargetEntityId, row.Damage);
+            if (row.Damage > 0)
+            {
+                ShowDamagePopup(row.TargetEntityId, row.Damage, target);
+            }
             if (alreadyGone || target == null)
             {
                 return;
@@ -1028,6 +1039,10 @@ public class BattleHud : MonoBehaviour
         var alreadyGone = CombatHpPresenter.DisplayedHp(row.TargetEntityId) <= 0
             || !CombatHpPresenter.IsVisible(row.TargetEntityId);
         CombatHpPresenter.ApplyImpact(row.TargetEntityId, row.Damage);
+        if (row.Damage > 0)
+        {
+            ShowDamagePopup(row.TargetEntityId, row.Damage, target);
+        }
         if (target != null && !alreadyGone && CombatHpPresenter.IsVisible(row.TargetEntityId))
         {
             target.PlayHit();
@@ -1137,5 +1152,48 @@ public class BattleHud : MonoBehaviour
         }
 
         return count == 0 ? fallback : sum / count;
+    }
+
+    void TryImmediateDamagePopup(BattleLog row)
+    {
+        if (row.Kind != LogKind.Attack || row.Damage <= 0 || row.TargetEntityId == 0)
+        {
+            return;
+        }
+
+        if (row.Message == "CRITICAL HIT!")
+        {
+            return;
+        }
+
+        _views.TryGetValue(row.TargetEntityId, out var target);
+        ShowDamagePopup(row.TargetEntityId, row.Damage, target);
+    }
+
+    void ShowDamagePopup(ulong targetId, int damage, EntityView target)
+    {
+        if (_damagePopups == null || damage <= 0)
+        {
+            return;
+        }
+
+        _damagePopups.Spawn(targetId, damage, DamageWorldPoint(targetId, target));
+    }
+
+    Vector3 DamageWorldPoint(ulong targetId, EntityView target)
+    {
+        if (target != null && target.ShapeRect != null)
+        {
+            var corners = new Vector3[4];
+            target.ShapeRect.GetWorldCorners(corners);
+            return (corners[1] + corners[2]) * 0.5f;
+        }
+
+        if (TryLastHome(targetId, out var home) && _field != null)
+        {
+            return _field.TransformPoint(new Vector3(home.x, home.y + 80f, 0f));
+        }
+
+        return _field != null ? _field.position : Vector3.zero;
     }
 }
