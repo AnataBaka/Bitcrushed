@@ -2488,6 +2488,7 @@ public static partial class Module
     }
 
     /// Every living party member receives kill EXP. Dead players sit this one out.
+    /// DemoExpMultiplier is applied last so packs and bosses both grant 5× the live curve.
     static void GrantKillXp(ReducerContext ctx, uint stage, bool bossKill)
     {
         var xp = KillXp(stage);
@@ -2500,6 +2501,7 @@ public static partial class Module
             var pack = CurrentEnemyPackSize(ctx);
             xp = (uint)Math.Max(1L, ((long)xp * ReferencePackSize) / pack);
         }
+        xp = SaturatingMul(xp, DemoExpMultiplier < 1 ? 1u : DemoExpMultiplier);
         foreach (var player in ctx.Db.Player.Iter().ToList())
         {
             if (ctx.Db.Entity.EntityId.Find(player.EntityId) is not Entity entity || !entity.Alive)

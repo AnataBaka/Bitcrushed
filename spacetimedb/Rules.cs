@@ -19,6 +19,8 @@ public static partial class Module
     public const uint BiomeLength = 3;
     /// Demo cadence: a boss appears on every even floor (2, 4, 6, ...).
     public const uint BossInterval = 2;
+    /// Demo cadence: all kill EXP is multiplied by this (packs and bosses).
+    public const uint DemoExpMultiplier = 5;
     public const uint BiomeCount = 4;
     /// New runs start here. Keep at 1 in committed code.
     public const uint DebugStartStage = 1;
