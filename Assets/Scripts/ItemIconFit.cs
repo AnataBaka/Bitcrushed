@@ -23,7 +23,7 @@ public static class ItemIconFit
         PlaceNameStrip(name, InventoryNameBand, 7, 10);
     }
 
-    /// Left-aligned icon on the BAG button; the label uses the remaining width.
+    /// Backpack icon stays left. BAG is centered on the full button rectangle.
     public static void LayoutBag(RectTransform icon, Text label)
     {
         icon.anchorMin = new Vector2(0.04f, 0.14f);
@@ -37,10 +37,12 @@ public static class ItemIconFit
         label.alignment = TextAnchor.MiddleCenter;
         label.fontStyle = FontStyle.Bold;
         label.raycastTarget = false;
-        label.rectTransform.anchorMin = new Vector2(0.36f, 0f);
-        label.rectTransform.anchorMax = new Vector2(1f, 1f);
+        label.rectTransform.anchorMin = Vector2.zero;
+        label.rectTransform.anchorMax = Vector2.one;
         label.rectTransform.offsetMin = Vector2.zero;
         label.rectTransform.offsetMax = Vector2.zero;
+        label.rectTransform.anchoredPosition = Vector2.zero;
+        label.rectTransform.sizeDelta = Vector2.zero;
     }
 
     public static void Bind(Image icon, Sprite sprite)
