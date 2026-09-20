@@ -16,38 +16,6 @@ public enum ShapeKind
 public static class PlaceholderArt
 {
     static readonly Dictionary<string, Sprite> Cache = new Dictionary<string, Sprite>();
-    static Font _font;
-
-    public static Font UiFont
-    {
-        get
-        {
-            if (_font != null)
-            {
-                return _font;
-            }
-
-            foreach (var builtin in new[] { "LegacyRuntime.ttf", "Arial.ttf" })
-            {
-                try
-                {
-                    _font = Resources.GetBuiltinResource<Font>(builtin);
-                }
-                catch
-                {
-                    _font = null;
-                }
-
-                if (_font != null)
-                {
-                    return _font;
-                }
-            }
-
-            _font = Font.CreateDynamicFontFromOSFont("Arial", 16);
-            return _font;
-        }
-    }
 
     public static Sprite Solid(Color color) => Shape(ShapeKind.Rect, color, 8, 8);
 
@@ -424,7 +392,7 @@ public static class UiFactory
     {
         var rt = NewRect(parent, name);
         var label = rt.gameObject.AddComponent<Text>();
-        label.font = PlaceholderArt.UiFont;
+        label.font = GameFont.Ui;
         label.text = text;
         label.fontSize = size;
         label.alignment = anchor;
