@@ -189,13 +189,16 @@ public class CombatVfx : MonoBehaviour
             var coreColor = new Color32(255, 230, 90, 255);
             var rimColor = new Color32(210, 140, 90, 255);
             var sparkColor = new Color32(255, 180, 110, 255);
+            var cell = PixelStyle.Pixel;
 
-            for (var y = 0; y < size; y++)
+            for (var y0 = 0; y0 < size; y0 += cell)
             {
-                for (var x = 0; x < size; x++)
+                for (var x0 = 0; x0 < size; x0 += cell)
                 {
-                    var dx = x + 0.5f - cx;
-                    var dy = y + 0.5f - cy;
+                    var x = x0 + (cell * 0.5f);
+                    var y = y0 + (cell * 0.5f);
+                    var dx = x - cx;
+                    var dy = y - cy;
                     var dist = Mathf.Sqrt((dx * dx) + (dy * dy));
                     var ang = Mathf.Atan2(dy, dx) * Mathf.Rad2Deg;
                     if (ang < 0f)
@@ -228,7 +231,14 @@ public class CombatVfx : MonoBehaviour
                         continue;
                     }
 
-                    pixels[(y * size) + x] = spark ? sparkColor : (core ? coreColor : rimColor);
+                    var color = spark ? sparkColor : (core ? coreColor : rimColor);
+                    for (var by = 0; by < cell && y0 + by < size; by++)
+                    {
+                        for (var bx = 0; bx < cell && x0 + bx < size; bx++)
+                        {
+                            pixels[((y0 + by) * size) + x0 + bx] = color;
+                        }
+                    }
                 }
             }
 

@@ -143,7 +143,7 @@ public static class UiFactory
         image.sprite = PlaceholderArt.RoundedSlice(Color.white);
         image.color = color;
         image.type = Image.Type.Sliced;
-        image.pixelsPerUnitMultiplier = 1.15f;
+        image.pixelsPerUnitMultiplier = 1f;
         image.useSpriteMesh = false;
         return image;
     }

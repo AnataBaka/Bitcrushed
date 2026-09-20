@@ -7,8 +7,8 @@ using UnityEngine;
 /// fully transparent unless the caller writes a translucent overlay color.
 public static class PixelStyle
 {
-    /// Same as GameFont.Pixel. Radii and gradient bands snap to this grid.
-    /// 1-texel outlines stay 1 canvas pixel so they do not eat 12px padding.
+    /// Same as GameFont.Pixel. Generated art is decided on this grid and
+    /// stamped as Pixel×Pixel blocks so aliasing is obvious.
     public const int Pixel = 8;
 
     public const int PixelsPerUnit = 100;
@@ -97,15 +97,18 @@ public static class PixelStyle
         return sprite;
     }
 
-    /// Stepped-corner 9-slice. Radius is snapped to Pixel. Outline is 1 texel
-    /// inside the rect. Border sizes equal the unstretched corner so edges
-    /// do not smear when the panel is scaled.
+    /// Chunk 9-slice: one 8px square cut per corner, 8px rim, Point-scaled
+    /// blocks. No circular arcs. Fits the 40px name pills without squashing.
     public static Sprite RoundedSlice(Color color, int size = 64, int radius = 14)
     {
-        size = Mathf.Max(Pixel * 4, size);
-        radius = Snap(radius);
-        radius = Mathf.Clamp(radius, Pixel, (size / 2) - 2);
-        var key = $"round:{ColorUtility.ToHtmlStringRGBA(color)}:{size}:{radius}";
+        _ = radius;
+        size = Mathf.Max(Pixel * 4, Snap(size));
+        var cells = size / Pixel;
+        // One 8px stair per corner. Two steps would make the 9-slice border
+        // 24px and squash the 40px name pills.
+        var notch = 1;
+        notch = Mathf.Clamp(notch, 1, (cells / 2) - 1);
+        var key = $"round:{ColorUtility.ToHtmlStringRGBA(color)}:{size}:{notch}";
         if (Cache.TryGetValue(key, out var cached))
         {
             return cached;
@@ -115,48 +118,76 @@ public static class PixelStyle
         var pixels = new Color32[size * size];
         var fill = KeepAlpha(color);
         var outline = KeepAlpha(new Color(color.r * 0.45f, color.g * 0.45f, color.b * 0.45f, color.a));
+        var clear = new Color32(0, 0, 0, 0);
 
-        for (var y = 0; y < size; y++)
+        for (var ly = 0; ly < cells; ly++)
         {
-            for (var x = 0; x < size; x++)
+            for (var lx = 0; lx < cells; lx++)
             {
-                if (!InRounded(x, y, size, radius))
+                if (!InNotched(lx, ly, cells, notch))
                 {
-                    pixels[y * size + x] = new Color32(0, 0, 0, 0);
+                    Stamp(pixels, size, size, lx, ly, clear);
                     continue;
                 }
 
                 var edge =
-                    !InRounded(x - 1, y, size, radius)
-                    || !InRounded(x + 1, y, size, radius)
-                    || !InRounded(x, y - 1, size, radius)
-                    || !InRounded(x, y + 1, size, radius);
-                pixels[y * size + x] = edge ? outline : fill;
+                    !InNotched(lx - 1, ly, cells, notch)
+                    || !InNotched(lx + 1, ly, cells, notch)
+                    || !InNotched(lx, ly - 1, cells, notch)
+                    || !InNotched(lx, ly + 1, cells, notch);
+                Stamp(pixels, size, size, lx, ly, edge ? outline : fill);
             }
         }
 
         texture.SetPixels32(pixels);
         texture.Apply(false, false);
-        var border = radius + 1f;
+        var border = (notch + 1) * Pixel;
         var sprite = Sprite(texture, new Vector2(0.5f, 0.5f), new Vector4(border, border, border, border));
         Cache[key] = sprite;
         return sprite;
     }
 
-    static bool InRounded(int x, int y, int size, int radius)
+    /// One 8px square notch per corner. No quarter-circles.
+    static bool InNotched(int x, int y, int size, int notch)
     {
         if (x < 0 || y < 0 || x >= size || y >= size)
         {
             return false;
         }
 
-        var min = radius;
-        var max = size - 1 - radius;
-        var cx = Mathf.Clamp(x, min, max);
-        var cy = Mathf.Clamp(y, min, max);
-        var dx = x - cx;
-        var dy = y - cy;
-        return (dx * dx) + (dy * dy) <= radius * radius;
+        var dx = Mathf.Min(x, size - 1 - x);
+        var dy = Mathf.Min(y, size - 1 - y);
+        if (dx < notch && dy < notch)
+        {
+            return dx + dy >= notch;
+        }
+
+        return true;
+    }
+
+    static void Stamp(Color32[] pixels, int width, int height, int lx, int ly, Color32 color)
+    {
+        var x0 = lx * Pixel;
+        var y0 = ly * Pixel;
+        for (var y = 0; y < Pixel; y++)
+        {
+            var py = y0 + y;
+            if (py < 0 || py >= height)
+            {
+                continue;
+            }
+
+            for (var x = 0; x < Pixel; x++)
+            {
+                var px = x0 + x;
+                if (px < 0 || px >= width)
+                {
+                    continue;
+                }
+
+                pixels[py * width + px] = color;
+            }
+        }
     }
 
     /// 1-texel outlined panel, Point-filtered 9-slice.
@@ -242,23 +273,25 @@ public static class PixelStyle
         var fill = KeepAlpha(color);
         var outline = KeepAlpha(new Color(color.r * 0.45f, color.g * 0.45f, color.b * 0.45f, color.a));
         var clear = new Color32(0, 0, 0, 0);
+        var lw = Mathf.Max(1, width / Pixel);
+        var lh = Mathf.Max(1, height / Pixel);
 
-        for (var y = 0; y < height; y++)
+        for (var ly = 0; ly < lh; ly++)
         {
-            for (var x = 0; x < width; x++)
+            for (var lx = 0; lx < lw; lx++)
             {
-                if (!Inside(kind, x, y, width, height))
+                if (!Inside(kind, lx, ly, lw, lh))
                 {
-                    pixels[y * width + x] = clear;
+                    Stamp(pixels, width, height, lx, ly, clear);
                     continue;
                 }
 
                 var interior =
-                    Inside(kind, x - 1, y, width, height)
-                    && Inside(kind, x + 1, y, width, height)
-                    && Inside(kind, x, y - 1, width, height)
-                    && Inside(kind, x, y + 1, width, height);
-                pixels[y * width + x] = interior ? fill : outline;
+                    Inside(kind, lx - 1, ly, lw, lh)
+                    && Inside(kind, lx + 1, ly, lw, lh)
+                    && Inside(kind, lx, ly - 1, lw, lh)
+                    && Inside(kind, lx, ly + 1, lw, lh);
+                Stamp(pixels, width, height, lx, ly, interior ? fill : outline);
             }
         }
 
