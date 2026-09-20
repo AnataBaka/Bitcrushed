@@ -622,7 +622,12 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             parts.Add($"Dodge +{entity.DodgeBonusPercent}%");
         }
 
-        if (entity.DodgeCount > 0)
+        if (
+            entity.Alive
+            && entity.Faction == Team.Players
+            && entity.ClassName == "Archer"
+            && entity.DodgeCount > 0
+        )
         {
             parts.Add($"Dodges {entity.DodgeCount}");
         }
