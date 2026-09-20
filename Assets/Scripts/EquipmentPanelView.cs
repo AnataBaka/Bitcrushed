@@ -178,9 +178,10 @@ public static class GearArt
             return PlaceholderArt.Shape(ShapeKind.Rect, new Color(0.35f, 0.35f, 0.40f, 0.35f), 48, 48);
         }
 
-        if (AmuletArt.HasIcon(def.Name))
+        var art = AmuletArt.ForDef(def);
+        if (art != null)
         {
-            return AmuletArt.Icon(def.Name);
+            return art;
         }
 
         if (def.Kind == ItemKind.Amulet)

@@ -118,9 +118,7 @@ public class ItemTooltipView : MonoBehaviour
         _iconRow.SetActive(hasIcon);
         if (hasIcon)
         {
-            _icon.sprite = icon;
-            _icon.color = Color.white;
-            _icon.preserveAspect = true;
+            ItemIconFit.Bind(_icon, icon);
         }
 
         gameObject.SetActive(true);

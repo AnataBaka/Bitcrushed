@@ -175,6 +175,7 @@ public class GameManager : MonoBehaviour
     {
         SubscriptionReady = true;
         Status = "Connected.";
+        AmuletArt.ClaimCatalog();
         Changed();
     }
 
