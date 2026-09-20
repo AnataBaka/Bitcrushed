@@ -818,17 +818,8 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         var isEnemy = entity.Faction == SpacetimeDB.Types.Team.Enemies;
         ApplyVisual(entity, isEnemy);
 
-        var shown = isEnemy
-            ? ClassSpriteArt.EnemyDisplayName(
-                entity.ClassName,
-                entity.Name,
-                entity.EntityId,
-                entity.VariantPrefix,
-                entity.IsBoss
-            )
-            : entity.Name;
         var suffix = isEnemy ? "" : $" ({entity.ClassName})";
-        _nameText.text = $"{shown}{suffix}{(isLocal ? " [you]" : "")}";
+        _nameText.text = $"{entity.Name}{suffix}{(isLocal ? " [you]" : "")}";
         _nameText.color = isActive ? UiFactory.ActiveColor : UiFactory.TextColor;
 
         if (!_barsFrozen)

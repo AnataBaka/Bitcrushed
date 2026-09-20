@@ -9,7 +9,7 @@ public class TurnOrderListView : MonoBehaviour
 {
     public const float ShiftSeconds = 0.35f;
     const float FadeSeconds = 0.22f;
-    /// Floor for "> Shadow Goblin A" / "> Magma Colossus" at 14px plus padding.
+    /// Floor for a biome-prefixed pack name plus the A/B suffix at 14px plus padding.
     const float Width = 188f;
     const float EdgePad = 10f;
     const float HeaderHeight = 22f;
@@ -202,15 +202,7 @@ public class TurnOrderListView : MonoBehaviour
         }
 
         row.Enemy = entity.Faction == Team.Enemies;
-        var label = row.Enemy
-            ? ClassSpriteArt.EnemyDisplayName(
-                entity.ClassName,
-                entity.Name,
-                entity.EntityId,
-                entity.VariantPrefix,
-                entity.IsBoss
-            )
-            : entity.Name;
+        var label = entity.Name;
         ApplyLabel(row, label, slot == 0);
         MoveTo(row, slot, snap);
     }

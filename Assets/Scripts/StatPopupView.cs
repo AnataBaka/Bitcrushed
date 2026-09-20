@@ -348,15 +348,10 @@ public class StatPopupView : MonoBehaviour
             : new Color(0.22f, 0.34f, 0.50f, 1f);
         if (isEnemy)
         {
-            var kind = ClassSpriteArt.SpriteClassFor(entity.ClassName, entity.EntityId, true);
-            _title.text = ClassSpriteArt.EnemyDisplayName(
-                entity.ClassName,
-                entity.Name,
-                entity.EntityId,
-                entity.VariantPrefix,
-                entity.IsBoss
+            _title.text = entity.Name;
+            _subtitle.text = EnemySpriteLibrary.DisplayName(
+                ClassSpriteArt.SpriteClassFor(entity.ClassName, entity.EntityId, true)
             );
-            _subtitle.text = EnemySpriteLibrary.DisplayName(kind);
         }
         else
         {

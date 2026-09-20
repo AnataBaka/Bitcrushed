@@ -1036,7 +1036,7 @@ public static partial class Module
         if (session.IsBossStage)
         {
             var boss = LivingMembers(ctx, Team.Enemies);
-            var bossName = boss.Count > 0 ? boss[0].Name : BossName;
+            var bossName = boss.Count > 0 ? boss[0].Name : "A boss";
             AddLog(ctx, $"{bossName} appears!");
         }
         else

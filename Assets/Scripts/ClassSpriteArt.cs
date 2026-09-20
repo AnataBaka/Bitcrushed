@@ -90,62 +90,6 @@ public static class ClassSpriteArt
         return EnemySpriteLibrary.PickKind(entityId);
     }
 
-    public static string EnemyDisplayName(
-        string className,
-        string entityName,
-        ulong entityId,
-        string variantPrefix = null,
-        bool isBoss = false
-    )
-    {
-        var kind = SpriteClassFor(className, entityId, true);
-        var visual = EnemySpriteLibrary.DisplayName(kind);
-        if (
-            !string.IsNullOrEmpty(entityName)
-            && entityName.IndexOf(visual, StringComparison.OrdinalIgnoreCase) >= 0
-        )
-        {
-            return entityName;
-        }
-
-        var attribute = BossAttributeFor(className, entityName, isBoss);
-        if (!string.IsNullOrEmpty(attribute))
-        {
-            return $"{attribute} {visual}";
-        }
-
-        if (!string.IsNullOrEmpty(variantPrefix))
-        {
-            return $"{variantPrefix} {visual}";
-        }
-
-        return visual;
-    }
-
-    /// Magma Colossus → Magma, so a rolled Slime reads as Magma Slime.
-    public static string BossAttributeFor(string className, string entityName, bool isBoss)
-    {
-        if (className == "MagmaColossus")
-        {
-            return "Magma";
-        }
-
-        if (!string.IsNullOrEmpty(entityName))
-        {
-            var space = entityName.IndexOf(' ');
-            if (space > 0)
-            {
-                var rest = entityName.Substring(space + 1);
-                if (rest.IndexOf("Colossus", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    return entityName.Substring(0, space);
-                }
-            }
-        }
-
-        return isBoss ? "Magma" : null;
-    }
-
     /// Knight_1, Ninja, Archer, Mage, and enemy packs already face the party.
     /// Do not flip.
     public static bool FlipX(string className) => false;
