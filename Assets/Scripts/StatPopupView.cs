@@ -346,8 +346,22 @@ public class StatPopupView : MonoBehaviour
         _header.color = isEnemy
             ? new Color(0.46f, 0.20f, 0.18f, 1f)
             : new Color(0.22f, 0.34f, 0.50f, 1f);
-        _title.text = entity.Name;
-        _subtitle.text = entity.ClassName;
+        if (isEnemy)
+        {
+            var kind = ClassSpriteArt.SpriteClassFor(entity.ClassName, entity.EntityId, true);
+            _title.text = ClassSpriteArt.EnemyDisplayName(
+                entity.ClassName,
+                entity.Name,
+                entity.EntityId,
+                entity.VariantPrefix
+            );
+            _subtitle.text = EnemySpriteLibrary.DisplayName(kind);
+        }
+        else
+        {
+            _title.text = entity.Name;
+            _subtitle.text = entity.ClassName;
+        }
 
         UiFactory.SetBar(_hpFill, entity.Hp, entity.MaxHp);
         _hpText.text = $"{entity.Hp}/{entity.MaxHp}";

@@ -1035,7 +1035,9 @@ public static partial class Module
         session = RequireSession(ctx);
         if (session.IsBossStage)
         {
-            AddLog(ctx, $"{BossName} appears!");
+            var boss = LivingMembers(ctx, Team.Enemies);
+            var bossName = boss.Count > 0 ? boss[0].Name : BossName;
+            AddLog(ctx, $"{bossName} appears!");
         }
         else
         {
@@ -1387,18 +1389,22 @@ public static partial class Module
         var tintB = def?.TintB ?? 255;
 
         var copies = new Dictionary<string, int>();
+        var rolls = new List<(EnemyArchetype Arch, string VisualKind, string Labeled)>(count);
         foreach (var pick in picks)
         {
-            var labeled = VariantDisplayName(prefix, pick.Name);
+            var visualKind = RollEnemyVisualKind(ctx);
+            var labeled = VariantDisplayName(prefix, EnemyVisualDisplayName(visualKind));
+            rolls.Add((pick, visualKind, labeled));
             copies.TryGetValue(labeled, out var n);
             copies[labeled] = n + 1;
         }
 
         var seen = new Dictionary<string, int>();
-        for (uint slot = 0; slot < (uint)picks.Count; slot++)
+        for (uint slot = 0; slot < (uint)rolls.Count; slot++)
         {
-            var arch = picks[(int)slot];
-            var labeled = VariantDisplayName(prefix, arch.Name);
+            var roll = rolls[(int)slot];
+            var arch = roll.Arch;
+            var labeled = roll.Labeled;
             seen.TryGetValue(labeled, out var index);
             seen[labeled] = index + 1;
             var name = copies[labeled] <= 1
@@ -1417,7 +1423,7 @@ public static partial class Module
                     Faction = Team.Enemies,
                     Slot = slot,
                     Name = name,
-                    ClassName = arch.Kind,
+                    ClassName = roll.VisualKind,
                     MaxHp = maxHp,
                     Hp = maxHp,
                     MaxMana = maxMana,
@@ -1474,14 +1480,17 @@ public static partial class Module
             0
         );
 
+        var visualKind = RollEnemyVisualKind(ctx);
+        var visualName = EnemyVisualDisplayName(visualKind);
+
         ctx.Db.Entity.Insert(
             new Entity
             {
                 EntityId = 0,
                 Faction = Team.Enemies,
                 Slot = 0,
-                Name = BossName,
-                ClassName = BossKind,
+                Name = visualName,
+                ClassName = visualKind,
                 MaxHp = maxHp,
                 Hp = maxHp,
                 MaxMana = 1,
@@ -1510,6 +1519,12 @@ public static partial class Module
                 SkillCooldown = FlameSweepInterval,
             }
         );
+    }
+
+    static string RollEnemyVisualKind(ReducerContext ctx)
+    {
+        var kinds = EnemyVisualKinds;
+        return kinds[ctx.Rng.Next(0, kinds.Length)];
     }
 
     static string VariantDisplayName(string prefix, string baseName)

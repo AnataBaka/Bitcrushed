@@ -12,6 +12,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     public ulong EntityId { get; private set; }
 
     RectTransform _root;
+    CanvasGroup _group;
     Image _card;
     Image _shape;
     Image _hpFill;
@@ -53,6 +54,10 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     /// True once this card is drawing class sprites instead of a placeholder.
     public bool UsesClassSprites => _spriteMode;
 
+    /// Battlefield enemy packs lunge on the placeholder path, then play Attack.
+    public bool UsesEnemySprites =>
+        _spriteMode && ClassSpriteArt.IsEnemySprite(_spriteClass);
+
     /// The body graphic, used to center hit VFX on the enemy that was struck.
     public RectTransform ShapeRect => _shape != null ? _shape.rectTransform : _root;
 
@@ -68,6 +73,7 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         var view = card.gameObject.AddComponent<EntityView>();
         view._root = card.rectTransform;
         view._card = card;
+        view._group = card.gameObject.AddComponent<CanvasGroup>();
 
         view._button = card.gameObject.AddComponent<Button>();
         view._button.transition = Selectable.Transition.None;
@@ -278,6 +284,12 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             yield break;
         }
 
+        if (ClassSpriteArt.IsEnemySprite(_spriteClass))
+        {
+            yield return PlayEnemyStrike(targetPosition, onImpact, attackFrames, attackFps);
+            yield break;
+        }
+
         if (ClassSpriteArt.IsRanged(_spriteClass))
         {
             yield return PlayRangedStrike(
@@ -336,6 +348,65 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         }
 
         yield return Slide(reach, _home, inbound);
+        _root.anchoredPosition = _home;
+
+        if (!_deadPose && !_dying && _flipbook != null && idle != null && idle.Length > 0)
+        {
+            _flipbook.Play(idle, ClassSpriteArt.IdleFps, true);
+        }
+
+        _striking = false;
+    }
+
+    /// Keep the old 62% lunge, idle on the way, Attack at the apex, then home.
+    IEnumerator PlayEnemyStrike(
+        Vector2 targetPosition,
+        Action onImpact,
+        Sprite[] attackFrames,
+        float attackFps
+    )
+    {
+        _striking = true;
+        transform.SetAsLastSibling();
+
+        var idle = ClassSpriteArt.Idle(_spriteClass);
+        var clip = attackFrames != null && attackFrames.Length > 0
+            ? attackFrames
+            : ClassSpriteArt.AttackClipFor(_spriteClass, null);
+        var fps = attackFps > 0f ? attackFps : ClassSpriteArt.AttackFps;
+
+        if (_flipbook != null && idle != null && idle.Length > 0)
+        {
+            _flipbook.Play(idle, ClassSpriteArt.IdleFps, true);
+        }
+
+        var start = _home;
+        var reach = Vector2.Lerp(start, targetPosition, 0.62f);
+        yield return Slide(start, reach, 0.14f);
+
+        if (_flipbook != null && clip != null && clip.Length > 0)
+        {
+            _flipbook.Play(clip, fps, false);
+            var swing = fps > 0f ? clip.Length / fps : 0.4f;
+            var impactAt = swing * 0.55f;
+            if (impactAt > 0f)
+            {
+                yield return new WaitForSeconds(impactAt);
+            }
+        }
+
+        onImpact?.Invoke();
+        while (_flipbook != null && _flipbook.IsPlaying)
+        {
+            yield return null;
+        }
+
+        if (!_deadPose && !_dying && _flipbook != null && idle != null && idle.Length > 0)
+        {
+            _flipbook.Play(idle, ClassSpriteArt.IdleFps, true);
+        }
+
+        yield return Slide(reach, _home, 0.18f);
         _root.anchoredPosition = _home;
 
         if (!_deadPose && !_dying && _flipbook != null && idle != null && idle.Length > 0)
@@ -549,6 +620,15 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
             _root.anchoredPosition = _home;
         }
 
+        if (ClassSpriteArt.IsEnemySprite(_spriteClass))
+        {
+            yield return FadeAway(0.58f);
+            _dying = false;
+            _deadPose = true;
+            _death = null;
+            yield break;
+        }
+
         var dying = ClassSpriteArt.Dying(_spriteClass);
         if (_flipbook != null && dying != null && dying.Length > 0)
         {
@@ -560,6 +640,37 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         _dying = false;
         _deadPose = true;
         _death = null;
+    }
+
+    IEnumerator FadeAway(float duration)
+    {
+        if (_group == null && _root != null)
+        {
+            _group = _root.gameObject.GetComponent<CanvasGroup>();
+            if (_group == null)
+            {
+                _group = _root.gameObject.AddComponent<CanvasGroup>();
+            }
+        }
+
+        var start = _group != null ? _group.alpha : 1f;
+        var elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            var t = Mathf.Clamp01(elapsed / duration);
+            if (_group != null)
+            {
+                _group.alpha = Mathf.Lerp(start, 0f, t);
+            }
+
+            yield return null;
+        }
+
+        if (_group != null)
+        {
+            _group.alpha = 0f;
+        }
     }
 
     static float MoveSeconds(Vector2 from, Vector2 to, string className = null)
@@ -612,6 +723,27 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
 
     IEnumerator HitRoutine()
     {
+        if (_spriteMode && ClassSpriteArt.IsEnemySprite(_spriteClass))
+        {
+            var elapsedFlash = 0f;
+            const float flashDuration = 0.22f;
+            while (elapsedFlash < flashDuration)
+            {
+                elapsedFlash += Time.deltaTime;
+                var t = Mathf.Clamp01(elapsedFlash / flashDuration);
+                _shape.color = Color.Lerp(Color.white, new Color(1f, 0.55f, 0.5f), 1f - t);
+                yield return null;
+            }
+
+            if (!_deadPose && !_dying)
+            {
+                _shape.color = Color.white;
+            }
+
+            _hit = null;
+            yield break;
+        }
+
         var hurt = _spriteMode ? ClassSpriteArt.Hurt(_spriteClass) : null;
         if (_spriteMode && _flipbook != null && hurt != null && hurt.Length > 0)
         {
@@ -684,8 +816,16 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
         var isEnemy = entity.Faction == SpacetimeDB.Types.Team.Enemies;
         ApplyVisual(entity, isEnemy);
 
+        var shown = isEnemy
+            ? ClassSpriteArt.EnemyDisplayName(
+                entity.ClassName,
+                entity.Name,
+                entity.EntityId,
+                entity.VariantPrefix
+            )
+            : entity.Name;
         var suffix = isEnemy ? "" : $" ({entity.ClassName})";
-        _nameText.text = $"{entity.Name}{suffix}{(isLocal ? " [you]" : "")}";
+        _nameText.text = $"{shown}{suffix}{(isLocal ? " [you]" : "")}";
         _nameText.color = isActive ? UiFactory.ActiveColor : UiFactory.TextColor;
 
         if (!_barsFrozen)
@@ -745,9 +885,14 @@ public class EntityView : MonoBehaviour, IPointerClickHandler
     void ApplyVisual(Entity entity, bool isEnemy)
     {
         ClassSpriteArt.EnsureLoaded();
-        if (!isEnemy && ClassSpriteArt.HasSprites(entity.ClassName))
+        var spriteClass = ClassSpriteArt.SpriteClassFor(
+            entity.ClassName,
+            entity.EntityId,
+            isEnemy
+        );
+        if (ClassSpriteArt.HasSprites(spriteClass))
         {
-            EnableClassSprite(entity.ClassName);
+            EnableClassSprite(spriteClass);
             if (!_striking && !_dying && !_deadPose && _hit == null && _flipbook != null)
             {
                 var idle = ClassSpriteArt.Idle(_spriteClass);

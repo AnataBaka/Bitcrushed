@@ -866,6 +866,18 @@ public static partial class Module
         new EnemyArchetype("Bone Guard", "Skeleton", 100, 25, 5, 2, 1, 5, 5, 2, "Bone Slash", "Bone Slash"),
     };
 
+    /// Visual-only labels and sprite packs. Archetype stats and skills stay put.
+    public static readonly string[] EnemyVisualKinds =
+    {
+        "Witch_Doctor",
+        "Canine",
+        "Slime",
+        "Skeleton",
+    };
+
+    public static string EnemyVisualDisplayName(string kind) =>
+        kind == "Witch_Doctor" ? "Witch Doctor" : kind;
+
     /// Main stat rolls 3-6, every other stat rolls 1-3.
     public static (int Strength, int Dexterity, int Intelligence, int Speed) RollStats(
         Random rng,
