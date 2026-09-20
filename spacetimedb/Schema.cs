@@ -131,11 +131,11 @@ public static partial class Module
         public bool IsBossStage;
         [Default(false)]
         public bool BossLootGranted;
+        [Default("")]
+        public string StageClearNote;
         /// True after this rest stop has already granted living players their amulet.
         [Default(false)]
         public bool RestAmuletGranted;
-        [Default("")]
-        public string StageClearNote;
     }
 
     /// One row per biome: display name, log phrasing, and backdrop colors.
